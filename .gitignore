@@ -1,0 +1,20 @@
+# Python 与 环境
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 前端依赖
+node_modules/
+dist/
+
+# IDE 配置
+.idea/
+.vscode/
+*.db
+# CST 仿真垃圾文件与结果
+Result/
+Model/3D/
+*.sup
+*.sd1
+*.s[0-9]*

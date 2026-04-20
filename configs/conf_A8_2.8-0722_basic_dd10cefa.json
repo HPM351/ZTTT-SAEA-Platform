@@ -1,0 +1,345 @@
+{
+    "selectedHistoryPath": null,
+    "cstPath": "F:\\cst files\\A8_zqw\\A8_2.8-0722_basic.cst",
+    "selectedHistoryTask": null,
+    "taskName": "Run_A8_zqw_001",
+    "env": {
+        "stableTime": 20.0
+    },
+    "paramsList": [
+        {
+            "id": "npptwn5nj",
+            "name": "r_cav",
+            "min": 35.0,
+            "max": 42.0,
+            "val": 37.0,
+            "opt": true
+        },
+        {
+            "id": "gh5podp2j",
+            "name": "r_sector",
+            "min": 59.0,
+            "max": 69.0,
+            "val": 65.0,
+            "opt": true
+        },
+        {
+            "id": "ywd8phmul",
+            "name": "p",
+            "min": 45.0,
+            "max": 60.0,
+            "val": 45.0,
+            "opt": true
+        },
+        {
+            "id": "s8hm9j2xy",
+            "name": "L",
+            "min": 0.0,
+            "max": 10.0,
+            "val": 0.0,
+            "opt": true
+        },
+        {
+            "id": "oa529s7jr",
+            "name": "phi_r",
+            "min": 0.0,
+            "max": 12.0,
+            "val": 0.0,
+            "opt": true
+        },
+        {
+            "id": "7tf6az1y3",
+            "name": "r_anode",
+            "min": 12.5,
+            "max": 37.5,
+            "val": 25.0,
+            "opt": false
+        },
+        {
+            "id": "vx61pv01h",
+            "name": "z_anode",
+            "min": 35.0,
+            "max": 105.0,
+            "val": 70.0,
+            "opt": false
+        },
+        {
+            "id": "sb074s4qa",
+            "name": "phi_cav",
+            "min": 10.0,
+            "max": 30.0,
+            "val": 20.0,
+            "opt": false
+        },
+        {
+            "id": "u8d7pkbdu",
+            "name": "wall",
+            "min": 1.5,
+            "max": 4.5,
+            "val": 3.0,
+            "opt": false
+        },
+        {
+            "id": "o5mhj8ym9",
+            "name": "r_slot",
+            "min": 1.5,
+            "max": 4.5,
+            "val": 3.0,
+            "opt": false
+        },
+        {
+            "id": "h09caa1jr",
+            "name": "z_slot",
+            "min": 18.0,
+            "max": 54.0,
+            "val": 36.0,
+            "opt": false
+        },
+        {
+            "id": "oagpus1ay",
+            "name": "phi_slot",
+            "min": 10.0,
+            "max": 30.0,
+            "val": 20.0,
+            "opt": false
+        },
+        {
+            "id": "7urdiskcp",
+            "name": "z_top",
+            "min": -120.0,
+            "max": -40.0,
+            "val": -80.0,
+            "opt": false
+        },
+        {
+            "id": "3lqvcb3sk",
+            "name": "z_end",
+            "min": 75.0,
+            "max": 225.0,
+            "val": 150.0,
+            "opt": false
+        },
+        {
+            "id": "lyqx097ht",
+            "name": "z_sector_end",
+            "min": 60.0,
+            "max": 180.0,
+            "val": 120.0,
+            "opt": false
+        },
+        {
+            "id": "pycyhwaqo",
+            "name": "z_sector_top",
+            "min": -50.63,
+            "max": -16.88,
+            "val": -33.75,
+            "opt": false
+        },
+        {
+            "id": "u2zye4e3p",
+            "name": "Phi_sector",
+            "min": 40.0,
+            "max": 120.0,
+            "val": 80.0,
+            "opt": false
+        },
+        {
+            "id": "hn46ubv9q",
+            "name": "r_emitter",
+            "min": 0.75,
+            "max": 2.25,
+            "val": 1.5,
+            "opt": false
+        },
+        {
+            "id": "kczugjxlp",
+            "name": "r_cathode",
+            "min": 6.0,
+            "max": 18.0,
+            "val": 12.0,
+            "opt": false
+        },
+        {
+            "id": "yaereb9k0",
+            "name": "z_cap",
+            "min": 10.0,
+            "max": 30.0,
+            "val": 20.0,
+            "opt": false
+        },
+        {
+            "id": "bi2x9dzyf",
+            "name": "r_cap",
+            "min": 10.5,
+            "max": 31.5,
+            "val": 21.0,
+            "opt": false
+        },
+        {
+            "id": "688g3xni1",
+            "name": "Ua",
+            "min": 300000.0,
+            "max": 900000.0,
+            "val": 600000.0,
+            "opt": false
+        },
+        {
+            "id": "e984vjtlx",
+            "name": "bz",
+            "min": 0.25,
+            "max": 0.75,
+            "val": 0.5,
+            "opt": false
+        },
+        {
+            "id": "th8apm7d5",
+            "name": "r_rod",
+            "min": 1.5,
+            "max": 4.5,
+            "val": 3.0,
+            "opt": false
+        },
+        {
+            "id": "k2wdjwwjf",
+            "name": "t_cathode",
+            "min": 0.5,
+            "max": 1.5,
+            "val": 1.0,
+            "opt": false
+        },
+        {
+            "id": "8kxy384d0",
+            "name": "ak",
+            "min": -10.0,
+            "max": 10.0,
+            "val": 0.0,
+            "opt": false
+        },
+        {
+            "id": "g6d8t7pp5",
+            "name": "z_trans",
+            "min": 55.0,
+            "max": 165.0,
+            "val": 110.0,
+            "opt": false
+        },
+        {
+            "id": "xkrlqilit",
+            "name": "z_waveguide",
+            "min": 10.0,
+            "max": 30.0,
+            "val": 20.0,
+            "opt": false
+        },
+        {
+            "id": "axtmh1090",
+            "name": "r_waveguide",
+            "min": 50.0,
+            "max": 150.0,
+            "val": 100.0,
+            "opt": false
+        },
+        {
+            "id": "ygbc44b6b",
+            "name": "r_ex",
+            "min": 10.5,
+            "max": 31.5,
+            "val": 21.0,
+            "opt": false
+        },
+        {
+            "id": "l46gd1l8s",
+            "name": "ex",
+            "min": 1.0,
+            "max": 3.0,
+            "val": 2.0,
+            "opt": false
+        },
+        {
+            "id": "1dg1k1okn",
+            "name": "coaxial_z",
+            "min": 53.55,
+            "max": 160.65,
+            "val": 107.1,
+            "opt": false
+        },
+        {
+            "id": "tqc7oac5i",
+            "name": "r_converter_in",
+            "min": 5.0,
+            "max": 15.0,
+            "val": 10.0,
+            "opt": false
+        },
+        {
+            "id": "z5nvw7pl4",
+            "name": "z_converter",
+            "min": 33.0,
+            "max": 99.0,
+            "val": 66.0,
+            "opt": false
+        }
+    ],
+    "targets": {
+        "freq": {
+            "enable": true,
+            "path": "Tables\\1D Results\\FFT",
+            "target": 2.95,
+            "blindGap": 0.15,
+            "clutterPenalty": -3000.0,
+            "decayK": 10.0,
+            "penaltyBase": -10000.0
+        },
+        "power": {
+            "enable": true,
+            "mode": "max",
+            "path": "Tables\\1D Results\\O3_AVG",
+            "target": 1000.0,
+            "deadThresh": 1.0,
+            "weight": 2.8,
+            "fluc": 10.0
+        },
+        "eff": {
+            "enable": true,
+            "mode": "target",
+            "path": "Tables\\1D Results\\Eff",
+            "checkPhys": true,
+            "target": 30.0,
+            "deadThresh": 1.0,
+            "weight": 1.0,
+            "fluc": 15.0
+        },
+        "mainMode": {
+            "enable": true,
+            "path": "1D Results\\Port signals\\o1(3),pic"
+        }
+    },
+    "algo": {
+        "type": "SAEA-GA",
+        "nPop": 20,
+        "nGen": 20,
+        "injectJson": "{\n  \"r_cav\": 37,\n  \"r_sector\": 65,\n  \"p\": 45,\n  \"L\": 0,\n  \"phi_r\": 0\n}",
+        "ga": {
+            "recCode": "xovdp",
+            "pc": 0.7,
+            "mutCode": "mutuni",
+            "pm": 0.25,
+            "useAutoMut": true,
+            "autoMutRange": [
+                30,
+                70
+            ]
+        },
+        "pso": {
+            "w": 0.8,
+            "c1": 1.5,
+            "c2": 1.5
+        },
+        "bo": {
+            "acqFunc": "EI",
+            "useAutoAcq": true,
+            "kappa": 2.5,
+            "xi": 0.01
+        }
+    }
+}

@@ -1,0 +1,44 @@
+{
+  "model_id": "trihead_magnetron_model",
+  "display_name": "八腔C波段全腔提取 (14维输入)",
+  "meta": {
+    "target_freq": 4.8,
+    "topology": "14-Shared(128-64)-MultiHead",
+    "activation": "ReLU / Sigmoid",
+    "train_loss": 0.4582,
+    "metric_name": "AUC",
+    "metric_value": 0.97
+  },
+  "input_features": [
+    { "name": "Rcapin", "cst_name": "Rcapin", "min": 1.0, "max": 7.0, "default": 2.06 },
+    { "name": "ZAnodecap", "cst_name": "ZAnodecap", "min": -20.0, "max": -7.0, "default": -14.06 },
+    { "name": "AnodeZ", "cst_name": "AnodeZ", "min": 30.0, "max": 37.0, "default": 33.71 },
+    { "name": "Bz (磁场)", "cst_name": "Bz", "min": 0.36, "max": 0.43, "default": 0.38 },
+    { "name": "Rcav", "cst_name": "Rcav", "min": 23.0, "max": 30.0, "default": 26.76 },
+    { "name": "Remitter", "cst_name": "Remitter", "min": 7.0, "max": 12.0, "default": 7.61 },
+    { "name": "Rinner", "cst_name": "Rinner", "min": 18.0, "max": 22.0, "default": 18.49 },
+    { "name": "SlotWide", "cst_name": "SlotWide", "min": 8.0, "max": 16.0, "default": 12.61 },
+    { "name": "Zaxial_end", "cst_name": "Zaxial_end", "min": 120.0, "max": 149.0, "default": 136.34 },
+    { "name": "Zinner_end", "cst_name": "Zinner_end", "min": 160.0, "max": 216.0, "default": 184.49 },
+    { "name": "sec_long", "cst_name": "sec_long", "min": 10.0, "max": 39.0, "default": 22.76 },
+    { "name": "sec_star", "cst_name": "sec_star", "min": 0.0, "max": 31.0, "default": 17.58 },
+    { "name": "slotLong", "cst_name": "slotLong", "min": 10.0, "max": 41.0, "default": 26.55 },
+    { "name": "slot_star", "cst_name": "slot_star", "min": 25.0, "max": 39.0, "default": 31.25 }
+  ],
+  "outputs": [
+    {
+      "name": "Power",
+      "display": "功率(W)",
+      "type": "primary",
+      "model_index": 1,
+      "needs_inverse": true
+    },
+    {
+      "name": "Frequency",
+      "display": "频率(GHz)",
+      "type": "secondary",
+      "model_index": 2,
+      "needs_inverse": false
+    }
+  ]
+}

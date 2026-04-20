@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>CST 优化引擎监控台</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }
+        #log { background: #1e1e1e; color: #00ff00; padding: 15px; height: 300px; overflow-y: scroll; font-family: monospace; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
+        button:disabled { background-color: #cccccc; }
+    </style>
+</head>
+<body>
+    <h2>⚡ 磁控管联合仿真 - 测试面板</h2>
+    <button id="startBtn" onclick="startOptimization()">🚀 开始优化任务</button>
+
+    <h3>实时进度流：</h3>
+    <div id="log">等待指令...</div>
+
+    <script>
+        const logDiv = document.getElementById('log');
+        const startBtn = document.getElementById('startBtn');
+        let ws;
+
+        // 1. 初始化 WebSocket 连接
+        function connectWebSocket() {
+            ws = new WebSocket("ws://127.0.0.1:8001/ws/progress");
+
+            ws.onopen = function() {
+                logMessage("🔗 WebSocket 连接已建立");
+            };
+
+            ws.onmessage = function(event) {
+                // 收到后台推送的数据
+                const data = JSON.parse(event.data);
+                if (data.type === 'progress') {
+                    logMessage(`[Gen ${data.gen}/${data.total_gen}] 最佳效率: ${data.best_eff}% | 功率: ${data.best_power} MW | 状态: ${data.message}`);
+                } else if (data.type === 'finish') {
+                    logMessage(`🎉 ${data.message}`);
+                    startBtn.disabled = false; // 恢复按钮
+                }
+            };
+
+            ws.onclose = function() {
+                logMessage("❌ WebSocket 连接已断开");
+            };
+        }
+
+        // 2. 触发后台优化的 HTTP 请求
+        async function startOptimization() {
+            startBtn.disabled = true;
+            logMessage("⏳ 正在发送启动指令...");
+
+            try {
+                const response = await fetch("http://127.0.0.1:8001/start_optimization", {
+                    method: "POST"
+                });
+                const result = await response.json();
+                logMessage(`✅ 服务器响应: ${result.message}`);
+            } catch (error) {
+                logMessage(`❌ 请求失败: ${error}`);
+                startBtn.disabled = false;
+            }
+        }
+
+        // 辅助函数：在黑框里打印日志
+        function logMessage(msg) {
+            logDiv.innerHTML += `<div>${msg}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight; // 自动滚动到底部
+        }
+
+        // 页面加载时自动连接 WebSocket
+        window.onload = connectWebSocket;
+    </script>
+</body>
+</html>
