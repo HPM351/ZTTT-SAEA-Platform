@@ -3,7 +3,7 @@ from scipy.signal import find_peaks
 
 
 # ==========================================
-# 基础提取工具 (保持原样，无需改动)
+# 基础提取工具 (保留原样，作为纯粹的工具函数)
 # ==========================================
 def get_auto_scaled_power(y_vals):
     max_val = np.max(np.abs(y_vals))
@@ -80,187 +80,91 @@ def analyze_spectrum(results_obj, fft_path, target_freq=None, gap_blind=None):
 
 
 # ==========================================
-# 模块 0：公共奖励计算 (仅针对安全区的管子)
+# Level 4：算法流派策略模式 (Gateway)
+# 也是对外暴露的唯一接口
 # ==========================================
-def _calc_shared_reward(m, objs):
+def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
     """
-    当管子跨越所有生死线后，进入此模块进行精细的内卷打分。
-    ✨ 修复了 Target 模式下的十倍放大失衡 Bug，现已做到功率效率 1:1 公平对决。
+    通用大网关：接收扁平化的 metrics 字典和动态目标列表 targets_list。
+    根据 algo_type 分发不同的死区惩罚策略。
     """
-    reward_score = 0.0
-    BASE_L3 = -10.0
+    # [Level 0] 致命错误：CST 崩溃或未能提取数据
+    if 'error' in metrics:
+        return -50000.0 if algo_type == "BO" else -1e7
 
-    for metric_key, config_key in [('power', 'power'), ('eff', 'eff')]:
-        if config_key in objs and objs[config_key].get('enable', False):
-            o = objs[config_key]
-            val_key, fluc_key = f"{metric_key}_val", f"{metric_key}_fluc"
+    total_score = 0.0
+    any_dead = False
 
-            val = m.get(val_key, 0)
-            fluc = m.get(fluc_key, 0)
+    # 遍历所有目标，执行评估
+    for t_cfg in targets_list:
+        t_name = t_cfg.get('name')
+        val = metrics.get(t_name, 0.0)
 
-            raw_target = o['target']
-            tol_fluc = o['fluc'] / 100.0
-            tol_target = o.get('tolerance', o['fluc']) / 100.0
-            weight = o['weight']
+        mode = t_cfg.get('mode', 'maximize')
+        weight = float(t_cfg.get('weight', 1.0))
+        scale = float(t_cfg.get('reference_scale', 1.0))
+        constraints = t_cfg.get('constraints', {})
 
-            # --- 单位统一与归一化标尺 ---
-            if config_key == 'power':
-                # 这里的 target_val 就是前端填的“参考基准”
-                target_val = raw_target * 1e6
-                norm_val = val / (target_val + 1e-6)
+        is_dead = False
+        depth = 0.0
+        base_score = 0.0
+
+        # ==========================================
+        # Level 1: 计算无视死区的基础得分 (锚定连续性)
+        # ==========================================
+        if mode == 'maximize':
+            base_score = (val / (scale + 1e-9)) * weight
+        elif mode == 'minimize':
+            # 翻转为正向奖励，表现越好越接近满分 weight
+            base_score = (1.0 - (val / (scale + 1e-9))) * weight
+        elif mode == 'target':
+            target_val = float(t_cfg.get('target_val', 0.0))
+            tol = float(t_cfg.get('tolerance', 0.0))
+            diff = abs(val - target_val)
+            if diff <= tol:
+                base_score = 1.0 * weight
             else:
-                target_val = raw_target
-                norm_val = val / 100.0
+                # 容差外平滑衰减
+                base_score = (1.0 - (diff - tol) / (scale + 1e-9)) * weight
 
-            # --- 时域纹波罚分 (独立结算) ---
-            if fluc > tol_fluc:
-                reward_score += BASE_L3 * (fluc / tol_fluc) * 2.0
-
-            # --- 目标模式判决 ---
-            if o['mode'] == 'target':
-                if val < target_val:
-                    diff_from_target = target_val - val
-                    allowed_error = target_val * tol_target
-
-                    # 只有跌出平顶区边缘，才开始计算惩罚
-                    if diff_from_target > allowed_error:
-                        dist_from_edge = diff_from_target - allowed_error
-
-                        # 1. 边缘平滑扣分
-                        reward_score += BASE_L3 * (dist_from_edge / (allowed_error + 1e-6))
-
-                        # 2. ✨ 核心修复：移除 *10.0 的暴君惩罚，改为与 Maximize 完全对等的相对归一化扣分
-                        norm_dist = dist_from_edge / (target_val + 1e-6)
-                        reward_score -= norm_dist * weight
+        # ==========================================
+        # Level 2: 刚性约束拦截网校验
+        # ==========================================
+        if constraints.get('enable', False):
+            if mode == 'target':
+                max_diff = constraints.get('max_diff')
+                if max_diff is not None and abs(val - target_val) > max_diff:
+                    is_dead = True
+                    depth = abs(val - target_val) - max_diff
             else:
-                # Maximize 模式：无限向上加分
-                reward_score += norm_val * weight
+                min_val = constraints.get('min')
+                max_val = constraints.get('max')
+                if min_val is not None and val < min_val:
+                    is_dead = True
+                    depth = (min_val - val) / (abs(min_val) + 1e-6)
+                if max_val is not None and val > max_val:
+                    is_dead = True
+                    depth = (val - max_val) / (abs(max_val) + 1e-6)
 
-    return reward_score
+        # ==========================================
+        # Level 3: 策略结算与惩罚融合
+        # ==========================================
+        if is_dead:
+            any_dead = True
+            if algo_type == "BO":
+                # BO 专属：消除断崖！继承该个体的优秀基础分，仅叠加平滑斜率惩罚
+                smooth_penalty = 500.0 * depth
+                total_score += (base_score - smooth_penalty)
+            else:
+                pass  # GA 模式下只要有一次 dead，总分直接作废，这里无需累加
+        else:
+            total_score += base_score
 
+    # ==========================================
+    # 最终总评与量级放大
+    # ==========================================
+    if any_dead and algo_type != "BO":
+        return -1e7  # GA/PSO 一票否决
 
-# ==========================================
-# 算法流派一：GA/PSO (断崖淘汰派)
-# ==========================================
-def calc_score_ga(m, objs):
-    """
-    GA 和 PSO 专属评分：不惧断崖，优胜劣汰，只保留绝对的数字层级。
-    """
-    # [Level 4] 致命错误：直接 -1e7 秒杀
-    if 'error' in m or m.get('freq', -1) <= 0: return -1e7
-    if 'eff' in objs and objs['eff'].get('checkPhys', True):
-        eff_val = m.get('eff_val', 0)
-        if eff_val < 0 or eff_val > 100: return -1e7
-
-    # [Level 3] 频率错误：短路截断，直接按偏离程度重罚
-    if 'freq' in objs and objs['freq'].get('enable', False):
-        o = objs['freq']
-        freq_val, target_f, blind_gap = m['freq'], o['target'], o['blindGap']
-        side_ratio = m.get('side_ratio', 1.0)
-
-        if abs(freq_val - target_f) > blind_gap:
-            base = -abs(o.get('penaltyBase', 10000))
-            return base * (1.0 + o.get('decayK', 10.0) * abs(freq_val - target_f))
-        if side_ratio > 0.1:
-            return -abs(o.get('clutterPenalty', 3000)) * side_ratio
-
-    # [Level 2] 死区判定：无视梯度，-300 分出局
-    dead_penalty = -300.0
-    if 'power' in objs and objs['power'].get('enable', False):
-        if m.get('power_val', 0) < objs['power']['deadThresh'] * 1e6: return dead_penalty
-    if 'eff' in objs and objs['eff'].get('enable', False):
-        if m.get('eff_val', 0) < objs['eff']['deadThresh']: return dead_penalty
-
-    # [Level 1] 安全区：正分疯狂放大 (100倍)
-    raw_score = _calc_shared_reward(m, objs)
-    return raw_score * 100.0 if raw_score > 0 else raw_score
-
-
-def calc_score_pso(m, objs):
-    # PSO 目前与 GA 的逻辑完美兼容
-    return calc_score_ga(m, objs)
-
-
-# ==========================================
-# 算法流派二：贝叶斯优化 BO (平滑梯度派)
-# ==========================================
-def calc_score_bo(m, objs):
-    """
-    BO 专属评分：必须处处连续可导，利用相对深度和有理渐近线完美护航层级。
-    """
-    # [Level 4] 致命错误：用 -50000 作为谷底
-    if 'error' in m or m.get('freq', -1) <= 0: return -50000.0
-    if 'eff' in objs and objs['eff'].get('checkPhys', True):
-        eff_val = m.get('eff_val', 0)
-        if eff_val < 0 or eff_val > 100: return -50000.0
-
-    penalty_score = 0.0
-    is_dead = False
-
-    # [Level 3] 频率错误：✨ 采用有理函数渐近线 (-10000 ~ -40000)
-    if 'freq' in objs and objs['freq'].get('enable', False):
-        o = objs['freq']
-        freq_val, target_f, blind_gap = m['freq'], o['target'], o['blindGap']
-        side_ratio = m.get('side_ratio', 1.0)
-
-        diff = abs(freq_val - target_f)
-        if diff > blind_gap:
-            base_penalty = -10000.0
-            max_extra_penalty = 30000.0
-            decay_k = 0.5  # 曲线衰减平缓度
-            net_diff = diff - blind_gap
-
-            # 有理衰减，偏离10000GHz也不会跌穿-40000
-            penalty_score += base_penalty - max_extra_penalty * (net_diff / (net_diff + decay_k))
-            is_dead = True
-
-        if side_ratio > 0.1:
-            penalty_score -= abs(o.get('clutterPenalty', 3000)) * side_ratio
-            is_dead = True
-
-    # [Level 2] 死区判定：采用相对深度连续陡坡 (-100 ~ -2200)
-    # 只有频率没问题时，才去计算死区，防止层级分数混合干扰
-    if not is_dead:
-        p_thresh = objs['power']['deadThresh'] * 1e6 if 'power' in objs and objs['power'].get('enable', False) else 0
-        e_thresh = objs['eff']['deadThresh'] if 'eff' in objs and objs['eff'].get('enable', False) else 0
-
-        p_val = m.get('power_val', 0)
-        e_val = m.get('eff_val', 0)
-
-        dead_zone_penalty = 0.0
-        if p_thresh > 0 and p_val < p_thresh:
-            depth = (p_thresh - p_val) / p_thresh
-            dead_zone_penalty -= (100.0 + 1000.0 * depth)
-            is_dead = True
-
-        if e_thresh > 0 and e_val < e_thresh:
-            depth = (e_thresh - e_val) / e_thresh
-            dead_zone_penalty -= (100.0 + 1000.0 * depth)
-            is_dead = True
-
-        penalty_score += dead_zone_penalty
-
-    # 如果在前面的流程中跌落了任何深渊（层级被短路锁定）
-    if is_dead or penalty_score < 0:
-        return penalty_score
-
-    # [Level 1] 安全区
-    # ✨ 接受沙盘推演的 Hotfix：BO 的原分直接返回，不乘 100 倍！
-    # 高斯过程不需要放大也能拟合正分区的微小地形，且防止死区层级倒挂
-    raw_score = _calc_shared_reward(m, objs)
-    return raw_score
-
-
-# ==========================================
-# 网关路由 (对外暴露的主入口)
-# ==========================================
-def calc_score(m, objs, algo_type="SAEA-GA"):
-    """
-    通过前端传来的 algo_type (默认 GA)，自动将数据分发给最适合该算法数学特性的评估引擎。
-    """
-    if algo_type == "BO":
-        return calc_score_bo(m, objs)
-    elif algo_type == "PSO":
-        return calc_score_pso(m, objs)
-    else:
-        return calc_score_ga(m, objs)
+    # 统一放大 100 倍，拉开方差，刺激算法寻找梯度
+    return total_score * 100.0

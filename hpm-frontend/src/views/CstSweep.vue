@@ -99,103 +99,113 @@
               >+ 新增变量维度</n-button
             >
 
-            <div
-              v-for="(item, index) in config.paramsList"
-              :key="item.id"
-              class="var-item"
+            <transition-group
+              name="list-anim"
+              tag="div"
+              class="params-list-container"
             >
-              <n-grid
-                :x-gap="12"
-                :y-gap="12"
-                :cols="24"
-                style="align-items: center"
-              >
-                <n-gi :span="8"
-                  ><n-input v-model:value="item.name" placeholder="变量名"
-                /></n-gi>
-                <n-gi
-                  :span="13"
-                  style="display: flex; justify-content: flex-end"
-                >
-                  <n-switch v-model:value="item.isSweep" size="medium">
-                    <template #checked>Sweep (扫参)</template>
-                    <template #unchecked>Fix (固定值)</template>
-                  </n-switch>
-                </n-gi>
-                <n-gi :span="3" style="text-align: right">
-                  <n-button
-                    type="error"
-                    quaternary
-                    circle
-                    size="small"
-                    @click="removeVariable(index)"
-                    >🗑️</n-button
-                  >
-                </n-gi>
-              </n-grid>
-
               <div
-                v-if="item.isSweep"
-                class="sweep-row"
-                style="margin-top: 12px"
+                v-for="item in config.paramsList"
+                :key="item.id"
+                class="var-item"
               >
-                <n-grid :x-gap="8" :cols="3">
-                  <n-gi>
-                    <n-input-number
-                      v-model:value="item.min"
-                      :show-button="false"
-                      size="small"
-                    >
-                      <template #prefix
-                        ><span class="inner-label">Min</span></template
-                      >
-                    </n-input-number>
+                <n-grid
+                  :x-gap="12"
+                  :y-gap="12"
+                  :cols="24"
+                  style="align-items: center"
+                >
+                  <n-gi :span="8">
+                    <n-input v-model:value="item.name" placeholder="变量名" />
                   </n-gi>
-                  <n-gi>
-                    <n-input-number
-                      v-model:value="item.max"
-                      :show-button="false"
-                      size="small"
+                  <n-gi
+                    :span="13"
+                    style="display: flex; justify-content: flex-end"
+                  >
+                    <n-switch
+                      v-model:value="item.isSweep"
+                      size="medium"
+                      @update:value="sortParamsList"
                     >
-                      <template #prefix
-                        ><span class="inner-label">Max</span></template
-                      >
-                    </n-input-number>
+                      <template #checked>Sweep (扫参)</template>
+                      <template #unchecked>Fix (固定值)</template>
+                    </n-switch>
                   </n-gi>
-                  <n-gi>
-                    <n-input-number
-                      v-model:value="item.points"
-                      :show-button="false"
+                  <n-gi :span="3" style="text-align: right">
+                    <n-button
+                      type="error"
+                      quaternary
+                      circle
                       size="small"
-                      :min="1"
+                      @click="removeVariable(item.id)"
+                      >🗑️</n-button
                     >
-                      <template #prefix
-                        ><span class="inner-label">Pts</span></template
-                      >
-                    </n-input-number>
                   </n-gi>
                 </n-grid>
-                <div class="step-hint" v-if="item.points > 1">
-                  步长:
-                  {{ ((item.max - item.min) / (item.points - 1)).toFixed(4) }}
+
+                <div
+                  v-if="item.isSweep"
+                  class="sweep-row"
+                  style="margin-top: 12px"
+                >
+                  <n-grid :x-gap="8" :cols="3">
+                    <n-gi>
+                      <n-input-number
+                        v-model:value="item.min"
+                        :show-button="false"
+                        size="small"
+                      >
+                        <template #prefix
+                          ><span class="inner-label">Min</span></template
+                        >
+                      </n-input-number>
+                    </n-gi>
+                    <n-gi>
+                      <n-input-number
+                        v-model:value="item.max"
+                        :show-button="false"
+                        size="small"
+                      >
+                        <template #prefix
+                          ><span class="inner-label">Max</span></template
+                        >
+                      </n-input-number>
+                    </n-gi>
+                    <n-gi>
+                      <n-input-number
+                        v-model:value="item.points"
+                        :show-button="false"
+                        size="small"
+                        :min="1"
+                      >
+                        <template #prefix
+                          ><span class="inner-label">Pts</span></template
+                        >
+                      </n-input-number>
+                    </n-gi>
+                  </n-grid>
+                  <div class="step-hint" v-if="item.points > 1">
+                    步长:
+                    {{ ((item.max - item.min) / (item.points - 1)).toFixed(4) }}
+                  </div>
+                </div>
+                <div v-else class="var-fix-row">
+                  <n-slider
+                    v-model:value="item.val"
+                    :min="item.min"
+                    :max="item.max"
+                    :step="0.001"
+                    style="flex: 1; margin: 0 12px"
+                  />
+                  <n-input-number
+                    v-model:value="item.val"
+                    style="width: 80px"
+                    :show-button="false"
+                    size="small"
+                  />
                 </div>
               </div>
-              <div v-else class="var-fix-row">
-                <n-slider
-                  v-model:value="item.val"
-                  :min="item.min"
-                  :max="item.max"
-                  :step="0.001"
-                  style="flex: 1; margin: 0 12px"
-                />
-                <n-input-number
-                  v-model:value="item.val"
-                  style="width: 80px"
-                  :show-button="false"
-                  size="small"
-                />
-              </div>
-            </div>
+            </transition-group>
 
             <div class="total-count-tag" v-if="totalCombinations > 0">
               预计总仿真次数:
@@ -204,20 +214,23 @@
           </n-card>
 
           <n-collapse :default-expanded-names="['paths']">
-            <n-collapse-item title="📂 CST 结果树路径 (探针配置)" name="paths">
-              <div class="inner-panel">
-                <n-form-item label="功率路径 (Power)"
-                  ><n-input v-model:value="config.targets.power.path"
-                /></n-form-item>
-                <n-form-item label="效率路径 (Efficiency)"
-                  ><n-input v-model:value="config.targets.eff.path"
-                /></n-form-item>
-                <n-form-item label="频谱路径 (FFT)"
-                  ><n-input v-model:value="config.targets.freq.path"
-                /></n-form-item>
-                <n-form-item label="主模信号路径"
-                  ><n-input v-model:value="config.targets.mainMode.path"
-                /></n-form-item>
+            <n-collapse-item title="📂 CST 动态监控目标配置" name="paths">
+              <n-button dashed block @click="addTarget" style="margin-bottom: 12px;">+ 新增监控目标</n-button>
+              <div v-for="(t, idx) in config.targetsList" :key="idx" class="inner-panel">
+                <n-grid :cols="24" :x-gap="12">
+                  <n-gi :span="6"><n-input v-model:value="t.name" size="small" placeholder="变量名(英文)" /></n-gi>
+                  <n-gi :span="6"><n-input v-model:value="t.display" size="small" placeholder="显示名(中文)" /></n-gi>
+                  <n-gi :span="10"><n-input v-model:value="t.path" size="small" placeholder="CST 结果树路径" /></n-gi>
+                  <n-gi :span="2"><n-button type="error" quaternary size="small" @click="config.targetsList.splice(idx, 1)">🗑️</n-button></n-gi>
+                </n-grid>
+                <n-grid :cols="2" :x-gap="12" style="margin-top: 8px;">
+                  <n-gi>
+                    <n-select size="small" v-model:value="t.extractMethod" :options="[{label:'时域均值', value:'time_mean'}, {label:'频域主峰', value:'freq_peak'}, {label:'零维标量', value:'0d_scalar'}]" />
+                  </n-gi>
+                  <n-gi>
+                    <n-input-number size="small" v-model:value="t.multiplier" placeholder="量纲倍率 (如 1e-6)" />
+                  </n-gi>
+                </n-grid>
               </div>
             </n-collapse-item>
           </n-collapse>
@@ -342,15 +355,10 @@
                     >| ID: {{ inspectIdx }}</span
                   ></span
                 >
-                <n-radio-group
-                  v-model:value="activeWaveTab"
-                  size="small"
-                  @update:value="updateInspectorChart"
-                >
-                  <n-radio-button value="power">功率</n-radio-button>
-                  <n-radio-button value="eff">效率</n-radio-button>
-                  <n-radio-button value="mainMode">主模波形</n-radio-button>
-                  <n-radio-button value="fft">频谱 (FFT)</n-radio-button>
+                <n-radio-group v-model:value="activeWaveTab" size="small" @update:value="updateInspectorChart">
+                  <n-radio-button v-for="t in config.targetsList" :key="t.name" :value="t.name">
+                    {{ t.display || t.name }}
+                  </n-radio-button>
                 </n-radio-group>
               </n-space>
 
@@ -367,7 +375,11 @@
                     @update:value="updateInspectorChart"
                   />
                 </n-input-group>
-                <n-button quaternary circle size="small" @click="toggleFullscreen"
+                <n-button
+                  quaternary
+                  circle
+                  size="small"
+                  @click="toggleFullscreen"
                   ><n-icon><Maximize /></n-icon
                 ></n-button>
               </n-space>
@@ -393,7 +405,11 @@
                   size="small"
                   type="info"
                   bordered="false"
-                  style="font-family: monospace; font-size: 13px; padding: 0 10px"
+                  style="
+                    font-family: monospace;
+                    font-size: 13px;
+                    padding: 0 10px;
+                  "
                 >
                   {{ k }}:
                   {{ typeof v === "number" && v % 1 !== 0 ? v.toFixed(3) : v }}
@@ -404,7 +420,7 @@
               >
             </div>
           </div>
-          
+
           <div style="flex: 1; position: relative; min-width: 0; min-height: 0">
             <div
               ref="inspectorChartRef"
@@ -544,7 +560,7 @@ const loadHistoricalTask = async (taskId) => {
       Object.assign(allDataPool, d.all_data_pool);
       // 恢复散点图
       refreshScatterChart();
-      
+
       // 更新进度条和当前波形指针
       const keys = Object.keys(allDataPool);
       if (keys.length > 0) {
@@ -566,18 +582,18 @@ const tryLoadConfig = async (path) => {
     const res = await axios.post(`${API_BASE}/load_config`, { cstPath: path });
     if (res.data.status === "success") {
       const saved = res.data.config;
-      // ✨ 修改：不要在这里自动覆盖 taskName，保留扫参界面的默认命名或用户手动命名
-      // if (saved.taskName) config.taskName = saved.taskName; 
-      
-      if (saved.paramsList) config.paramsList = saved.paramsList;
-      if (saved.targets) {
-        // 仅同步路径，不同步权重和目标值
-        Object.keys(config.targets).forEach(key => {
-          if (saved.targets[key]) {
-            config.targets[key].path = saved.targets[key].path;
-          }
-        });
+
+      // 1. 恢复参数列表并触发排序 (✨ 已移入正确的作用域内，修复了旧 Bug)
+      if (saved.paramsList) {
+        config.paramsList = saved.paramsList;
+        sortParamsList(); 
       }
+
+      // 2. 恢复动态目标列表 (✨ 全新逻辑，直接接管整个数组)
+      if (saved.targetsList && Array.isArray(saved.targetsList)) {
+        config.targetsList = saved.targetsList;
+      }
+
       message.success(`📂 已同步 CST 项目参数与结果路径`);
     }
   } catch (err) {
@@ -622,8 +638,8 @@ const readFromCST = async () => {
           min: Number(p_min.toFixed(2)),
           max: Number(p_max.toFixed(2)),
           val: p_val,
-          points: 5,        // ✨ 扫参专属：必须携带 points
-          isSweep: false,   // ✨ 核心修复：扫参页面的开关字段叫 isSweep，不能用 opt
+          points: 5, // ✨ 扫参专属：必须携带 points
+          isSweep: false, // ✨ 核心修复：扫参页面的开关字段叫 isSweep，不能用 opt
         });
         count++;
       }
@@ -640,13 +656,17 @@ const config = reactive({
   cstPath: "",
   taskName: "Sweep_Task_001",
   paramsList: [],
-  targets: {
-    power: { path: "Tables\\1D Results\\AVGpower" },
-    eff: { path: "Tables\\1D Results\\EFF" },
-    freq: { path: "Tables\\1D Results\\FFT" },
-    mainMode: { path: "1D Results\\Port signals\\o2(1),pic" },
-  },
+  // ✨ 终极重构：将写死的目标变成动态数组，默认提供几个常用的，用户可以随便增删
+  targetsList: [
+    { name: "Power", display: "功率(MW)", path: "Tables\\1D Results\\AVGpower", extractMethod: "time_mean", multiplier: 1e-6 },
+    { name: "Efficiency", display: "效率(%)", path: "Tables\\1D Results\\EFF", extractMethod: "time_mean", multiplier: 100 },
+    { name: "Frequency", display: "频率(GHz)", path: "Tables\\1D Results\\FFT", extractMethod: "freq_peak", multiplier: 1 }
+  ]
 });
+
+const addTarget = () => {
+  config.targetsList.push({ name: "NewMetric", display: "新指标", path: "", extractMethod: "time_mean", multiplier: 1 });
+};
 
 // 计算总仿真组合数 (Cartesian Product)
 const totalCombinations = computed(() => {
@@ -677,19 +697,18 @@ const inspectedParams = computed(
 
 // 散点图多维配置
 const scatterConfig = reactive({
-  xAxis: "freq",
-  yAxis: "eff_val",
-  color: "power_val", // ✨ 默认颜色映射为功率
+  xAxis: config.targetsList[0]?.name || "",
+  yAxis: config.targetsList[1]?.name || "",
+  color: config.targetsList[2]?.name || config.targetsList[0]?.name || ""
 });
 // 动态生成坐标轴可选项 (包含参数和结果)
 const axisOptions = computed(() => {
-  const options = [
-    { label: "功率 (MW)", value: "power_val" },
-    { label: "效率 (%)", value: "eff_val" },
-    { label: "频率 (GHz)", value: "freq" },
-  ];
-  config.paramsList.forEach((p) => {
-    if (p.isSweep) options.push({ label: `变量: ${p.name}`, value: p.name });
+  const options = [];
+  config.paramsList.forEach(p => {
+    if (p.isSweep) options.push({ label: `[参数] ${p.name}`, value: p.name });
+  });
+  config.targetsList.forEach(t => {
+    options.push({ label: `[指标] ${t.display || t.name}`, value: t.name });
   });
   return options;
 });
@@ -716,53 +735,61 @@ const initCharts = () => {
 
 const updateInspectorChart = () => {
   if (!inspectorChart) return;
-  
+
   // 1. 取出当前选中的 Sweep ID 对应的数据
   const currentData = allDataPool[inspectIdx.value];
   if (!currentData) {
     inspectorChart.clear(); // 没数据时清空画布
     return;
   }
-  
+
   // 2. 根据选中的标签 (power, eff, fft, mainMode) 提取对应的波形坐标数组
-  const wave = currentData[activeWaveTab.value];
+  const wave = currentData.waves ? currentData.waves[activeWaveTab.value] : null;
   if (!wave || !wave.x || !wave.y || wave.x.length === 0) {
-    // 如果 CST 没跑出这根线，清空画布，防止残留上一张图
-    inspectorChart.clear(); 
+    inspectorChart.clear();
     return;
   }
 
   const textColor = getThemeColor();
   const gridColor = getGridColor();
-  
+
   // 3. 动态配置坐标轴名称
-  let xName = "Time (ns)";
+  let xName = "Time / Freq";
   let yName = "Amplitude";
-  if (activeWaveTab.value === 'power') yName = "Power (W)";
-  else if (activeWaveTab.value === 'eff') yName = "Efficiency (%)";
-  else if (activeWaveTab.value === 'fft') { xName = "Frequency (GHz)"; yName = "Amplitude"; }
+  
+  // 自动从动态目标列表中查找当前激活的 Tab 配置
+  const currentTargetConfig = config.targetsList.find(t => t.name === activeWaveTab.value);
+  if (currentTargetConfig) {
+      yName = currentTargetConfig.display || currentTargetConfig.name;
+      // 如果提取规则是频域，X轴自动改成频率
+      if (currentTargetConfig.extractMethod === 'freq_peak') {
+          xName = "Frequency (GHz)";
+      } else {
+          xName = "Time (ns)";
+      }
+  }
 
   // 4. 组装 ECharts 渲染参数 (与优化界面保持一致的霓虹绿渐变风格)
   const option = {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "axis",
-      axisPointer: { type: "cross" }
+      axisPointer: { type: "cross" },
     },
     grid: { top: 40, right: 40, bottom: 40, left: 60 },
     xAxis: {
       name: xName,
       type: "category",
-      data: wave.x.map(val => Number(val).toFixed(4)),
+      data: wave.x.map((val) => Number(val).toFixed(4)),
       axisLabel: { color: textColor },
-      splitLine: { show: false }
+      splitLine: { show: false },
     },
     yAxis: {
       name: yName,
       type: "value",
       scale: true,
       axisLabel: { color: textColor },
-      splitLine: { lineStyle: { color: gridColor, type: "dashed" } }
+      splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
     },
     series: [
       {
@@ -774,11 +801,11 @@ const updateInspectorChart = () => {
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: "rgba(16,185,129,0.3)" },
-            { offset: 1, color: "rgba(16,185,129,0.05)" }
-          ])
-        }
-      }
-    ]
+            { offset: 1, color: "rgba(16,185,129,0.05)" },
+          ]),
+        },
+      },
+    ],
   };
   inspectorChart.setOption(option, true);
 };
@@ -793,23 +820,19 @@ const refreshScatterChart = () => {
 
   // 组装数据并提取当前颜色维度的极小值与极大值
   const seriesData = Object.entries(allDataPool).map(([idx, data]) => {
+    // ✨ 从 metrics 字典或 params 字典取值
     const getVal = (key) => {
-      if (data[key] !== undefined) return data[key];
-      if (data.params && data.params[key] !== undefined)
-        return data.params[key];
-      return 0; // 兜底逻辑
+      if (data.metrics && data.metrics[key] !== undefined) return data.metrics[key];
+      if (data.params && data.params[key] !== undefined) return data.params[key];
+      return 0; 
     };
-    
+
     const cVal = getVal(scatterConfig.color);
     if (cVal < minColorVal) minColorVal = cVal;
     if (cVal > maxColorVal) maxColorVal = cVal;
 
     return {
-      value: [
-        getVal(scatterConfig.xAxis),
-        getVal(scatterConfig.yAxis),
-        cVal,
-      ],
+      value: [getVal(scatterConfig.xAxis), getVal(scatterConfig.yAxis), cVal],
       id: idx,
       params: data.params,
     };
@@ -822,7 +845,8 @@ const refreshScatterChart = () => {
   }
 
   // 辅助函数：根据选项值获取中文 Label
-  const getLabel = (val) => axisOptions.value.find((o) => o.value === val)?.label || val;
+  const getLabel = (val) =>
+    axisOptions.value.find((o) => o.value === val)?.label || val;
 
   const option = {
     backgroundColor: "transparent",
@@ -833,11 +857,12 @@ const refreshScatterChart = () => {
         let paramHtml = "";
         if (params.data.params) {
           for (let k in params.data.params) {
-             let v = params.data.params[k];
-             paramHtml += `${k}: <span style="color:#3b82f6">${v % 1 !== 0 ? v.toFixed(3) : v}</span><br/>`;
+            let v = params.data.params[k];
+            paramHtml += `${k}: <span style="color:#3b82f6">${v % 1 !== 0 ? v.toFixed(3) : v}</span><br/>`;
           }
         }
-        if (!paramHtml) paramHtml = "<span style='color: gray;'>等待数据传入...</span>";
+        if (!paramHtml)
+          paramHtml = "<span style='color: gray;'>等待数据传入...</span>";
 
         // 组装精美的悬浮框
         return `<div style="font-family: monospace;">
@@ -888,18 +913,20 @@ const refreshScatterChart = () => {
         ],
       },
     },
-    series: [{ 
-      type: "scatter", 
-      data: seriesData, 
-      symbolSize: 10,
-      itemStyle: {
-        opacity: 0.8,
-        borderColor: "var(--n-card-color)",
-        borderWidth: 1,
-      }
-    }],
+    series: [
+      {
+        type: "scatter",
+        data: seriesData,
+        symbolSize: 10,
+        itemStyle: {
+          opacity: 0.8,
+          borderColor: "var(--n-card-color)",
+          borderWidth: 1,
+        },
+      },
+    ],
   };
-  
+
   scatterChart.setOption(option, true);
 };
 
@@ -942,26 +969,31 @@ const connectWebSocket = (taskId) => {
     if (data.type === "sweep_progress") {
       currentSweepIdx.value = data.current;
       // 确保响应式赋值
-      allDataPool[data.current] = data.data; 
+      allDataPool[data.current] = data.data;
 
-      if (currentSweepIdx.value === 1 || inspectIdx.value === data.current - 1) {
-         inspectIdx.value = data.current;
-         updateInspectorChart();
+      if (
+        currentSweepIdx.value === 1 ||
+        inspectIdx.value === data.current - 1
+      ) {
+        inspectIdx.value = data.current;
+        updateInspectorChart();
       }
-      
+
       // ✨ 补全：驱动灵动岛进度条
       if (islandState && islandState.CstSweep.isRunning) {
-        islandState.CstSweep.progress = totalCombinations.value 
-          ? Math.round((data.current / totalCombinations.value) * 100) 
+        islandState.CstSweep.progress = totalCombinations.value
+          ? Math.round((data.current / totalCombinations.value) * 100)
           : 0;
       }
-      
+
       // 等待 DOM 更新后刷新散点图
       await nextTick();
       refreshScatterChart();
-      
+
       // ✨ 修复：这里必须加 .value，否则脚本会在此处崩溃导致后续不执行
-      logs.value.push(`[PROGRESS] 扫描组合 ${data.current}/${totalCombinations.value} 完成`);
+      logs.value.push(
+        `[PROGRESS] 扫描组合 ${data.current}/${totalCombinations.value} 完成`,
+      );
       scrollToBottom();
     } else if (data.type === "finish") {
       isRunning.value = false;
@@ -1004,10 +1036,14 @@ const stopOptimization = async () => {
   if (!currentTaskId.value) return;
   message.loading("正在向后台发送急停指令...");
   try {
-    const res = await axios.post(`${API_BASE}/stop_optimization/${currentTaskId.value}`);
+    const res = await axios.post(
+      `${API_BASE}/stop_optimization/${currentTaskId.value}`,
+    );
     if (res.data.status === "success") {
       message.success("急停指令已下发！等待底层 CST 释放...");
-      logs.value.push("<span style='color:#ef4444;'>[SYSTEM] 收到强制终止指令，引擎将在当前点算完后安全退出...</span>");
+      logs.value.push(
+        "<span style='color:#ef4444;'>[SYSTEM] 收到强制终止指令，引擎将在当前点算完后安全退出...</span>",
+      );
       scrollToBottom();
       // 注: 不要在这里把 isRunning 设为 false，等后台回传 finish 或 error 消息时会自动关闭
     } else {
@@ -1016,6 +1052,13 @@ const stopOptimization = async () => {
   } catch (e) {
     message.error("急停指令下发失败，请检查网络或后台状态");
   }
+};
+
+const sortParamsList = () => {
+  config.paramsList.sort((a, b) => {
+    if (a.isSweep === b.isSweep) return 0;
+    return a.isSweep ? -1 : 1; // true 排在 false 前面
+  });
 };
 
 // === 辅助函数 ===
@@ -1030,7 +1073,10 @@ const addVariable = () => {
     isSweep: false,
   });
 };
-const removeVariable = (idx) => config.paramsList.splice(idx, 1);
+const removeVariable = (id) => {
+  const idx = config.paramsList.findIndex((p) => p.id === id);
+  if (idx !== -1) config.paramsList.splice(idx, 1);
+};
 const scrollToBottom = async () => {
   await nextTick();
   if (logWindowRef.value)
@@ -1049,29 +1095,35 @@ const handleResize = () => {
 
 const handleFullscreenChange = () => {
   const isFullscreen = !!document.fullscreenElement;
-  
+
   // 设定全屏和非全屏的字号大小
   const axisFontSize = isFullscreen ? 16 : 12;
   const tooltipFontSize = isFullscreen ? 18 : 13;
-  
+
   const tc = getThemeColor();
   const gc = getGridColor();
   const dashStyle = { lineStyle: { color: gc, type: "dashed" } };
 
   const fontUpdateOption = {
     tooltip: { textStyle: { fontSize: tooltipFontSize } },
-    xAxis: { axisLabel: { fontSize: axisFontSize, color: tc }, splitLine: dashStyle },
-    yAxis: { axisLabel: { fontSize: axisFontSize, color: tc }, splitLine: dashStyle }
+    xAxis: {
+      axisLabel: { fontSize: axisFontSize, color: tc },
+      splitLine: dashStyle,
+    },
+    yAxis: {
+      axisLabel: { fontSize: axisFontSize, color: tc },
+      splitLine: dashStyle,
+    },
   };
 
   // 1. 更新波形图字号
   if (inspectorChart) inspectorChart.setOption(fontUpdateOption);
-  
+
   // 2. 更新散点图字号及散点大小
   if (scatterChart) {
     scatterChart.setOption({
       ...fontUpdateOption,
-      series: [{ symbolSize: isFullscreen ? 16 : 10 }] // 全屏散点变大
+      series: [{ symbolSize: isFullscreen ? 16 : 10 }], // 全屏散点变大
     });
   }
 
@@ -1087,7 +1139,7 @@ onMounted(async () => {
   initCharts();
   window.addEventListener("resize", handleResize);
   document.addEventListener("fullscreenchange", handleFullscreenChange);
-  
+
   // ✨ 扫参专属的数据抢救逻辑
   try {
     const resTask = await axios.get(`${API_BASE}/get_running_task`);
@@ -1107,23 +1159,25 @@ onMounted(async () => {
             connectWebSocket(activeTaskId);
 
             message.loading("🔄 正在恢复扫描进度与图表...");
-            const resData = await axios.get(`${API_BASE}/get_task_data/${activeTaskId}`);
+            const resData = await axios.get(
+              `${API_BASE}/get_task_data/${activeTaskId}`,
+            );
             if (resData.data.status === "success") {
               const d = resData.data;
 
               if (d.config_json) Object.assign(config, d.config_json);
-              
+
               Object.assign(allDataPool, d.all_data_pool);
-              
+
               // 扫参的数据全部挂在 gen=1 下面，恢复当前扫描进度
               if (allDataPool[1]) {
-                 const keys = Object.keys(allDataPool[1]);
-                 if (keys.length > 0) {
-                     currentSweepIdx.value = Math.max(...keys.map(Number));
-                     inspectIdx.value = currentSweepIdx.value;
-                 }
+                const keys = Object.keys(allDataPool[1]);
+                if (keys.length > 0) {
+                  currentSweepIdx.value = Math.max(...keys.map(Number));
+                  inspectIdx.value = currentSweepIdx.value;
+                }
               }
-              
+
               refreshScatterChart();
               updateInspectorChart();
               message.success("✅ 扫描进度与波形已从数据库无损恢复！");
@@ -1424,15 +1478,47 @@ onUnmounted(() => {
   font-size: 13px;
   margin-bottom: 6px;
 }
-.chart-card:fullscreen .card-title { font-size: 20px !important; }
-.chart-card:fullscreen .text-sub { font-size: 16px !important; }
-.chart-card:fullscreen .n-radio-button { font-size: 16px !important; }
-.chart-card:fullscreen .n-select { font-size: 16px !important; }
-.chart-card:fullscreen .n-input-group-label { font-size: 16px !important; }
-.chart-card:fullscreen .param-tags-wrapper .n-tag { 
-  font-size: 16px !important; 
-  padding: 0 16px !important; 
-  height: auto !important; 
-  line-height: 1.5 !important; 
+.chart-card:fullscreen .card-title {
+  font-size: 20px !important;
+}
+.chart-card:fullscreen .text-sub {
+  font-size: 16px !important;
+}
+.chart-card:fullscreen .n-radio-button {
+  font-size: 16px !important;
+}
+.chart-card:fullscreen .n-select {
+  font-size: 16px !important;
+}
+.chart-card:fullscreen .n-input-group-label {
+  font-size: 16px !important;
+}
+.chart-card:fullscreen .param-tags-wrapper .n-tag {
+  font-size: 16px !important;
+  padding: 0 16px !important;
+  height: auto !important;
+  line-height: 1.5 !important;
+}
+.params-list-container {
+  position: relative;
+}
+
+/* 确立移动过程中的过渡曲线 */
+.list-anim-move,
+.list-anim-enter-active,
+.list-anim-leave-active {
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.list-anim-enter-from,
+.list-anim-leave-to {
+  opacity: 0;
+  transform: translateY(15px) scale(0.98);
+}
+
+/* 确保离开的元素被移出文档流，这样其他元素才能顺滑补位 */
+.list-anim-leave-active {
+  position: absolute;
+  width: 100%;
 }
 </style>

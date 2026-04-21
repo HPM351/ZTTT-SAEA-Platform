@@ -13,7 +13,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # ==========================================
-# 3. 定义数据表结构
+# 3. 定义数据表结构 (🌟 终极去物理化版本)
 # ==========================================
 class Task(Base):
     __tablename__ = "tasks"
@@ -30,9 +30,7 @@ class Generation(Base):
     task_id = Column(String, ForeignKey("tasks.id"), index=True)
     gen_index = Column(Integer, index=True)
     best_score = Column(Float)
-    best_eff = Column(Float)
-    best_power = Column(Float)
-    best_freq = Column(Float)
+    best_metrics_json = Column(JSON)  # ✨ 动态收纳当代最优个体的所有标量指标
 
 class Individual(Base):
     __tablename__ = "individuals"
@@ -42,24 +40,17 @@ class Individual(Base):
     ind_index = Column(Integer)
     params_json = Column(JSON)
     score = Column(Float)
-    power_val = Column(Float)
-    eff_val = Column(Float)
-    freq_val = Column(Float)
-    side_ratio = Column(Float, nullable=True)
+    metrics_json = Column(JSON)       # ✨ 动态收纳该个体的所有标量指标 (替代原 power_val, eff_val 等)
     is_valid = Column(Boolean, default=True)
 
-# ✨ [新增] 第四张表：专门存储庞大的波形数据
 class Waveform(Base):
     __tablename__ = "waveforms"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    individual_id = Column(Integer, ForeignKey("individuals.id"), index=True) # 绑定到具体的个体
+    individual_id = Column(Integer, ForeignKey("individuals.id"), index=True)
     task_id = Column(String, index=True)
     gen_index = Column(Integer)
     ind_index = Column(Integer)
-    power_wave = Column(JSON)    # 功率波形字典
-    eff_wave = Column(JSON)      # 效率波形字典
-    fft_wave = Column(JSON)      # 频谱波形字典
-    main_mode_wave = Column(JSON)# 主模波形字典
+    waves_json = Column(JSON)         # ✨ 动态收纳所有的波形字典，前端按 Key 解析即可
 
 def init_db():
     Base.metadata.create_all(bind=engine)

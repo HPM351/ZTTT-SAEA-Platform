@@ -69,12 +69,17 @@ def parse_cst_parameters(cst_path):
                     pass
     return params
 
-def run_single_simulation(project, param_dict, targets_cfg, env_cfg, cst_path):
+
+def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path):
     """
-    执行单次 CST 仿真，提取特征并返回字典。
+    执行单次 CST 仿真，提取特征并返回扁平化的物理量字典。
+    支持动态目标列表解析与智能提取分发。
     """
     metrics = {}
-    stable_time = env_cfg.get('stableTime', 20.0)
+
+    # 新增：从前端提取“稳态时间”与“是否使用稳态时间”开关
+    use_stable_time = env_cfg.get('useStableTime', True)
+    stable_time = env_cfg.get('stableTime', 20.0) if use_stable_time else 0.0
 
     try:
         # 1. 写入参数
@@ -91,36 +96,68 @@ def run_single_simulation(project, param_dict, targets_cfg, env_cfg, cst_path):
         import cst.results
         res = cst.results.ProjectFile(cst_path, allow_interactive=True)
 
-        # 提取频率
-        if 'freq' in targets_cfg and targets_cfg['freq'].get('enable', False):
-            f_cfg = targets_cfg['freq']
-            f_val, side_ratio, fft_curve = analyze_spectrum(res, f_cfg['path'], f_cfg['target'], f_cfg['blindGap'])
-        else:
-            # 默认提取主频供展示，不计算杂波比
-            f_val, side_ratio, fft_curve = analyze_spectrum(res, r"Tables\1D Results\FFT")
-        metrics.update({'freq': f_val, 'side_ratio': side_ratio, 'fft_curve': fft_curve})
+        # 4. 提取主模波形 (仅波形展示用，不参与打分)
+        main_mode_cfg = env_cfg.get('mainMode', {})
+        if main_mode_cfg.get('enable') and main_mode_cfg.get('path'):
+            m_data = get_time_domain_metric(res, main_mode_cfg['path'], stable_time)
+            metrics['main_mode_curve'] = m_data.get('curve')
 
-        # 提取功率
-        if 'power' in targets_cfg and 'path' in targets_cfg['power']:
-            p_data = get_time_domain_metric(res, targets_cfg['power']['path'], stable_time)
-            metrics.update({'power_val': p_data['mean'], 'power_fluc': p_data['fluc'],
-                            'power_valid': p_data['valid'], 'power_curve': p_data['curve']})
+        # 5. 🌟 核心：遍历前端传来的动态目标列表进行数据抓取
+        for t_cfg in targets_list:
+            t_name = t_cfg.get('name', 'Unknown')
+            t_path = t_cfg.get('path', '')
+            t_mode = t_cfg.get('mode', 'maximize')
+            extract_method = t_cfg.get('extractMethod', 'time_mean')
+            multiplier = float(t_cfg.get('multiplier', 1.0))
 
-        # 提取效率
-        if 'eff' in targets_cfg and 'path' in targets_cfg['eff']:
-            e_data = get_time_domain_metric(res, targets_cfg['eff']['path'], stable_time)
-            metrics.update({'eff_val': e_data['mean'] * 100, 'eff_fluc': e_data['fluc'],
-                            'eff_valid': e_data['valid'], 'eff_curve': e_data['curve']})
+            if not t_path:
+                continue
 
-        if 'mainMode' in targets_cfg and targets_cfg['mainMode'].get('enable', False):
-            m_path = targets_cfg['mainMode']['path']
-            # 复用时域提取函数抓取曲线 (Port signals 也是时域曲线)
-            m_data = get_time_domain_metric(res, m_path, stable_time)
-            metrics.update({'main_mode_curve': m_data['curve']})
+            # 👇 新增：在循环内部为【单个指标】套上 try-except 防弹衣
+            try:
+                # 规则 A：频域找主峰
+                if extract_method == 'freq_peak':
+                    target_val = t_cfg.get('target_val') if t_mode == 'target' else None
+                    blind_gap = t_cfg.get('constraints', {}).get('max_diff', None)
+
+                    f_val, side_ratio, fft_curve = analyze_spectrum(res, t_path, target_val, blind_gap)
+
+                    metrics[t_name] = f_val * multiplier if f_val != -1 else f_val
+                    metrics[f'{t_name}_curve'] = fft_curve
+
+                    if side_ratio is not None:
+                        metrics[f'{t_name}_side_ratio'] = side_ratio
+
+                # 规则 B：直接读取单值标量 (例如驻波比、损耗等 0D 结果)
+                elif extract_method == '0d_scalar':
+                    item = res.get_3d().get_result_item(t_path)
+                    val = float(item.get_ydata()[0])
+                    metrics[t_name] = val * multiplier
+
+                # 规则 C：时域稳态求平均 (默认兜底)
+                else:
+                    data = get_time_domain_metric(res, t_path, stable_time)
+                    val = data.get('mean', 0.0)
+                    metrics[t_name] = val * multiplier
+                    metrics[f'{t_name}_curve'] = data.get('curve')
+
+            except Exception as inner_e:
+                # 🛡️ 容错拦截：如果这个特定的指标没提出来（比如路径错了，或者 CST 没出这个图）
+                # 记录警告，并给予默认的死区数值，但绝不中断整个个体的打分！
+                print(f"⚠️ 指标 [{t_name}] 提取失败，已设为兜底值 0.0。原因: {inner_e}")
+
+                # 给一个兜底的数值，防止后续计分器因为找不到 Key 报错
+                metrics[t_name] = 0.0
+
+                # 如果这个指标前端需要画曲线，塞一个空的曲线数据进去，防止前端 ECharts 渲染崩溃
+                if extract_method in ['freq_peak', 'time_mean']:
+                    metrics[f'{t_name}_curve'] = {'x': [], 'y': []}
 
     except Exception as e:
+        # 🚨 外层的 try-except 现在只负责捕捉“致命错误”
+        # 例如：CST 软件卡死、求解器彻底报错没跑完、文件读写权限被拒等
         metrics['error'] = str(e)
-        print(f"❌ CST 仿真失败: {e}")
+        print(f"❌ CST 致命仿真失败: {e}")
     finally:
         try:
             del res

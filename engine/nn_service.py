@@ -84,41 +84,51 @@ async def get_models_list():
         "models": available_models
     }
 
+
 @nn_router.post("/load")
 async def load_model(req: LoadModelRequest):
-    """终极进化版：基于 TorchScript 的免解耦加载"""
+    """终极进化版：JSON 确立配置主权，TorchScript 免解耦加载"""
 
-    # 按照我们的新规范，约定模型和元数据的文件名
+    # 按照规范，寻找“三剑客”文件
     model_path = os.path.join("models", f"{req.model_name}_traced.pt")
     meta_path = os.path.join("models", f"{req.model_name}_meta.pth")
+    json_path = os.path.join("models", f"{req.model_name}.json")  # ✨ 新增 JSON 路径查找
 
     # 兼容根目录直接测试的情况
     if not os.path.exists(model_path):
         model_path = f"{req.model_name}_traced.pt"
         meta_path = f"{req.model_name}_meta.pth"
+        json_path = f"{req.model_name}.json"
 
-    if not os.path.exists(model_path) or not os.path.exists(meta_path):
-        raise HTTPException(status_code=404, detail=f"找不到配套的模型或元数据文件，请确认是否已完成 TorchScript 转换！")
+    # 严格校验三文件必须同时存在
+    if not os.path.exists(model_path) or not os.path.exists(meta_path) or not os.path.exists(json_path):
+        raise HTTPException(status_code=404, detail=f"找不到配套的模型(.pt)、元数据(.pth)或配置文件(.json)！")
 
     try:
-        # 1. 瞬间加载“环境工具箱”（允许读取安全的 scikit-learn 对象）
+        # 0. 🌟 确立 JSON 主权：直接将 JSON 作为唯一配置源
+        with open(json_path, 'r', encoding='utf-8') as f:
+            model_config = json.load(f)
+
+        # 1. 加载“环境工具箱”（仅用于读取安全的 scikit-learn Scaler 对象）
         meta_data = torch.load(meta_path, map_location='cpu', weights_only=False)
 
-        # 2. 瞬间加载“黑盒模型”（彻底摆脱 class 类依赖）
+        # 2. 加载“黑盒模型”（彻底摆脱 class 类依赖）
         model = torch.jit.load(model_path, map_location='cpu')
         model.eval()  # 确保处于预测模式
 
         # 3. 极简挂载到全局状态
         NN_STATE["model"] = model
-        NN_STATE["scaler_X"] = meta_data['scaler_X']
+        NN_STATE["scaler_X"] = meta_data.get('scaler_X')
         NN_STATE["scaler_y"] = meta_data.get('pout_scaler', meta_data.get('scaler_y'))
-        NN_STATE["model_type"] = meta_data.get('model_type', 'single_head')
-        NN_STATE["input_dim"] = meta_data['input_size']
-        NN_STATE["outputs_config"] = meta_data.get('outputs', [])
+
+        # ✨ 抛弃从 pth 读取配置，全部由 JSON 接管
+        NN_STATE["model_type"] = model_config.get('meta', {}).get('topology', 'single_head')
+        NN_STATE["input_dim"] = len(model_config.get('input_features', []))
+        NN_STATE["outputs_config"] = model_config.get('outputs', [])  # 👈 确保多头配置被 100% 正确加载！
 
         return {
             "status": "success",
-            "message": f"成功载入 {NN_STATE['model_type']} 架构 ({NN_STATE['input_dim']} 维)",
+            "message": f"成功载入 {req.model_name} ({NN_STATE['input_dim']} 维)",
             "input_dim": NN_STATE['input_dim']
         }
 
@@ -270,30 +280,6 @@ async def generate_3d_scan(data: ScanRequest):
         raise HTTPException(status_code=500, detail=f"矩阵计算失败: {str(e)}")
 
 
-def calc_simple_online_fitness(metrics: dict, weights: dict, target_freq: float) -> float:
-    """
-    在线微调专用的极简适应度计算：
-    功率、效率直接按比例加分；频率按偏差扣分。不设死区，保证梯度平滑。
-    """
-    score = 0.0
-
-    # 1. 功率加分 (假设 metrics 里的 power_val 是瓦，转为 MW)
-    if 'power_val' in metrics:
-        p_mw = metrics['power_val'] / 1e6
-        score += p_mw * (weights.get('Power', 0) / 100.0)
-
-    # 2. 效率加分 (%)
-    if 'eff_val' in metrics:
-        score += metrics['eff_val'] * (weights.get('Efficiency', 0) / 100.0)
-
-    # 3. 频率逼近扣分 (用一个放大系数让频率惩罚足够痛)
-    if 'freq' in metrics and metrics['freq'] > 0:
-        freq_diff = abs(metrics['freq'] - target_freq)
-        # 偏差 0.1GHz 可能扣 100 分 (具体系数可调)
-        score -= freq_diff * 1000.0 * (weights.get('Frequency', 0) / 100.0)
-
-    return score
-
 
 @nn_router.websocket("/ws/evolve")
 async def nn_evolve_ws(websocket: WebSocket):
@@ -437,282 +423,238 @@ async def nn_evolve_ws(websocket: WebSocket):
             with torch.no_grad():
                 model_out = NN_STATE["model"](torch.FloatTensor(pop_scaled))
 
+                # ========================================================
+                # 🌟 第一步：动态解析多头模型输出，挂载到 head_cache
+                # ========================================================
+                outputs_cfg = NN_STATE.get("outputs_config", [])
+                head_cache = {}
+                logit_val = np.ones(pop_size)  # 默认都起振
+
                 if isinstance(model_out, tuple):
-                    outputs_cfg = NN_STATE.get("outputs_config", [])
+                    if outputs_cfg:
+                        for c_idx, cfg in enumerate(outputs_cfg):
+                            name = cfg.get('name', f'Out_{c_idx}')
+                            val_batch = model_out[cfg.get('model_index', c_idx)].numpy()
 
-                    # 默认创建全 0 数组占位
-                    logit_val = np.ones(pop_size)  # 默认都起振
-                    power_real = np.zeros(pop_size)
-                    freq_real = np.zeros(pop_size)
-
-                    if not outputs_cfg:
-                        # --- 兼容旧模型硬编码 ---
-                        logit_val = model_out[0].numpy()[:, 0]
-                        pout_scaled = model_out[1].numpy()
-                        power_real = NN_STATE["scaler_y"].inverse_transform(pout_scaled)[:, 0] if NN_STATE[
-                                                                                                      "scaler_y"] is not None else \
-                        pout_scaled[:, 0]
-                        freq_real = model_out[2].numpy()[:, 0]
-                    else:
-                        # --- 🌟 动态解析多头模型 ---
-                        for i, out_tensor in enumerate(model_out):
-                            val_batch = out_tensor.numpy()
-                            cfg = next((c for c in outputs_cfg if c.get('model_index', c.get('index', i)) == i), {})
-                            name = cfg.get('name', '').lower()
-
-                            # 判断是否反归一化
+                            # 自动反归一化
                             if cfg.get('needs_inverse', False) and NN_STATE["scaler_y"] is not None:
                                 val_batch = NN_STATE["scaler_y"].inverse_transform(val_batch)
 
-                            # ✨ 智能分发：无论模型的头什么顺序，只要名字对了就能装进正确的数组
-                            if 'logit' in name or 'class' in name:
+                            if 'logit' in name.lower() or 'class' in name.lower():
                                 logit_val = val_batch[:, 0]
-                            elif 'power' in name:
-                                power_real = val_batch[:, 0]
-                            elif 'freq' in name:
-                                freq_real = val_batch[:, 0]
-                            # 如果未来有 efficiency，可以直接加 elif 'eff' in name: eff_real = val_batch[:, 0]
-
-                    # -------- 下面的算分逻辑保持原样不用动 --------
-                    w_power = weights.get("Power", 50) / 100.0
-                    w_freq = weights.get("Frequency", 50) / 100.0
-
-                    freq_penalty = np.abs(freq_real - target_freq) * (1e8 * w_freq)
-                    fitness_score = (power_real * w_power) - freq_penalty
-                    fitness_score[logit_val < 0] = -1e12
-
-                    FitnV = ea.ranking(np.array([fitness_score]).T * -1.0)
-                    effs_percent = power_real
-                    powers = freq_real
-
-                    if is_online:
-                        # 1. 挑出 NN 预测得分最高的 K 个体索引
-                        top_k_indices = np.argsort(fitness_score)[-k_samples:]
-
-                        await websocket.send_json({
-                            "type": "info",
-                            "message": f"🔍 Gen {gen + 1}: 正在将预测出的 Top-{k_samples} 送入 CST 进行真机物理校验..."
-                        })
-
-                        from engine.cst_wrapper import run_single_simulation
-
-                        # 🌟 修复：对接前端透传过来的全量动态结果路径
-                        cst_targets = {}
-                        if weights.get("Power", 0) > 0:
-                            cst_targets["power"] = {"enable": True,
-                                                    "path": online_cfg.get("powerPath", r"Tables\1D Results\AVGpower")}
-                        if weights.get("Efficiency", 0) > 0 and eff_path:
-                            cst_targets["eff"] = {"enable": True, "path": eff_path}
-                        if weights.get("Frequency", 0) > 0:
-                            cst_targets["freq"] = {"enable": True,
-                                                   "path": online_cfg.get("freqPath", r"Tables\1D Results\FFT"),
-                                                   "target": target_freq, "blindGap": 0.05}
-
-                        # 🌟 修复：必须在循环前初始化收集列表
-                        real_X = []
-                        real_Y_power = []
-
-                        for idx in top_k_indices:
-                            # 组装这组个体的真实物理参数
-                            p_dict = {param_names[j]: float(pop[idx][j]) for j in range(len(param_names))}
-                            env_cfg = {"stableTime": 20.0}
-
-                            # 异步执行 CST
-                            m = await loop.run_in_executor(
-                                CST_EXECUTOR,
-                                run_single_simulation, project, p_dict, cst_targets, env_cfg, cst_path
-                            )
-
-                            if 'error' not in m and m.get('freq', -1) > 0:
-                                real_score = calc_simple_online_fitness(m, weights, target_freq)
-                                fitness_score[idx] = real_score
-
-                                # 提取真实的 MW 功率
-                                p_mw = m.get('power_val', 0) / 1e6
-
-                                if 'power_val' in m: power_real[idx] = p_mw
-                                if 'eff_val' in m: effs_percent[idx] = m['eff_val']
-                                if 'freq' in m: freq_real[idx] = m['freq']
-
-                                # 🌟 修复：成功跑出结果后，必须把这组数据加入微调池！
-                                real_X.append(pop[idx].tolist())
-                                real_Y_power.append(p_mw)
-
-                                await websocket.send_json({
-                                    "type": "info",
-                                    "message": f"   -> 校验完成: 预测分 {fitness_score[idx]:.2f} 修正为真实分 {real_score:.2f}"
-                                })
                             else:
-                                fitness_score[idx] = -1e12
-                                await websocket.send_json({
-                                    "type": "info",
-                                    "message": f"   -> 校验失败: 该参数组合物理上无法起振，已淘汰"
-                                })
+                                head_cache[name] = val_batch[:, 0]
+                    else:
+                        # 兜底：处理丢失了 outputs_cfg 的多头模型 (防崩兜底)
+                        logit_val = model_out[0].numpy()[:, 0]
+                        pout_scaled = model_out[1].numpy()
+                        if NN_STATE["scaler_y"] is not None:
+                            head_cache["Power"] = NN_STATE["scaler_y"].inverse_transform(pout_scaled)[:, 0]
+                        else:
+                            head_cache["Power"] = pout_scaled[:, 0]
 
-                        if is_online and len(real_X) > 0:
-                            total_online_collected_X.extend(real_X)  # 记录总共收集了多少新数据
+                        if len(model_out) > 2:
+                            head_cache["Frequency"] = model_out[2].numpy()[:, 0]
+                else:
+                    # 兼容真正的单头老模型 (此时 model_out 才是真正的单 Tensor)
+                    raw_pred = NN_STATE["scaler_y"].inverse_transform(model_out.numpy())
+                    head_cache["Efficiency"] = np.clip(raw_pred[:, 0], 0, 1) * 100
 
-                            # 1. 组装本批次的训练数据 (Batch)
-                            batch_X = list(real_X)
-                            batch_Y = list(real_Y_power)  # 这里的 power 是 CST 跑出来的真实 MW 值
+                # ========================================================
+                # 🌟 第二步：离线打分 (The Dreamer) -> 彻底剥离物理硬编码
+                # ========================================================
+                fitness_score = np.zeros(pop_size)
 
-                            # 2. 核心：从历史记忆池中随机抽取旧数据 (比例 1 : 5)
-                            sample_size = min(len(history_X), len(real_X) * 5)
-                            if sample_size > 0:
-                                # 随机抽样索引
-                                indices = random.sample(range(len(history_X)), sample_size)
-                                batch_X.extend([history_X[i] for i in indices])
-                                batch_Y.extend([history_Y_power[i] for i in indices])
+                for t_name, pred_vals in head_cache.items():
+                    w = weights.get(t_name, 0) / 100.0
+                    if 'freq' in t_name.lower():
+                        # 频率：靶点逼近惩罚 (平滑的绝对误差)
+                        fitness_score -= np.abs(pred_vals - target_freq) * (1e8 * w)
+                    else:
+                        # 功率/效率：线性奖励
+                        fitness_score += pred_vals * w
 
-                            # 3. 数据预处理 (归一化转 Tensor)
-                            X_tensor = torch.FloatTensor(NN_STATE["scaler_X"].transform(batch_X))
+                # 断崖死区：物理不上电(未起振)直接枪毙
+                fitness_score[logit_val < 0] = -1e12
+                FitnV = ea.ranking(np.array([fitness_score]).T * -1.0)
 
-                            # Y 需要归一化后才能算 Loss
-                            Y_arr = np.array(batch_Y).reshape(-1, 1)
-                            if NN_STATE["scaler_y"] is not None:
-                                Y_scaled = NN_STATE["scaler_y"].transform(Y_arr).flatten()
-                            else:
-                                Y_scaled = Y_arr.flatten()
-                            Y_tensor = torch.FloatTensor(Y_scaled)
+                # ========================================================
+                # 🌟 第三步：在线物理验证与网络微调 (The Reality Check)
+                # ========================================================
+                if is_online:
+                    top_k_indices = np.argsort(fitness_score)[-k_samples:]
+                    await websocket.send_json({
+                        "type": "info",
+                        "message": f"🔍 Gen {gen + 1}: 将 Top-{k_samples} 优胜个体送入 CST 真实物理引擎校验..."
+                    })
 
-                            # 4. 执行微调 (让模型反复吃透这批混合数据 3 个 Epoch)
-                            model.train()  # 必须切到训练模式
-                            for epoch in range(3):
-                                optimizer.zero_grad()
-                                preds = model(X_tensor)
+                    from engine.cst_wrapper import run_single_simulation
+                    from engine.evaluator import calc_score
 
-                                # 兼容多头/单头模型结构
-                                if isinstance(preds, tuple):
-                                    # [1] 是功率头。squeeze() 确保维度对齐
-                                    loss = criterion(preds[1].squeeze(), Y_tensor)
+                    targets_list = online_cfg.get("targetsList", [])
+
+                    real_X = []
+                    real_Y_all = []  # ✨ 存储包含所有头的复合向量，替代原先单一的 real_Y_power
+
+                    for idx in top_k_indices:
+                        p_dict = {param_names[j]: float(pop[idx][j]) for j in range(len(param_names))}
+                        env_cfg = {"useStableTime": True, "stableTime": 20.0}
+
+                        # 发送给 CST 物理层提取
+                        m = await loop.run_in_executor(
+                            CST_EXECUTOR,
+                            run_single_simulation, project, p_dict, targets_list, env_cfg, cst_path
+                        )
+
+                        # 如果没有报错，且频率不是默认的失败值
+                        is_freq_failed = any(
+                            t.get('extractMethod') == 'freq_peak' and m.get(t['name'], 0) == -1
+                            for t in targets_list
+                        )
+
+                        # 只要 CST 没报系统级 error，且频域提取没彻底失败，就交给打分器
+                        if 'error' not in m and not is_freq_failed:
+                            # 1. 使用严格网关算出物理真机得分
+                            real_score = calc_score(m, targets_list, algo_type="SAEA-GA")
+                            fitness_score[idx] = real_score  # 修正基因池得分
+
+                            # 2. ✨ 构建与 outputs_cfg 严格对齐的多头靶向特征向量
+                            real_y_vec = []
+                            for c_idx, cfg in enumerate(outputs_cfg):
+                                name = cfg.get('name')
+                                if 'logit' in name.lower() or 'class' in name.lower():
+                                    real_y_vec.append(1.0)  # 起振标志位
                                 else:
-                                    loss = criterion(preds.squeeze(), Y_tensor)
+                                    real_y_vec.append(m.get(name, 0.0))  # 读取 CST 中真实的 功率/频率等
 
-                                loss.backward()
-                                optimizer.step()
+                            # 加入微调训练集
+                            real_X.append(pop[idx].tolist())
+                            real_Y_all.append(real_y_vec)
 
-                            model.eval()  # ⚠️ 极度重要：微调完必须切回推理模式，否则下一代预测就乱了！
+                            # 为了让 Vue 界面能及时把真实值画在图上，反写回 head_cache 缓存
+                            for k, v in m.items():
+                                if k in head_cache:
+                                    head_cache[k][idx] = v
 
                             await websocket.send_json({
                                 "type": "info",
-                                "message": f"🧠 代理模型微调完成 (混合样本: {len(real_X)}新 + {sample_size}旧, Loss: {loss.item():.4f})"
+                                "message": f"   -> 校验成功: 预测分修正为 {real_score:.2f} (真实指标已提取)"
                             })
-                    # 🌟🌟🌟 在线验证逻辑结束 🌟🌟🌟
+                        else:
+                            fitness_score[idx] = -1e12
+                            await websocket.send_json({
+                                "type": "info",
+                                "message": f"   -> 校验失败: 未起振或提取异常"
+                            })
 
-                    if w_freq > 0.01:
-                        valid_idx = np.where((logit_val > 0) & (np.abs(freq_real - target_freq) <= 0.2))[0]
-                    else:
-                        valid_idx = np.where(logit_val > 0)[0]
+                    # ✨✨ 执行神经网络全头微调 ✨✨
+                    if is_online and len(real_X) > 0:
+                        total_online_collected_X.extend(real_X)
+                        batch_X = list(real_X)
+                        batch_Y = list(real_Y_all)
 
-                    if len(valid_idx) > 0:
-                        best_global_eff = max(best_global_eff, np.max(power_real[valid_idx]))
-                else:
-                    # --- 单头模型逻辑 ---
-                    raw_pred = NN_STATE["scaler_y"].inverse_transform(model_out.numpy())
-                    effs_percent = np.clip(raw_pred[:, 0], 0, 1) * 100
-                    powers = raw_pred[:, 1] if raw_pred.shape[1] > 1 else [None] * pop_size
-                    fitness_score = effs_percent  # ✨ 补齐适应度数组
-                    FitnV = ea.ranking(np.array([effs_percent]).T * -1.0)
-                    best_global_eff = max(best_global_eff, np.max(effs_percent))
+                        # 经验回放 (抽历史池)
+                        sample_size = min(len(history_X), len(real_X) * 5)
+                        if sample_size > 0:
+                            import random
+                            indices = random.sample(range(len(history_X)), sample_size)
+                            batch_X.extend([history_X[i] for i in indices])
+                            # 如果 history 存的不是向量而是旧标量，需额外处理，建议未来存向量
+                            batch_Y.extend([history_Y_power[i] if isinstance(history_Y_power[0], list) else [1.0,
+                                                                                                             history_Y_power[
+                                                                                                                 i],
+                                                                                                             4.8] for i
+                                            in indices])
 
+                        X_tensor = torch.FloatTensor(NN_STATE["scaler_X"].transform(batch_X))
+
+                        # 缩放真实 Y 目标
+                        Y_arr = np.array(batch_Y)
+                        if NN_STATE["scaler_y"] is not None:
+                            Y_scaled = NN_STATE["scaler_y"].transform(Y_arr)
+                        else:
+                            Y_scaled = Y_arr
+                        Y_tensor = torch.FloatTensor(Y_scaled)
+
+                        model.train()
+                        for epoch in range(3):
+                            optimizer.zero_grad()
+                            preds = model(X_tensor)
+
+                            # 累加所有回归头的 MSE 误差
+                            loss = 0
+                            for c_idx, cfg in enumerate(outputs_cfg):
+                                pred_tensor = preds[cfg.get('model_index', c_idx)].squeeze()
+                                target_tensor = Y_tensor[:, c_idx]
+                                loss += criterion(pred_tensor, target_tensor)
+
+                            loss.backward()
+                            optimizer.step()
+
+                        model.eval()
+                        await websocket.send_json({
+                            "type": "info",
+                            "message": f"🧠 代理模型自适应微调完成 (全局 Loss: {loss.item():.4f})"
+                        })
+
+            # ========================================================
+            # 🌟 第四步：图表数据下发整理 -> 彻底消除硬编码
+            # ========================================================
             best_idx_gen = np.argmax(fitness_score)
             if fitness_score[best_idx_gen] > global_best_score:
                 global_best_score = float(fitness_score[best_idx_gen])
-
-                current_best_eff = None
-                current_best_power = None
-                current_best_freq = None
-
-                # 智能识别当前输出的通道，提取数据
-                if isinstance(model_out, tuple):
-                    current_best_power = float(power_real[best_idx_gen])
-                    current_best_freq = float(freq_real[best_idx_gen])
-                else:
-                    current_best_eff = float(effs_percent[best_idx_gen])
-                    if raw_pred.shape[1] > 1:
-                        current_best_power = float(raw_pred[best_idx_gen, 1])
-
                 global_best_metrics = {
-                    "eff": current_best_eff,
-                    "power": current_best_power,
-                    "freq": current_best_freq,
                     "params": {param_names[j]: float(pop[best_idx_gen][j]) for j in range(len(param_names))}
                 }
-
-            head_cache = {}
-            if isinstance(model_out, tuple) and NN_STATE.get("outputs_config"):
-                outputs_cfg = NN_STATE.get("outputs_config", [])
-                for c_idx, cfg in enumerate(outputs_cfg):
-                    name = cfg.get('name')
-                    # 跳过分类头 (起振判断不画入散点图)
-                    if 'logit' in name.lower() or 'class' in name.lower():
-                        continue
-
-                    val_batch = model_out[cfg.get('model_index', c_idx)].numpy()
-                    if cfg.get('needs_inverse', False) and NN_STATE["scaler_y"] is not None:
-                        val_batch = NN_STATE["scaler_y"].inverse_transform(val_batch)
-
-                    head_cache[name] = val_batch[:, 0]
-
-            # ✨ 核心修复：如果 meta.pth 丢失了输出配置，强制执行精准的物理量挂载兜底，杜绝错位
-            if not head_cache:
-                if 'power_real' in locals(): head_cache["Power"] = power_real
-                if 'freq_real' in locals(): head_cache["Frequency"] = freq_real
-                if 'effs_percent' in locals(): head_cache["Efficiency"] = effs_percent
+                # 动态填充最优指标值
+                for k, v_arr in head_cache.items():
+                    # Vue 界面的发光指标卡片依赖 eff, power, freq 等小写命名
+                    if 'eff' in k.lower(): global_best_metrics['eff'] = float(v_arr[best_idx_gen])
+                    if 'power' in k.lower(): global_best_metrics['power'] = float(v_arr[best_idx_gen])
+                    if 'freq' in k.lower(): global_best_metrics['freq'] = float(v_arr[best_idx_gen])
 
             parallel_data, pareto_data = [], []
+            opt_names_list = list(head_cache.keys())
+
+            # 匹配 Vue 平行坐标系期待的排列顺序 [..., Secondary, Primary]
+            primary_name = opt_names_list[0] if len(opt_names_list) > 0 else None
+            secondary_name = opt_names_list[1] if len(opt_names_list) > 1 else primary_name
+
             for i in range(pop_size):
-                # 1. 动态构造 Pareto 字典对象
+                # 1. 散点数据
                 pareto_dict = {"Gen": gen + 1}
                 for k, v_arr in head_cache.items():
                     pareto_dict[k] = float(v_arr[i])
                 pareto_data.append(pareto_dict)
 
-                # 2. Parallel 数据 (保持原有兼容逻辑)
-                eff = float(effs_percent[i])
-                pwr = float(powers[i]) if powers[i] is not None else None
+                # 2. 平行坐标数据
                 display_params = [float(val) for val in pop[i]]
-                display_params.extend([pwr, eff])
+                if primary_name:
+                    p1 = float(head_cache[primary_name][i])
+                    p2 = float(head_cache[secondary_name][i])
+                    display_params.extend([p2, p1])
                 parallel_data.append(display_params)
 
+            # 3. 箱线图数据
             boxplot_dict = {}
-            if 'head_cache' in locals() and head_cache:
-                for k, v_arr in head_cache.items():
-                    sorted_arr = np.sort(v_arr)
-                    boxplot_dict[k] = [
-                        float(sorted_arr[0]), float(np.percentile(sorted_arr, 25)),
-                        float(np.median(sorted_arr)), float(np.percentile(sorted_arr, 75)), float(sorted_arr[-1])
-                    ]
-            else:
-                effs_sorted = np.sort(effs_percent)
-                boxplot_dict["Efficiency"] = [
-                    float(effs_sorted[0]), float(np.percentile(effs_sorted, 25)),
-                    float(np.median(effs_sorted)), float(np.percentile(effs_sorted, 75)), float(effs_sorted[-1])
+            for k, v_arr in head_cache.items():
+                sorted_arr = np.sort(v_arr)
+                boxplot_dict[k] = [
+                    float(sorted_arr[0]), float(np.percentile(sorted_arr, 25)),
+                    float(np.median(sorted_arr)), float(np.percentile(sorted_arr, 75)), float(sorted_arr[-1])
                 ]
 
-            # ==========================================
-            # ✨ 新增：计算优胜个体的皮尔逊相关系数矩阵
-            # ==========================================
+                # 4. 计算优胜个体的参数相关性热力图 (Pearson Correlation)
             heatmap_data = []
-            try:
-                # 截取得分排名前 50% 的“优良基因”个体进行耦合分析
-                elite_count = max(5, pop_size // 2)
-                elite_idx = np.argsort(fitness_score)[-elite_count:]
-                elite_pop = pop[elite_idx]  # 取出物理参数
-
-                # ✨ 使用 errstate 忽略预期的除零警告 (当某参数完全收敛时方差为0)
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    corr_matrix = np.corrcoef(elite_pop.T)
-                    corr_matrix = np.nan_to_num(corr_matrix, nan=0.0)
-
-                    np.fill_diagonal(corr_matrix, 1.0)
-
-                # 转换成 ECharts 热力图需要的 [x, y, value] 一维数组格式
-                for i in range(n_params):
-                    for j in range(n_params):
-                        heatmap_data.append([i, j, round(float(corr_matrix[i, j]), 2)])
-            except Exception as e:
-                print(f"⚠️ 热力图矩阵计算失败: {e}")
+            if pop.shape[0] > 1:
+                # np.corrcoef 期望每一行代表一个变量，所以需要对 pop 进行转置 (pop.T)
+                corr_matrix = np.corrcoef(pop.T)
+                n_p = pop.shape[1]
+                for r_idx in range(n_p):
+                    for c_idx in range(n_p):
+                        val = corr_matrix[r_idx, c_idx]
+                        if np.isnan(val): val = 0.0  # 防止某个参数这一代完全没变化导致方差为0除以0 (NaN)
+                        heatmap_data.append([r_idx, c_idx, round(float(val), 2)])
 
             await websocket.send_json({
                 "gen": gen + 1,
@@ -738,12 +680,6 @@ async def nn_evolve_ws(websocket: WebSocket):
                 dummy_input = torch.randn(1, n_params)
                 traced_model = torch.jit.trace(model, dummy_input)
                 torch.jit.save(traced_model, save_path)
-
-                # 可选：如果想在界面上也能直接切到新模型，可以把原模型的 Meta 数据也复制一份
-                # import shutil
-                # old_meta = os.path.join("models", f"{config.get('model_name')}_meta.pth")
-                # new_meta = os.path.join("models", f"{new_model_name}_meta.pth")
-                # if os.path.exists(old_meta): shutil.copy(old_meta, new_meta)
 
                 await websocket.send_json({
                     "type": "info",

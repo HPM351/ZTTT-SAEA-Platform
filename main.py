@@ -3,6 +3,9 @@ import io
 import asyncio
 import hashlib
 import json
+import sys
+import re
+import httpx
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import psutil
@@ -25,7 +28,7 @@ from engine.task_saea import run_optimization_task
 from typing import Dict, Any
 from engine.task_sweep import run_sweep_task
 from fastapi import Query
-
+from fastapi import APIRouter
 app = FastAPI(title="ZTTT SAEA Backend Engine")
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "configs")
 # ==========================================
@@ -58,6 +61,52 @@ def on_startup():
     print("📦 数据库与 SAEA 引擎初始化完成")
 
 
+@app.get("/api/env_info")  # 如果你用的是 router，这里就是 @router.get
+async def get_system_env_info():
+    try:
+        # 1. 侦测 Python 环境
+        py_version = sys.version.split(' ')[0]
+        is_conda = os.path.exists(os.path.join(sys.prefix, 'conda-meta')) or "conda" in sys.version.lower()
+        env_type = "Conda" if is_conda else "Native"
+
+        # 2. 侦测 PyTorch 版本 (修复 CUDA CPU 错误)
+        try:
+            import torch
+            # 严格判断是否真实拥有 CUDA
+            if torch.cuda.is_available() and torch.version.cuda:
+                torch_info = f"{torch.__version__} (CUDA {torch.version.cuda})"
+            else:
+                # 把后面的长尾巴截断，并明确标示 CPU
+                clean_version = torch.__version__.split('+')[0]
+                torch_info = f"{clean_version}+cpu (CPU Only)"
+        except ImportError:
+            torch_info = "Not Installed"
+
+        # 3. 侦测 CST 版本 (改良版：全盘扫描环境变量的 Value 路径)
+        cst_info = "CST Studio Suite (Unknown)"
+        for key, value in os.environ.items():
+            # 只要环境变量的 Key 或 Value 里面包含 CST
+            if "CST" in key.upper() or "CST" in value.upper():
+                # 用正则去抓取紧跟在后面的 4 位年份数字 (例如 C:\Program Files\CST Studio Suite 2024)
+                match = re.search(r'(?:CST Studio Suite|CST).*?(\d{4})', value, re.IGNORECASE)
+                if not match:
+                    # 如果 Value 里没有，再去 Key 里找找看
+                    match = re.search(r'(?:CST Studio Suite|CST).*?(\d{4})', key, re.IGNORECASE)
+
+                if match:
+                    cst_info = f"CST Studio Suite {match.group(1)} (AMD64)"
+                    break
+
+        return {
+            "status": "success",
+            "data": {
+                "python": f"{py_version} ({env_type})",
+                "pytorch": torch_info,
+                "cst": cst_info
+            }
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 # ==========================================
 # 2. 生产环境静态文件托管 (方案 2 的核心)
 # ==========================================
@@ -299,9 +348,57 @@ def browse_cst_file():
 # 3. HTTP 路由: 任务控制与状态
 # ==========================================
 @app.get("/api/health")
-def health_check():
-    """健康检查接口"""
-    return {"status": "ok", "message": "API Gateway is running smoothly!"}
+async def health_check():
+    """终极健康检查：环境变量测 CST + 进程快照测 Agents"""
+
+    # 1. CST 探针：检测环境变量或默认路径
+    cst_alive = False
+    try:
+        for key, value in os.environ.items():
+            if "CST" in key.upper() or "CST" in value.upper():
+                cst_alive = True
+                break
+
+        if not cst_alive:
+            common_paths = [
+                r"C:\Program Files (x86)\CST Studio Suite 2024",
+                r"C:\Program Files (x86)\CST Studio Suite 2023",
+                r"C:\Program Files\CST Studio Suite 2024"
+            ]
+            for p in common_paths:
+                if os.path.exists(p):
+                    cst_alive = True
+                    break
+    except Exception:
+        cst_alive = False
+
+    # 2. Agents (OpenClaw) 探针：纯物理进程扫描
+    agents_alive = False
+    try:
+        # 遍历当前计算机所有正在运行的进程
+        for proc in psutil.process_iter(['name', 'cmdline']):
+            try:
+                cmdline = proc.info.get('cmdline') or []
+                name = proc.info.get('name') or ""
+
+                # 将进程名和启动命令拼接起来转小写，寻找 openclaw 的身影
+                # 不管它是以 python -m openclaw 启动，还是以 openclaw.exe 启动，都能抓到
+                full_cmd = " ".join(cmdline).lower() + " " + name.lower()
+
+                if "openclaw" in full_cmd:
+                    agents_alive = True
+                    break  # 只要抓到一个活着的进程，直接亮灯并结束扫描
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                # 忽略权限不足或已退出的幽灵进程
+                continue
+    except Exception:
+        agents_alive = False
+
+    return {
+        "status": "ok",
+        "cst_alive": cst_alive,
+        "agents_alive": agents_alive
+    }
 
 
 @app.get("/api/system_status")

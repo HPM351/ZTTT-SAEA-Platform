@@ -180,15 +180,15 @@
               <n-divider style="margin: 4px 0" />
 
               <n-descriptions label-placement="left" size="small" :column="1">
-                <n-descriptions-item label="Python"
-                  >3.10.12 (Conda)</n-descriptions-item
-                >
-                <n-descriptions-item label="PyTorch"
-                  >2.1.0+cu118</n-descriptions-item
-                >
-                <n-descriptions-item label="CST"
-                  >2024 (AMD64)</n-descriptions-item
-                >
+                <n-descriptions-item label="Python">
+                  <span>{{ sysEnv.python }}</span>
+                </n-descriptions-item>
+                <n-descriptions-item label="PyTorch">
+                  <span>{{ sysEnv.pytorch }}</span>
+                </n-descriptions-item>
+                <n-descriptions-item label="CST">
+                  <span>{{ sysEnv.cst }}</span>
+                </n-descriptions-item>
               </n-descriptions>
             </n-space>
           </n-card>
@@ -292,296 +292,7 @@
           </n-card>
         </n-gi>
       </n-grid>
-      <n-card class="modern-card simulator-card" size="small">
-        <template #header>
-          <span
-            class="card-title"
-            style="display: flex; align-items: center; gap: 8px"
-          >
-            算法评分机制模拟器 (Score Simulator)
-          </span>
-        </template>
-
-        <n-grid :x-gap="24" :y-gap="24" :cols="24">
-          <n-gi :span="8">
-            <div class="sim-panel">
-              <div class="sim-panel-title">假设 CST 输出了以下波形特征</div>
-              <n-form label-placement="left" label-width="120" size="small">
-                <n-form-item label="主频 (GHz)"
-                  ><n-input-number v-model:value="simMetrics.freq" :step="0.01"
-                /></n-form-item>
-                <n-form-item label="杂波比 (0~1)"
-                  ><n-slider
-                    v-model:value="simMetrics.sideRatio"
-                    :min="0"
-                    :max="1"
-                    :step="0.01"
-                /></n-form-item>
-                <n-form-item label="平均功率 (MW)"
-                  ><n-input-number
-                    v-model:value="simMetrics.powerVal"
-                    :step="1"
-                /></n-form-item>
-                <n-form-item label="功率波动率 (%)"
-                  ><n-slider
-                    v-model:value="simMetrics.powerFluc"
-                    :min="0"
-                    :max="50"
-                    :step="1"
-                /></n-form-item>
-                <n-form-item label="平均效率 (%)"
-                  ><n-input-number v-model:value="simMetrics.effVal" :step="1"
-                /></n-form-item>
-                <n-form-item label="效率波动率 (%)"
-                  ><n-slider
-                    v-model:value="simMetrics.effFluc"
-                    :min="0"
-                    :max="50"
-                    :step="1"
-                /></n-form-item>
-              </n-form>
-            </div>
-          </n-gi>
-
-          <n-gi :span="10">
-            <div class="sim-panel">
-              <div
-                class="sim-panel-title"
-                style="
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  border-bottom: 1px dashed var(--n-border-color);
-                  padding-bottom: 8px;
-                  margin-bottom: 16px;
-                "
-              >
-                <span>您的优化门控设定</span>
-                <n-radio-group v-model:value="simAlgo" size="small">
-                  <n-radio-button value="GA">GA/PSO (断崖)</n-radio-button>
-                  <n-radio-button value="BO">BO (平滑)</n-radio-button>
-                </n-radio-group>
-              </div>
-
-              <n-collapse
-                :default-expanded-names="['f', 'p', 'e']"
-                style="margin-top: -8px"
-              >
-                <n-collapse-item title="频率目标" name="f">
-                  <template #header-extra>
-                    <n-switch
-                      v-model:value="simConfigs.freq.enable"
-                      size="small"
-                      @click.stop
-                    />
-                  </template>
-                  <n-space
-                    align="center"
-                    v-if="simConfigs.freq.enable"
-                    :size="12"
-                  >
-                    <span>目标:</span>
-                    <n-input-number
-                      v-model:value="simConfigs.freq.target"
-                      size="small"
-                      style="width: 90px"
-                      :step="0.01"
-                    />
-                    <n-text depth="3">GHz</n-text>
-
-                    <n-divider vertical />
-
-                    <span>盲区 ±</span>
-                    <n-input-number
-                      v-model:value="simConfigs.freq.blindGap"
-                      size="small"
-                      style="width: 100px"
-                      :step="0.01"
-                    />
-                    <n-text depth="3">GHz</n-text>
-                  </n-space>
-                </n-collapse-item>
-
-                <n-collapse-item title="功率设定" name="p">
-                  <template #header-extra>
-                    <n-switch
-                      v-model:value="simConfigs.power.enable"
-                      size="small"
-                      @click.stop
-                    />
-                  </template>
-                  <div
-                    v-if="simConfigs.power.enable"
-                    style="
-                      display: flex;
-                      flex-direction: column;
-                      gap: 12px;
-                      font-size: 13px;
-                    "
-                  >
-                    <n-space align="center">
-                      <span>模式:</span>
-                      <n-radio-group
-                        v-model:value="simConfigs.power.mode"
-                        size="small"
-                      >
-                        <n-radio-button value="max">最大化</n-radio-button>
-                        <n-radio-button value="target">逼近定值</n-radio-button>
-                      </n-radio-group>
-                    </n-space>
-
-                    <n-space align="center" :size="12">
-                      <span>淘汰死区: < </span>
-                      <n-input-number
-                        v-model:value="simConfigs.power.deadThresh"
-                        size="small"
-                        style="width: 80px"
-                        :show-button="false"
-                      />
-                      <n-text depth="3">MW</n-text>
-
-                      <n-divider vertical />
-
-                      <span>权重:</span>
-                      <n-input-number
-                        v-model:value="simConfigs.power.weight"
-                        size="small"
-                        style="width: 60px"
-                        :step="0.1"
-                        :show-button="false"
-                      />
-                    </n-space>
-
-                    <n-space
-                      align="center"
-                      v-if="simConfigs.power.mode === 'target'"
-                      :size="12"
-                    >
-                      <span>目标值:</span>
-                      <n-input-number
-                        v-model:value="simConfigs.power.target"
-                        size="small"
-                        style="width: 80px"
-                        :show-button="false"
-                      />
-                      <n-text depth="3">MW</n-text>
-
-                      <n-divider vertical />
-
-                      <span>容差:</span>
-                      <n-input-number
-                        v-model:value="simConfigs.power.tolerance"
-                        size="small"
-                        style="width: 60px"
-                        :show-button="false"
-                      />
-                      <n-text depth="3">%</n-text>
-                    </n-space>
-                  </div>
-                </n-collapse-item>
-
-                <n-collapse-item title="效率设定" name="e">
-                  <template #header-extra>
-                    <n-switch
-                      v-model:value="simConfigs.eff.enable"
-                      size="small"
-                      @click.stop
-                    />
-                  </template>
-                  <div
-                    v-if="simConfigs.eff.enable"
-                    style="
-                      display: flex;
-                      flex-direction: column;
-                      gap: 12px;
-                      font-size: 13px;
-                    "
-                  >
-                    <n-space align="center">
-                      <span>模式:</span>
-                      <n-radio-group
-                        v-model:value="simConfigs.eff.mode"
-                        size="small"
-                      >
-                        <n-radio-button value="max">最大化</n-radio-button>
-                        <n-radio-button value="target">逼近定值</n-radio-button>
-                      </n-radio-group>
-                    </n-space>
-
-                    <n-space align="center" :size="12">
-                      <span>淘汰死区: < </span>
-                      <n-input-number
-                        v-model:value="simConfigs.eff.deadThresh"
-                        size="small"
-                        style="width: 80px"
-                        :show-button="false"
-                      />
-                      <n-text depth="3">%</n-text>
-
-                      <n-divider vertical />
-
-                      <span>权重:</span>
-                      <n-input-number
-                        v-model:value="simConfigs.eff.weight"
-                        size="small"
-                        style="width: 60px"
-                        :step="0.1"
-                        :show-button="false"
-                      />
-                    </n-space>
-
-                    <n-space
-                      align="center"
-                      v-if="simConfigs.eff.mode === 'target'"
-                      :size="12"
-                    >
-                      <span>目标值:</span>
-                      <n-input-number
-                        v-model:value="simConfigs.eff.target"
-                        size="small"
-                        style="width: 80px"
-                        :show-button="false"
-                      />
-                      <n-text depth="3">%</n-text>
-
-                      <n-divider vertical />
-
-                      <span>容差:</span>
-                      <n-input-number
-                        v-model:value="simConfigs.eff.tolerance"
-                        size="small"
-                        style="width: 60px"
-                        :show-button="false"
-                      />
-                      <n-text depth="3">%</n-text>
-                    </n-space>
-                  </div>
-                </n-collapse-item>
-              </n-collapse>
-            </div>
-          </n-gi>
-
-          <n-gi :span="6">
-            <div class="sim-panel result-panel" :class="scoreResult.theme">
-              <div
-                class="sim-panel-title"
-                style="text-align: center; margin-bottom: 24px"
-              >
-                引擎最终评判
-              </div>
-              <div class="score-display">
-                <span class="score-value">{{
-                  scoreResult.val.toExponential(2)
-                }}</span>
-              </div>
-              <div class="score-reason">
-                <n-icon size="16" style="margin-right: 4px"></n-icon>
-                {{ scoreResult.reason }}
-              </div>
-            </div>
-          </n-gi>
-        </n-grid>
-      </n-card>
+      <ScoreSandbox />
     </n-space>
     <n-drawer
       v-model:show="showDocs"
@@ -900,7 +611,7 @@
             </n-scrollbar>
           </n-tab-pane>
 
-          <n-tab-pane name="math" tab="打分机制 (V2.0)">
+          <n-tab-pane name="math" tab="打分机制">
             <n-scrollbar
               style="height: calc(100vh - 180px)"
               content-style="padding-right: 16px; padding-bottom: 24px;"
@@ -910,78 +621,99 @@
                 :bordered="false"
                 style="margin-bottom: 16px"
               >
-                平台已升级至双轨制评价引擎。GA/PSO 使用阶跃断崖加速淘汰，BO
-                使用平缓渐近线保障空间导数连续。
+                平台已升级至
+                <b>V2.5 绝对连续双轨制引擎</b>。评价指标高度动态模块化，完美消除
+                BO 在死区边界的数学断崖，为代理模型提供绝对平滑的高斯超平面。
               </n-alert>
 
-              <n-h4>1. 频率偏移重罚</n-h4>
+              <n-h4>1. 基础适应度 (Base Fitness)</n-h4>
               <p style="font-size: 13px; color: var(--n-text-color-3)">
-                <b>[GA/PSO] 线性断崖惩罚：</b>
+                无论个体死活，引擎首先基于基准尺 (Scale)
+                计算无视死区的基础得分，作为保证边界连续性的锚点：
               </p>
               <div
                 style="
                   background: var(--n-code-color);
-                  padding: 10px;
+                  padding: 12px;
                   border-radius: 6px;
                   font-family: monospace;
-                  text-align: center;
-                  margin-bottom: 8px;
+                  margin-bottom: 16px;
+                  line-height: 1.8;
+                  font-size: 13px;
                 "
               >
-                Score = -P<sub>base</sub> &times; (1 + k &middot; |f -
-                f<sub>target</sub>|)
-              </div>
-              <p style="font-size: 13px; color: var(--n-text-color-3)">
-                <b>[BO] 有理渐近线平滑惩罚 (防跌穿)：</b>
-              </p>
-              <div
-                style="
-                  background: var(--n-code-color);
-                  padding: 10px;
-                  border-radius: 6px;
-                  font-family: monospace;
-                  text-align: center;
-                "
-              >
-                Score = -10000 - 30000 &times; [ &Delta;f / (&Delta;f + 0.5) ]
+                <span style="color: #10b981; font-weight: bold"
+                  >Maximize (最大化):</span
+                ><br />
+                Score = (Val / Scale) &times; Weight <br /><br />
+
+                <span style="color: #3b82f6; font-weight: bold"
+                  >Minimize (最小化):</span
+                >
+                <span style="color: var(--n-text-color-3); font-size: 12px"
+                  >*翻转为正向奖励</span
+                ><br />
+                Score = [1.0 - (Val / Scale)] &times; Weight <br /><br />
+
+                <span style="color: #f59e0b; font-weight: bold"
+                  >Target (逼近定值):</span
+                ><br />
+                <span style="color: var(--n-text-color-3)">容差内:</span> Score
+                = 1.0 &times; Weight <br />
+                <span style="color: var(--n-text-color-3)">容差外:</span> Score
+                = [1.0 - (Diff - Tol) / Scale] &times; Weight
               </div>
 
-              <n-h4>2. 物理死区拦截 (Dead Zone)</n-h4>
+              <n-h4>2. 刚性拦截与惩罚融合 (Dead Zone)</n-h4>
               <p style="font-size: 13px; color: var(--n-text-color-3)">
-                <b>[GA/PSO] 瞬间淘汰：</b> Score = -300
-              </p>
-              <p style="font-size: 13px; color: var(--n-text-color-3)">
-                <b>[BO] 相对深度陡坡：</b>
+                计算越界深度 (Depth)，根据驱动算法分发不同的物理界限惩罚：
               </p>
               <div
                 style="
                   background: var(--n-code-color);
-                  padding: 10px;
+                  padding: 12px;
                   border-radius: 6px;
                   font-family: monospace;
-                  text-align: center;
+                  margin-bottom: 16px;
+                  line-height: 1.8;
+                  font-size: 13px;
                 "
               >
-                depth = (Thresh - Actual) / Thresh <br />
-                Score = -(100 + 1000 &times; depth)
+                <span style="color: #ef4444; font-weight: bold"
+                  >[GA / PSO] 阶跃断崖淘汰：</span
+                ><br />
+                触发死区即刻一票否决，该项得分强制重置为
+                <span style="color: #ef4444">-10,000</span>。<br />
+                <br />
+                <span style="color: #8b5cf6; font-weight: bold"
+                  >[BO] C0 绝对连续平滑衰减：</span
+                ><br />
+                消除断崖，继承边界 Base Score，仅向下叠加线性深度惩罚：<br />
+                Final_Score = Base_Score - (500.0 &times; Depth)
               </div>
 
-              <n-h4>3. 性能加权得分 (安全区 1:1 配平)</n-h4>
+              <n-h4>3. 综合结算与地形激活 (Terrain Activation)</n-h4>
               <p style="font-size: 13px; color: var(--n-text-color-3)">
-                底层自动进行量纲归一化。Target 模式与 Maximize 模式等价竞争：
+                为激发贝叶斯优化中高斯过程 (GP)
+                核函数的寻优积极性，人为拉开方差，防止微小梯度淹没于浮点噪声：
               </p>
               <div
                 style="
                   background: var(--n-code-color);
-                  padding: 10px;
+                  padding: 14px;
                   border-radius: 6px;
                   font-family: monospace;
                   text-align: center;
+                  font-size: 14px;
+                  font-weight: bold;
                 "
               >
-                Score<sub>max</sub> += (Actual / Scale_Ref) &times; W
-                <br /><br />
-                Score<sub>target</sub> -= (Dist_from_Edge / Target) &times; W
+                Total_Fitness = &sum;(Final_Scores) &times; 100.0 <br /><br />
+                <span
+                  style="color: #ef4444; font-size: 12px; font-weight: normal"
+                >
+                  * 触发死区的 GA/PSO 个体，总分强制抹杀为 -1,000,000
+                </span>
               </div>
             </n-scrollbar>
           </n-tab-pane>
@@ -1010,8 +742,12 @@ import {
   BookOpen,
   HelpCircle,
   Database,
+  BrainCircuit,
+  Cpu,
+  Network,
 } from "lucide-vue-next";
 import axios from "axios";
+import ScoreSandbox from "@/components/ScoreSandbox.vue";
 const showDocs = inject("globalDocsVisible", ref(false));
 const router = useRouter();
 const isDarkMode = inject("globalTheme");
@@ -1036,6 +772,29 @@ const agentsStatus = ref("error");
 const cpuUsage = ref(0);
 const ramUsage = ref(0);
 
+const sysEnv = reactive({
+  python: "检测中...",
+  pytorch: "检测中...",
+  cst: "检测中...",
+});
+
+// ✨ 2. 定义拉取接口的函数
+const fetchEnvInfo = async () => {
+  try {
+    const res = await axios.get(`${API_BASE}/env_info`);
+    if (res.data.status === "success") {
+      sysEnv.python = res.data.data.python;
+      sysEnv.pytorch = res.data.data.pytorch;
+      sysEnv.cst = res.data.data.cst;
+    }
+  } catch (e) {
+    console.error("无法获取系统环境信息", e);
+    sysEnv.python = "获取失败";
+    sysEnv.pytorch = "获取失败";
+    sysEnv.cst = "获取失败";
+  }
+};
+
 const cpuColor = computed(() =>
   cpuUsage.value > 80 ? "#ef4444" : cpuUsage.value > 50 ? "#f59e0b" : "#10b981",
 );
@@ -1046,18 +805,34 @@ let pollInterval = null;
 const refreshSystemStatus = async () => {
   try {
     const res = await axios.get(`${API_BASE}/health`);
-    if (res.data.status === "ok") {
-      apiStatus.value = "running";
-      cstStatus.value = "running";
-      agentsStatus.value = "running"; // ✨ 新增：连通时绿灯
+    
+    // 1. 只要这个接口没抛出异常（网络能通），说明 FastAPI 后台必定是活的
+    apiStatus.value = "running";
+
+    // 2. CST 探针：优先使用后端专门的探针结果，如果没有，借用环境检测的数据兜底
+    if (res.data.cst_alive !== undefined) {
+      cstStatus.value = res.data.cst_alive ? "running" : "error";
+    } else {
+      // 兜底：只要路径不是这几个失败词，就当它活着
+      cstStatus.value = (sysEnv.cst && !["检测中...", "获取失败", "未安装"].includes(sysEnv.cst)) 
+        ? "running" : "error";
     }
+
+    // 3. Agents 探针：必须依靠后端去真实 Ping 它的端口
+    if (res.data.agents_alive !== undefined) {
+      agentsStatus.value = res.data.agents_alive ? "running" : "error";
+    } else {
+      // 如果后端还没传这个字段，坚决不“假绿”，先标红或者标灰
+      agentsStatus.value = "error"; 
+    }
+
   } catch (e) {
+    // 接口彻底不通（FastAPI 挂了或断网），一损俱损全亮红灯
     apiStatus.value = "error";
     cstStatus.value = "error";
-    agentsStatus.value = "error"; // ✨ 新增：断开时红灯
+    agentsStatus.value = "error";
   }
 };
-
 const fetchHardwareStatus = async () => {
   try {
     const res = await axios.get(`${API_BASE}/system_status`);
@@ -1183,6 +958,7 @@ onMounted(() => {
   refreshSystemStatus();
   fetchHardwareStatus();
   fetchRecentTasks();
+  fetchEnvInfo();
 
   // 每 2.5 秒静默刷新一次系统探针和任务列表
   pollInterval = setInterval(() => {
@@ -1196,218 +972,6 @@ onUnmounted(() => {
 });
 
 const currentStep = ref(1);
-const simMetrics = reactive({
-  freq: 2.35,
-  sideRatio: 0.05,
-  powerVal: 850, // kW
-  powerFluc: 8, // %
-  effVal: 52.0, // %
-  effFluc: 12, // %
-});
-
-const simAlgo = ref("GA"); // 新增：算法流派选择状态
-
-const simConfigs = reactive({
-  freq: {
-    enable: true,
-    target: 2.4,
-    blindGap: 0.05,
-    penaltyBase: 10000,
-    decayK: 10.0,
-    clutterPenalty: 3000,
-  },
-  power: {
-    enable: true,
-    mode: "target",
-    target: 800,
-    deadThresh: 1.0,
-    weight: 1.0,
-    fluc: 10,
-    tolerance: 10,
-  },
-  eff: {
-    enable: true,
-    mode: "max",
-    target: 50.0,
-    deadThresh: 1.0,
-    weight: 6.0,
-    fluc: 15,
-    tolerance: 10,
-    checkPhys: true,
-  },
-});
-
-// 🚀 完全复刻 evaluator.py V2.0 双轨制标准
-const scoreResult = computed(() => {
-  const m = simMetrics;
-  const c = simConfigs;
-  const isBO = simAlgo.value === "BO";
-  const BASE_L3 = -10.0;
-
-  // ====== 1. Level 4 致命物理崩溃 ======
-  const isFatal =
-    m.freq <= 0 ||
-    (c.eff.enable && c.eff.checkPhys && (m.effVal < 0 || m.effVal > 100));
-  if (isFatal) {
-    return {
-      val: isBO ? -50000.0 : -10000000.0, // BO 谷底 vs GA 负一千万
-      reason: "💀 致命物理错误 (波形无效或违背常理)",
-      theme: "fatal",
-    };
-  }
-
-  let penalty_score = 0.0;
-  let is_dead = false;
-  let reason_text = "✅ 跨越死区：正常加权得分";
-  let theme = "success";
-
-  // ====== 2. Level 3 频率判决 ======
-  if (c.freq.enable) {
-    const diff = Math.abs(m.freq - c.freq.target);
-    if (diff > c.freq.blindGap) {
-      is_dead = true;
-      theme = "error";
-      if (isBO) {
-        // BO 专属：有理渐近线平滑惩罚
-        const net_diff = diff - c.freq.blindGap;
-        const base_penalty = -Math.abs(c.freq.penaltyBase);
-        const max_extra_penalty = 30000.0;
-        const decay_k = 0.5;
-        penalty_score +=
-          base_penalty - max_extra_penalty * (net_diff / (net_diff + decay_k));
-        reason_text = "📉 BO 频率渐近惩罚 (逼近 -40000)";
-      } else {
-        // GA/PSO 专属：线性断崖深渊
-        const base = -Math.abs(c.freq.penaltyBase);
-        penalty_score += base * (1.0 + c.freq.decayK * diff);
-        reason_text = "📉 GA/PSO 频率越界断崖惩罚";
-        return { val: penalty_score, reason: reason_text, theme: theme }; // GA 直接短路
-      }
-    }
-    if (m.sideRatio > 0.1) {
-      is_dead = true;
-      theme = "warning";
-      penalty_score -= Math.abs(c.freq.clutterPenalty) * m.sideRatio;
-      reason_text = "⚠️ 杂波超标惩罚";
-      if (!isBO)
-        return { val: penalty_score, reason: reason_text, theme: theme };
-    }
-  }
-
-  // ====== 3. Level 2 淘汰死区 ======
-  if (!is_dead) {
-    const p_thresh = c.power.enable ? c.power.deadThresh : 0;
-    const e_thresh = c.eff.enable ? c.eff.deadThresh : 0;
-
-    if (isBO) {
-      // BO 专属：相对跌破深度陡坡
-      let dead_zone_penalty = 0;
-      if (p_thresh > 0 && m.powerVal < p_thresh) {
-        const depth = (p_thresh - m.powerVal) / p_thresh;
-        dead_zone_penalty -= 100.0 + 1000.0 * depth;
-        is_dead = true;
-      }
-      if (e_thresh > 0 && m.effVal < e_thresh) {
-        const depth = (e_thresh - m.effVal) / e_thresh;
-        dead_zone_penalty -= 100.0 + 1000.0 * depth;
-        is_dead = true;
-      }
-      if (is_dead) {
-        penalty_score += dead_zone_penalty;
-        reason_text = "🕳️ BO 死区相对深度陡坡惩罚";
-        theme = "fatal";
-      }
-    } else {
-      // GA/PSO 专属：一刀切 -300
-      if (
-        (p_thresh > 0 && m.powerVal < p_thresh) ||
-        (e_thresh > 0 && m.effVal < e_thresh)
-      ) {
-        return {
-          val: -300.0,
-          reason: "🧱 GA/PSO 断崖淘汰死区 (-300)",
-          theme: "fatal",
-        };
-      }
-    }
-  }
-
-  // BO 如果在前两关落入深渊，直接返回惩罚分（维持处处可导）
-  if (is_dead || penalty_score < 0) {
-    return { val: penalty_score, reason: reason_text, theme: theme };
-  }
-
-  // ====== 4. 模块 0：公共奖励 (安全区) ======
-  let reward_score = 0.0;
-
-  const processMetric = (metric_key, isEff) => {
-    const o = c[metric_key];
-    if (!o.enable) return;
-
-    const val = isEff ? m.effVal : m.powerVal;
-    const fluc = isEff ? m.effFluc : m.powerFluc;
-    const raw_target = o.target;
-
-    const tol_fluc = o.fluc / 100.0;
-    const tol_target = o.tolerance / 100.0;
-    const weight = o.weight;
-
-    let target_val, norm_val, actual_val;
-
-    if (!isEff) {
-      target_val = raw_target * 1e6; // 归一化基准
-      actual_val = val * 1e6;
-      norm_val = actual_val / (target_val + 1e-6);
-    } else {
-      target_val = raw_target;
-      actual_val = val;
-      norm_val = actual_val / 100.0;
-    }
-
-    // 时域纹波罚分
-    if (fluc / 100.0 > tol_fluc) {
-      reward_score += BASE_L3 * (fluc / 100.0 / tol_fluc) * 2.0;
-    }
-
-    // 目标逼近加/扣分 (1:1 梯度配平)
-    if (o.mode === "target") {
-      if (actual_val < target_val) {
-        const diff_from_target = target_val - actual_val;
-        const allowed_error = target_val * tol_target;
-
-        if (diff_from_target > allowed_error) {
-          const dist_from_edge = diff_from_target - allowed_error;
-          // 边缘平滑扣分
-          reward_score += BASE_L3 * (dist_from_edge / (allowed_error + 1e-6));
-          // ✨ 移除 * 10.0，与最大化模式对等
-          const norm_dist = dist_from_edge / (target_val + 1e-6);
-          reward_score -= norm_dist * weight;
-        }
-      }
-    } else {
-      // Maximize 模式
-      reward_score += norm_val * weight;
-    }
-  };
-
-  processMetric("power", false);
-  processMetric("eff", true);
-
-  if (reward_score < 0) {
-    theme = "warning";
-    reason_text = "⚠️ 虽过死区，但纹波过大导致得分为负";
-  }
-
-  // ====== 5. 缩放输出 ======
-  // BO 正分直接返回原值；GA/PSO 放大 100 倍以刺激变异
-  if (isBO) {
-    return { val: reward_score, reason: reason_text, theme: theme };
-  } else {
-    const display_score =
-      reward_score > 0 ? reward_score * 100.0 : reward_score;
-    return { val: display_score, reason: reason_text, theme: theme };
-  }
-});
 </script>
 
 <style scoped>
@@ -1537,25 +1101,7 @@ const scoreResult = computed(() => {
   color: var(--n-text-color-3);
   margin-top: -10px;
 }
-.simulator-card {
-  border-color: rgba(59, 130, 246, 0.3);
-}
-.sim-panel {
-  background-color: var(--n-color);
-  border: 1px solid var(--n-border-color);
-  border-radius: 8px;
-  padding: 16px;
-  height: 100%;
-  box-sizing: border-box;
-}
-.sim-panel-title {
-  font-size: 13px;
-  font-weight: bold;
-  color: var(--n-text-color-3);
-  margin-bottom: 16px;
-  border-bottom: 1px dashed var(--n-border-color);
-  padding-bottom: 8px;
-}
+
 .nav-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
@@ -1601,32 +1147,6 @@ const scoreResult = computed(() => {
 }
 .nav-card.db-card:hover .nav-action {
   color: #f59e0b;
-}
-.result-panel {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  transition: all 0.3s;
-}
-.score-display {
-  margin-bottom: 16px;
-}
-.score-value {
-  font-size: 32px;
-  font-weight: 900;
-  font-family: monospace;
-}
-.score-reason {
-  font-size: 13px;
-  font-weight: bold;
-}
-
-/* 动态主题颜色 */
-.result-panel.fatal {
-  background-color: rgba(225, 29, 72, 0.1);
-  border-color: #e11d48;
-  color: #e11d48;
 }
 .result-panel.error {
   background-color: rgba(244, 63, 94, 0.1);

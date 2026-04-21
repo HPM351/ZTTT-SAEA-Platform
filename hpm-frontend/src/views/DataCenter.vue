@@ -69,14 +69,8 @@
                   {{ selectedTaskStats.topScore.toExponential(2) }}
                 </span>
                 <div style="display: flex; gap: 10px; font-size: 12px; margin-top: 6px; font-family: monospace; font-weight: bold; flex-wrap: wrap; justify-content: center;">
-                  <span v-if="selectedTask?.config_json?.targets?.eff?.enable" class="text-neon-green">
-                    Eff: {{ selectedTaskStats.topEff.toFixed(2) }}%
-                  </span>
-                  <span v-if="selectedTask?.config_json?.targets?.power?.enable" class="text-neon-orange">
-                    P: {{ (selectedTaskStats.topPower / 1e6).toFixed(2) }}MW
-                  </span>
-                  <span v-if="selectedTask?.config_json?.targets?.freq?.enable" class="text-neon-blue">
-                    F: {{ selectedTaskStats.topFreq.toFixed(3) }}G
+                  <span v-for="(val, key) in selectedTaskStats.bestMetrics" :key="key" class="text-neon-green">
+                    {{ key }}: {{ typeof val === 'number' ? (val > 1000 ? val.toExponential(2) : val.toFixed(3)) : val }}
                   </span>
                 </div>
               </div>
@@ -166,9 +160,8 @@
 </template>
 
 <script setup>
-// ✨ 引入 nextTick 用于等待弹窗渲染完成
-import { NIcon, useMessage, NButton, NTag } from 'naive-ui' // ✨ 修复 1：必须导入 NTag
-import { ref, onMounted, reactive, h, nextTick, onUnmounted } from 'vue' // ✨ 修复 2：导入 onUnmounted
+import { NIcon, useMessage, NButton, NTag } from 'naive-ui'
+import { ref, onMounted, reactive, h, nextTick, onUnmounted } from 'vue'
 import { Database, RefreshCw, Download, Trash2, Activity } from 'lucide-vue-next'
 import axios from 'axios'
 import * as echarts from 'echarts'
@@ -176,14 +169,13 @@ import * as echarts from 'echarts'
 const message = useMessage()
 const API_BASE = '/api';
 const tooltipFrostedGlass = {
-  backgroundColor: 'rgba(15, 23, 42, 0.65)', // 深色半透明背景
-  borderColor: 'rgba(255, 255, 255, 0.15)',  // 极细的高光边框
+  backgroundColor: 'rgba(15, 23, 42, 0.65)',
+  borderColor: 'rgba(255, 255, 255, 0.15)',
   borderWidth: 1,
-  textStyle: { color: '#e2e8f0' }, // 柔和的文字颜色
-  // 核心：CSS 滤镜实现毛玻璃模糊效果 + 悬浮阴影
+  textStyle: { color: '#e2e8f0' },
   extraCssText: 'backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5); border-radius: 8px;'
 };
-// 状态
+
 const tasks = ref([])
 const selectedTaskId = ref(null)
 const selectedTask = ref(null)
@@ -191,105 +183,29 @@ const individualData = ref([])
 const selectedTaskStats = reactive({ 
   totalGens: 0, 
   topScore: 0, 
-  topEff: 0, 
-  topPower: 0, 
-  topFreq: 0, 
+  bestMetrics: {}, // ✨ 替代以前写死的 topEff 等
   totalInds: 0, 
   storage: 0 
 })
 
-// ✨ 原生图表引用
 const showWaveformModal = ref(false)
 const waveformChartRef = ref(null)
-const currentViewingInd = ref(null) // 追踪当前查看的个体
+const currentViewingInd = ref(null)
 let waveformChart = null
 
-const fetchedWaves = ref({}) // 动态存储后端返回的所有波形
-const activeWaveTab = ref('') // 当前选中的波形 Tab
+const fetchedWaves = ref({}) 
+const activeWaveTab = ref('') 
 
-// 表格配置
-// 表格配置 (✨ 包含全列动态排序与全维数据展示)
-const columns = [
-  { title: '代数 (Gen)', key: 'gen_index', width: 90, sorter: 'default' },
-  { title: '编号 (No.)', key: 'ind_index', width: 90 },
-  
-  // 物理参数组合 (带防空校验)
-  {
-    title: '物理参数组合 (Params)',
-    key: 'params_json',
-    width: 240,
-    render(row) {
-      if (!row.params_json) return h('span', { style: 'color: gray' }, '--')
-      return h('div', { style: 'display: flex; gap: 4px; flex-wrap: wrap;' },
-        Object.entries(row.params_json).map(([k, v]) =>
-          h(NTag, { size: 'small', type: 'info', bordered: false }, { default: () => `${k}: ${v}` })
-        )
-      )
-    }
-  },
+// ✨ 将 columns 改为响应式，实现动态表头
+const columns = ref([])
 
-  { 
-    title: '综合得分', key: 'score', width: 110, 
-    // ✨ 增加 (row.score || 0) 防空保护，防止旧数据 null 导致表格崩溃
-    render: (row) => (row.score || 0).toExponential(2),
-    sorter: (row1, row2) => (row1.score || 0) - (row2.score || 0) 
-  },
-  { 
-    title: '效率 (%)', key: 'eff_val', width: 100, 
-    render: (row) => (row.eff_val || 0).toFixed(2),
-    sorter: (row1, row2) => (row1.eff_val || 0) - (row2.eff_val || 0) 
-  },
-  { 
-    title: '功率 (MW)', key: 'power_val', width: 110, 
-    render: (row) => ((row.power_val || 0) / 1e6).toFixed(2),
-    sorter: (row1, row2) => (row1.power_val || 0) - (row2.power_val || 0) 
-  },
-  { 
-    title: '频率 (GHz)', key: 'freq_val', width: 110, 
-    render: (row) => (row.freq_val || 0).toFixed(3),
-    sorter: (row1, row2) => (row1.freq_val || 0) - (row2.freq_val || 0) 
-  },
-
-  {
-    title: '操作',
-    key: 'actions',
-    width: 100,
-    fixed: 'right',
-    render(row) {
-      return h(NButton, {
-        size: 'small',
-        type: 'primary',
-        secondary: true,
-        onClick: () => {
-          currentViewingInd.value = row;
-          fetchAndShowWaveform(row.id);
-        }
-      }, { default: () => '查看波形' })
-    }
-  }
-]
-const pagination = { pageSize: 15 }
-
-// 方法
 const fetchAndShowWaveform = async (individualId) => {
   try {
     message.loading("正在解析物理波形序列...", { duration: 800 })
     const res = await axios.get(`${API_BASE}/individuals/${individualId}/waveform`)
     
     if (res.data.status === 'success') {
-      fetchedWaves.value = {}
-      const backendWaves = res.data.waveforms || {}
-      
-      // 动态映射数据库字段：只要后端有，前端就显示
-      if (backendWaves.power_wave) fetchedWaves.value.power = backendWaves.power_wave
-      if (backendWaves.eff_wave) fetchedWaves.value.eff = backendWaves.eff_wave
-      if (backendWaves.main_mode_wave) fetchedWaves.value.mode = backendWaves.main_mode_wave
-      if (backendWaves.fft_wave) fetchedWaves.value.fft = backendWaves.fft_wave
-      
-      // 单波形兼容逻辑 (兼容旧版数据)
-      if (res.data.time_series && !backendWaves.power_wave) fetchedWaves.value.power = res.data.time_series
-
-      // 默认激活第一个存在的波形
+      fetchedWaves.value = res.data.waveforms || {} // ✨ 直接收纳后端的全量动态字典
       const availableKeys = Object.keys(fetchedWaves.value)
       if (availableKeys.length > 0) activeWaveTab.value = availableKeys[0]
 
@@ -297,16 +213,15 @@ const fetchAndShowWaveform = async (individualId) => {
       
       nextTick(() => {
         if (waveformChartRef.value) {
-          if (waveformChart != null) waveformChart.dispose() // 彻底销毁旧实例，解决白屏 Bug
+          if (waveformChart != null) waveformChart.dispose()
           waveformChart = echarts.init(waveformChartRef.value)
           if (availableKeys.length > 0) renderSelectedWave(activeWaveTab.value)
         }
       })
     }
-  } catch (e) { message.error("波形库调取失败") }
+  } catch (e) { message.error("波形库调取失败 (可能未起振或提取异常)") }
 }
 
-// ✨ 画布渲染引擎：根据选择的数据类型自动调整视觉样式
 const renderSelectedWave = (type) => {
   if (!waveformChart || !fetchedWaves.value[type]) return
 
@@ -314,55 +229,26 @@ const renderSelectedWave = (type) => {
   let timeData = []
   let valueData = []
 
-  // 👇👇👇 核心修复：解析对象格式 {x: [...], y: [...]} 以及物理量级转换 👇👇👇
+  // 泛化解析 {x: [...], y: [...]}
   if (data && data.x && data.y && Array.isArray(data.x)) {
     timeData = data.x
-    
-    // 物理单位转换：与 Y 轴单位匹配
-    if (type === 'power') {
-      // 数据库存的是 W，图表需要 MW
-      valueData = data.y.map(v => v / 1e6) 
-    } else if (type === 'eff') {
-      // 数据库存的是小数，图表需要百分比 (%)
-      valueData = data.y.map(v => v * 100) 
-    } else {
-      valueData = data.y
-    }
+    valueData = data.y
   } 
-  // 兼容极早期的旧版数据格式 (二维数组或对象数组)
-  else if (Array.isArray(data) && data.length > 0) {
-    if (data[0].name !== undefined) {
-      timeData = data.map(item => item.name)
-      valueData = data.map(item => item.value)
-    } else if (Array.isArray(data[0])) {
-      timeData = data.map(item => item[0])
-      valueData = data.map(item => item[1])
-    }
-  }
 
-  // 物理量视觉映射方案
-  const themes = {
-    power: { name: '功率 (MW)', color: '#10b981', x: '时间 (ns)' },
-    eff: { name: '转换效率 (%)', color: '#f59e0b', x: '时间 (ns)' },
-    mode: { name: '场强幅度', color: '#8b5cf6', x: '时间 (ns)' },
-    fft: { name: '谱线强度', color: '#3b82f6', x: '频率 (GHz)' }
-  }
-  const config = themes[type] || themes.power
-
-  waveformChart.clear(); // 切换时先清空画板
+  waveformChart.clear();
   waveformChart.setOption({
     tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, ...tooltipFrostedGlass },
     grid: { left: '8%', right: '5%', bottom: '12%', top: '15%', containLabel: true },
     dataZoom: [{ type: 'inside' }],
-    xAxis: { type: 'category', name: config.x, nameLocation: 'middle', nameGap: 25, data: timeData },
-    yAxis: { type: 'value', name: config.name, splitLine: { lineStyle: { type: 'dashed', color: '#333' } }, scale: true },
+    xAxis: { type: 'category', name: '自变量', nameLocation: 'middle', nameGap: 25, data: timeData },
+    yAxis: { type: 'value', name: type, splitLine: { lineStyle: { type: 'dashed', color: '#333' } }, scale: true },
     series: [{
       type: 'line', data: valueData, smooth: true, showSymbol: false,
-      lineStyle: { width: 2, color: config.color },
+      lineStyle: { width: 2, color: '#10b981' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: config.color + '60' },
-          { offset: 1, color: config.color + '00' }
+          { offset: 0, color: '#10b98160' },
+          { offset: 1, color: '#10b98100' }
         ])
       }
     }]
@@ -372,24 +258,9 @@ const renderSelectedWave = (type) => {
 const fetchTasks = async () => {
   try {
     const res = await axios.get(`${API_BASE}/tasks`);
-    // ✨ 修复：兼容 FastAPI 返回的 {"status": "success", "tasks": [...]} 结构
     tasks.value = res.data.tasks ? res.data.tasks : res.data;
   } catch (e) {
-    console.error("【后端接口报错】获取任务列表失败:", e);
-    
-    if (e.response && e.response.status === 404) {
-      message.warning("未找到 /tasks 接口，正在自动回退到 /recent_tasks...");
-      // 🚀 自动回退方案：如果后端还没写 /tasks，自动用主页的 /recent_tasks 顶上
-      try {
-        const fallback = await axios.get(`${API_BASE}/recent_tasks`);
-        tasks.value = fallback.data.tasks ? fallback.data.tasks : fallback.data;
-      } catch (err) {
-        message.error("备用接口也失败了，请检查后端 FastAPI 是否正常运行。");
-      }
-    } else {
-      // 真实显示究竟是什么错（跨域被拦截？断网？500？）
-      message.error(`数据获取失败: ${e.message}`);
-    }
+    message.error(`数据获取失败`);
   }
 }
 
@@ -398,8 +269,6 @@ const selectTask = async (task) => {
   selectedTask.value = task
   try {
     const res = await axios.get(`${API_BASE}/tasks/${task.id}/individuals`)
-    
-    // 兼容可能存在的不同数据结构包装
     const inds = Array.isArray(res.data) ? res.data : (res.data.individuals || [])
     individualData.value = inds
 
@@ -409,30 +278,72 @@ const selectTask = async (task) => {
       selectedTaskStats.storage = res.data.stats.storage
     }
 
-    // ✨ 核心逻辑：从本任务所有个体中，揪出综合得分 (Score) 最高的王者
+    // ✨ 动态生成表格的列 (Base Columns + Dynamic Metrics)
+    const baseCols = [
+      { title: '代数', key: 'gen_index', width: 80, sorter: 'default' },
+      { title: '编号', key: 'ind_index', width: 80 },
+      {
+        title: '物理参数 (Params)', key: 'params_json', width: 220,
+        render(row) {
+          if (!row.params_json) return h('span', { style: 'color: gray' }, '--')
+          return h('div', { style: 'display: flex; gap: 4px; flex-wrap: wrap;' },
+            Object.entries(row.params_json).map(([k, v]) =>
+              h(NTag, { size: 'small', type: 'info', bordered: false }, { default: () => `${k}: ${v}` })
+            )
+          )
+        }
+      },
+      { 
+        title: '综合得分', key: 'score', width: 110, 
+        render: (row) => (row.score || 0).toExponential(2),
+        sorter: (row1, row2) => (row1.score || 0) - (row2.score || 0) 
+      }
+    ];
+
+    let dynamicCols = [];
     if (inds.length > 0) {
-      const bestInd = inds.reduce((prev, current) => 
-        ((prev.score || -1e7) > (current.score || -1e7)) ? prev : current
-      );
+      // 找出当前任务里 Metrics 最全的个体作为模板（防空）
+      const sampleInd = inds.find(i => i.metrics_json && Object.keys(i.metrics_json).length > 0) || inds[0];
+      const metrics = sampleInd.metrics_json || {};
       
+      dynamicCols = Object.keys(metrics).map(k => ({
+        title: k,
+        key: `metrics_json.${k}`,
+        width: 100,
+        render: (row) => {
+           const val = row.metrics_json?.[k];
+           return val !== undefined ? (val > 1000 ? Number(val).toExponential(2) : Number(val).toFixed(2)) : '--';
+        },
+        sorter: (a, b) => (a.metrics_json?.[k] || 0) - (b.metrics_json?.[k] || 0)
+      }));
+
+      // 提取最佳分数和最佳指标
+      const bestInd = inds.reduce((prev, current) => ((prev.score || -1e12) > (current.score || -1e12)) ? prev : current);
       selectedTaskStats.topScore = bestInd.score || 0;
-      selectedTaskStats.topEff = bestInd.eff_val || 0;
-      selectedTaskStats.topPower = bestInd.power_val || 0;
-      selectedTaskStats.topFreq = bestInd.freq_val || 0;
+      selectedTaskStats.bestMetrics = bestInd.metrics_json || {};
     } else {
-      selectedTaskStats.topScore = 0; selectedTaskStats.topEff = 0;
-      selectedTaskStats.topPower = 0; selectedTaskStats.topFreq = 0;
+      selectedTaskStats.topScore = 0; selectedTaskStats.bestMetrics = {};
     }
+
+    const actionCol = {
+      title: '操作', key: 'actions', width: 90, fixed: 'right',
+      render(row) {
+        return h(NButton, {
+          size: 'small', type: 'primary', secondary: true,
+          onClick: () => { currentViewingInd.value = row; fetchAndShowWaveform(row.id); }
+        }, { default: () => '看波形' })
+      }
+    };
+
+    columns.value = [...baseCols, ...dynamicCols, actionCol];
+
   } catch (e) {
     message.error("无法读取任务明细数据")
   }
 }
 
 onUnmounted(() => {
-  if (waveformChart) {
-    waveformChart.dispose()
-    waveformChart = null
-  }
+  if (waveformChart) { waveformChart.dispose(); waveformChart = null }
 })
 
 const deleteTask = async (id) => {
@@ -452,9 +363,7 @@ const exportToExcel = (id) => {
 const getStatusType = (s) => s === 'completed' ? 'success' : (s === 'error' ? 'error' : 'info')
 const formatDate = (d) => new Date(d).toLocaleString()
 
-onMounted(() => {
-  fetchTasks()
-})
+onMounted(() => { fetchTasks() })
 </script>
 
 <style scoped>

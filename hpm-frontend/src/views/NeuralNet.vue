@@ -54,36 +54,88 @@
                 <b>Top-K 强验证策略</b>:
                 强制验证高分个体，并结合经验回放机制微调网络。
               </div>
-              <n-form-item label="每代验证样本数 (K)"
-                ><n-input-number
+              <n-form-item label="每代验证样本数 (K)">
+                <n-input-number
                   v-model:value="config.online.kSamples"
                   :min="1"
                   :max="100"
-              /></n-form-item>
-              <n-form-item label="📂 CST 项目路径"
-                ><n-input
+                />
+              </n-form-item>
+              <n-form-item label="📂 CST 项目路径">
+                <n-input
                   v-model:value="config.online.cstPath"
                   placeholder="请输入完整的 .cst 路径"
-              /></n-form-item>
+                />
+              </n-form-item>
 
-              <n-form-item
-                v-if="optimizableTargets.some((t) => t.name === 'Efficiency')"
-                label="效率结果路径 (EFF Path)"
+              <div
+                v-for="(t, idx) in config.online.targetsList"
+                :key="t.name"
+                style="
+                  margin-top: 12px;
+                  padding: 12px;
+                  background: rgba(0, 0, 0, 0.2);
+                  border-radius: 8px;
+                  border: 1px solid var(--n-border-color);
+                "
               >
-                <n-input v-model:value="config.online.effPath" />
-              </n-form-item>
-              <n-form-item
-                v-if="optimizableTargets.some((t) => t.name === 'Power')"
-                label="功率结果路径 (Power Path)"
-              >
-                <n-input v-model:value="config.online.powerPath" />
-              </n-form-item>
-              <n-form-item
-                v-if="hasFrequencyTarget"
-                label="频率结果路径 (FFT Path)"
-              >
-                <n-input v-model:value="config.online.freqPath" />
-              </n-form-item>
+                <div
+                  style="
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #10b981;
+                    margin-bottom: 10px;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                  "
+                >
+                  <n-icon><Target /></n-icon> 物理验证指标: {{ t.display }}
+                </div>
+
+                <n-form-item label="CST 结果树路径" :show-feedback="false">
+                  <n-input
+                    v-model:value="t.path"
+                    size="small"
+                    placeholder="例如: Tables\1D Results\EFF"
+                  />
+                </n-form-item>
+
+                <n-grid :x-gap="12" style="margin-top: 10px">
+                  <n-gi :span="14">
+                    <n-form-item label="提取规则" :show-feedback="false">
+                      <n-select
+                        v-model:value="t.extractMethod"
+                        size="small"
+                        :options="[
+                          { label: '时域均值', value: 'time_mean' },
+                          { label: '频域主峰', value: 'freq_peak' },
+                          { label: '标量读取', value: '0d_scalar' },
+                        ]"
+                      />
+                    </n-form-item>
+                  </n-gi>
+                  <n-gi :span="10">
+                    <n-form-item
+                      :label="t.mode === 'target' ? '偏差门槛' : '生死下限'"
+                      :show-feedback="false"
+                    >
+                      <n-input-number
+                        v-if="t.mode !== 'target'"
+                        v-model:value="t.constraints.min"
+                        size="small"
+                        placeholder="无"
+                      />
+                      <n-input-number
+                        v-else
+                        v-model:value="t.constraints.max_diff"
+                        size="small"
+                        placeholder="无"
+                      />
+                    </n-form-item>
+                  </n-gi>
+                </n-grid>
+              </div>
             </div>
             <div
               v-else
@@ -670,7 +722,7 @@
                       "
                     >
                       <div
-                        v-if="bestGlobalMetrics.eff !== null"
+                        v-if="bestGlobalMetrics.eff != null"
                         style="display: flex; align-items: baseline; gap: 8px"
                       >
                         <span
@@ -682,12 +734,12 @@
                           >效率</span
                         >
                         <span class="text-neon-green" style="font-size: 20px"
-                          >{{ bestGlobalMetrics.eff.toFixed(2) }} %</span
+                          >{{ Number(bestGlobalMetrics.eff).toFixed(2) }} %</span
                         >
                       </div>
 
                       <div
-                        v-if="bestGlobalMetrics.power !== null"
+                        v-if="bestGlobalMetrics.power != null"
                         style="display: flex; align-items: baseline; gap: 8px"
                       >
                         <span
@@ -706,7 +758,7 @@
                       </div>
 
                       <div
-                        v-if="bestGlobalMetrics.freq !== null"
+                        v-if="bestGlobalMetrics.freq != null"
                         style="display: flex; align-items: baseline; gap: 8px"
                       >
                         <span
@@ -718,27 +770,15 @@
                           >频率</span
                         >
                         <span class="text-neon-blue" style="font-size: 20px"
-                          >{{ bestGlobalMetrics.freq.toFixed(3) }} GHz</span
+                          >{{ Number(bestGlobalMetrics.freq).toFixed(3) }} GHz</span
                         >
                       </div>
 
                       <div
                         v-if="
-                          bestGlobalMetrics.eff === null &&
-                          bestGlobalMetrics.power === null &&
-                          bestGlobalMetrics.freq === null
-                        "
-                      >
-                        <span class="text-neon-green" style="font-size: 20px"
-                          >--</span
-                        >
-                      </div>
-
-                      <div
-                        v-if="
-                          bestGlobalMetrics.eff === null &&
-                          bestGlobalMetrics.power === null &&
-                          bestGlobalMetrics.freq === null
+                          bestGlobalMetrics.eff == null &&
+                          bestGlobalMetrics.power == null &&
+                          bestGlobalMetrics.freq == null
                         "
                       >
                         <span class="text-neon-green" style="font-size: 20px"
@@ -778,7 +818,7 @@
                                 ?.name || key
                             }}:
                             <span style="font-weight: bold; margin-left: 4px">
-                              {{ val % 1 === 0 ? val : val.toFixed(3) }}
+                              {{ typeof val === 'number' ? (val % 1 === 0 ? val : val.toFixed(3)) : val }}
                             </span>
                           </n-tag>
                         </div>
@@ -1411,9 +1451,7 @@ const config = reactive({
     enable: false,
     kSamples: 5,
     cstPath: "F:\\cst files\\ACO for report\\ACO FR.cst",
-    effPath: "Tables\\1D Results\\EFF",
-    powerPath: "Tables\\1D Results\\AVGpower",
-    freqPath: "Tables\\1D Results\\FFT",
+    targetsList: [],
   },
   algo: {
     popSize: 20,
@@ -1586,18 +1624,7 @@ const scatterAxisOptions = computed(() => {
 });
 
 // 当模型加载完成后，自动分配合理的初始 X 和 Y
-watch(
-  () => outputOptions.value,
-  (newVal) => {
-    if (newVal.length >= 2) {
-      scatterX.value = newVal[1].value; // 默认X: 比如 Frequency 或 Power
-      scatterY.value = newVal[0].value; // 默认Y: 比如 Efficiency
-    } else if (newVal.length === 1) {
-      scatterX.value = "Gen";
-      scatterY.value = newVal[0].value;
-    }
-  },
-);
+
 
 // 3. 判断是否包含需要靶向逼近的指标（比如频率）
 const hasFrequencyTarget = computed(() => {
@@ -1718,19 +1745,44 @@ const boxplotData = []; // 箱线图数据 (现在存储的是包含多个指标
 const boxplotTarget = ref(null); // 箱线图当前选中的下拉目标
 const localShapTarget = ref(null);
 
-// 监听 outputOptions 自动为箱线图赋个合理的初始值
 watch(
   () => outputOptions.value,
-  (newVal) => {
-    if (newVal.length > 0) {
-      const defaultOpt =
-        newVal.find((o) => !o.value.toLowerCase().includes("freq")) ||
-        newVal[0];
-      if (!boxplotTarget.value) boxplotTarget.value = defaultOpt.value;
-      if (!localShapTarget.value) localShapTarget.value = defaultOpt.value; // ✨ 初始化给局部 SHAP 赋值
+  async (newVal) => {
+    // ✨ 救命绝招：把响应式赋值推迟到当前 DOM 动画和渲染周期结束之后
+    await nextTick(); 
+
+    if (newVal && newVal.length > 0) {
+      // 1. 负责散点图 (Scatter) 的 X/Y 轴默认值分配
+      const isScatterXValid = scatterX.value === "Gen" || newVal.some((o) => o.value === scatterX.value);
+      const isScatterYValid = newVal.some((o) => o.value === scatterY.value);
+
+      if (!isScatterXValid || !isScatterYValid) {
+        if (newVal.length >= 2) {
+          scatterX.value = newVal[1].value;
+          scatterY.value = newVal[0].value;
+        } else {
+          scatterX.value = "Gen";
+          scatterY.value = newVal[0].value;
+        }
+      }
+
+      // 2. 负责箱线图 (Boxplot) 和局部 SHAP 瀑布图默认选中第一个
+      const isBoxplotValid = newVal.some((o) => o.value === boxplotTarget.value);
+      const isShapValid = newVal.some((o) => o.value === localShapTarget.value);
+
+      if (!isBoxplotValid) {
+        boxplotTarget.value = newVal[0].value;
+      }
+      if (!isShapValid) {
+        localShapTarget.value = newVal[0].value;
+      }
+    } else {
+      // 安全清空
+      boxplotTarget.value = null;
+      localShapTarget.value = null;
     }
   },
-  { immediate: true },
+  { immediate: true }
 );
 let wsClient = null;
 // 预测数据
@@ -1986,6 +2038,39 @@ const loadModel = async () => {
 
       config.algo.targetFreq = configObj.meta?.target_freq || 6.0;
 
+      config.online.targetsList = configObj.outputs.map((out) => {
+        const isFreq = out.name.toLowerCase().includes("freq");
+        const isEff = out.name.toLowerCase().includes("eff");
+
+        return {
+          name: out.name,
+          display: out.display,
+          path: "", // 留给用户在 UI 填写
+          mode: isFreq ? "target" : "maximize",
+          extractMethod: isFreq ? "freq_peak" : "time_mean",
+          // 自动继承模型定义的倍率转换
+          multiplier:
+            out.scale_factor !== undefined
+              ? out.scale_factor
+              : isEff
+                ? 100.0
+                : 1.0,
+          reference_scale: isFreq
+            ? configObj.meta?.target_freq || 1.0
+            : isEff
+              ? 100.0
+              : 1.0,
+          target_val: isFreq ? configObj.meta?.target_freq || 0 : 0,
+          tolerance: isFreq ? 0.05 : 0.0,
+          constraints: {
+            enable: true,
+            min: null,
+            max: null,
+            max_diff: isFreq ? 0.5 : null,
+          },
+        };
+      });
+
       const optTargets =
         configObj.outputs?.filter(
           (out) => !out.name.toLowerCase().includes("logit"),
@@ -2085,7 +2170,11 @@ const clearAllData = () => {
   if (parallelChart) parallelChart.setOption({ series: [{ data: [] }] });
   if (paretoChart)
     paretoChart.setOption({
-      xAxis: { name: "功率 (MW)" },
+      xAxis: {
+        name:
+          scatterAxisOptions.value.find((o) => o.value === scatterX.value)
+            ?.label || scatterX.value,
+      },
       series: [{ data: [] }],
     });
   if (boxplotChart)
@@ -2102,11 +2191,14 @@ const startOptimization = () => {
   if (islandState) {
     islandState.NeuralNet.isRunning = true;
     // 使用当前已加载配置的显示名称
-    islandState.NeuralNet.modelName = currentModelConfig.value?.display_name || '未命名模型';
+    islandState.NeuralNet.modelName =
+      currentModelConfig.value?.display_name || "未命名模型";
     // 对应 config.online.enable
     islandState.NeuralNet.isOnlineLearning = config.online.enable;
     // 对应 config.online.cstPath
-    islandState.NeuralNet.filePath = config.online.enable ? config.online.cstPath : "";
+    islandState.NeuralNet.filePath = config.online.enable
+      ? config.online.cstPath
+      : "";
     islandState.NeuralNet.progress = 0;
     islandState.NeuralNet.abortFn = stopOptimization;
   }
@@ -2172,12 +2264,14 @@ const startOptimization = () => {
 
     // 更新状态文本
     currentGen.value = data.gen;
-    
+
     // ✨ 驱动灵动岛进度条
     if (islandState && islandState.NeuralNet.isRunning) {
-      islandState.NeuralNet.progress = Math.round((currentGen.value / config.algo.nGen) * 100);
+      islandState.NeuralNet.progress = Math.round(
+        (currentGen.value / config.algo.nGen) * 100,
+      );
     }
-    
+
     if (data.best_global_metrics) {
       bestGlobalMetrics.value = data.best_global_metrics;
     }
@@ -2824,7 +2918,7 @@ watch(isDarkMode, () => {
   height: calc(100vh - 64px);
 
   box-sizing: border-box;
-  flex: 0 0 350px;
+  flex: 0 0 500px;
   padding: 24px;
   display: flex;
   flex-direction: column;

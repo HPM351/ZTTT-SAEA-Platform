@@ -6,16 +6,11 @@ from database import SessionLocal, Task, Individual, Waveform
 from .cst_wrapper import run_single_simulation
 
 
-def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.AbstractEventLoop,
-                   task_status_flags: dict):
-    """
-    网格化扫参专属引擎：生成笛卡尔积 -> 驱动 CST -> 落库 -> 推送前端
-    """
+def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.AbstractEventLoop, task_status_flags: dict):
     print(f"[{task_id}] 🚀 网格扫参引擎已启动...")
 
     import cst.interface
     cst_env = None
-
     try:
         cst_env = cst.interface.DesignEnvironment()
     except Exception as e:
@@ -25,11 +20,11 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
 
     try:
         cst_path = config_dict['cstPath']
-        targets_cfg = config_dict['targets']
-        env_cfg = config_dict.get('env', {'stableTime': 20.0})  # 给个默认稳态时间
+        # ✨ 1. 动态获取目标列表 (TargetsList)
+        targets_list = config_dict.get('targetsList', [])
+        env_cfg = config_dict.get('env', {'useStableTime': True, 'stableTime': 20.0})
         params_list = config_dict['paramsList']
 
-        # 1. 解析参数配置，分离【扫描变量】与【固定变量】
         sweep_vars = []
         fixed_params = {}
         for p in params_list:
@@ -38,7 +33,6 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
             else:
                 fixed_params[p['name']] = p['val']
 
-        # 2. 构建多维扫描空间
         var_names = []
         var_spaces = []
         for v in sweep_vars:
@@ -50,7 +44,6 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
                 space = [v['min']]
             var_spaces.append(space)
 
-        # 3. 生成笛卡尔积 (全网格组合)
         all_combinations = list(itertools.product(*var_spaces))
         total_steps = len(all_combinations)
 
@@ -59,77 +52,54 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
         project = cst_env.open_project(cst_path)
 
         try:
-            # 4. 开启扫描主循环
             for idx, combo in enumerate(all_combinations):
                 current_step = idx + 1
 
-                # 检查是否被前端强制终止
                 if task_status_flags.get(task_id) == "stopped":
                     asyncio.run_coroutine_threadsafe(
-                        ws_manager.send_to_task(json.dumps({"type": "error", "message": "🛑 扫参任务已被强制终止！"}),
-                                                task_id), loop)
+                        ws_manager.send_to_task(json.dumps({"type": "error", "message": "🛑 扫参任务已被强制终止！"}), task_id), loop)
                     break
 
                 print(f"  -> 正在求解 ID: {current_step}/{total_steps} ...")
-
-                # 组装当前物理参数
                 current_params = fixed_params.copy()
                 current_params.update(dict(zip(var_names, combo)))
 
-                # 🚀 调用 CST Wrapper 进行物理求解
-                m = run_single_simulation(project, current_params, targets_cfg, env_cfg, cst_path)
+                # 🚀 2. 扔给动态 CST Wrapper 提取数据
+                m = run_single_simulation(project, current_params, targets_list, env_cfg, cst_path)
 
-                # 解析安全数据 (防御性兜底，防止前端 ECharts 报错)
-                power_val = float(m.get('power_val', 0) / 1e6) if m.get('power_val') is not None else 0.0
-                eff_val = float(m.get('eff_val', 0)) if m.get('eff_val') is not None else 0.0
-                freq_val = float(m.get('freq', 0)) if m.get('freq') is not None else 0.0
-
-                # 组装波形数据对象
-                wave_data = {
-                    "power": m.get('power_curve'),
-                    "eff": m.get('eff_curve'),
-                    "fft": m.get('fft_curve'),
-                    "mainMode": m.get('main_mode_curve'),
-                    "params": current_params
-                }
+                # ✨ 3. 全自动数据分流：标量入 metrics，波形入 waves
+                metrics_json = {}
+                waves_json = {}
+                for k, v in m.items():
+                    if k == 'error': continue
+                    if k.endswith('_curve'):
+                        waves_json[k.replace('_curve', '')] = v
+                    else:
+                        metrics_json[k] = float(v)
 
                 # 组装返回给前端的数据结构
                 result_data = {
-                    "power_val": power_val,
-                    "eff_val": eff_val,
-                    "freq": freq_val,
                     "params": current_params,
-                    **wave_data
+                    "metrics": metrics_json,
+                    "waves": waves_json,
+                    "is_valid": 'error' not in m
                 }
 
-                # --- 🗄️ 数据库落库逻辑 (复用现有的表结构) ---
+                # ✨ 4. 🗄️ 极简落库：直接把字典存入 SQLite，彻底告别 power_val
                 db = SessionLocal()
                 try:
-                    # 扫参为了兼容优化表结构，固定 Gen 为 1，Ind 为当前的 Sweep ID
                     new_individual = Individual(
-                        task_id=task_id,
-                        gen_index=1,
-                        ind_index=current_step,
-                        params_json=current_params,
-                        score=0.0,  # 扫参没有分数
-                        power_val=float(m.get('power_val', 0)),
-                        eff_val=eff_val,
-                        freq_val=freq_val,
-                        side_ratio=float(m.get('side_ratio')) if m.get('side_ratio') is not None else None,
-                        is_valid=True if 'error' not in m else False
+                        task_id=task_id, gen_index=1, ind_index=current_step,
+                        params_json=current_params, score=0.0,
+                        metrics_json=metrics_json, # ✨ 动态标量字段
+                        is_valid='error' not in m
                     )
                     db.add(new_individual)
                     db.flush()
 
                     new_wave = Waveform(
-                        individual_id=new_individual.id,
-                        task_id=task_id,
-                        gen_index=1,
-                        ind_index=current_step,
-                        power_wave=wave_data.get('power'),
-                        eff_wave=wave_data.get('eff'),
-                        fft_wave=wave_data.get('fft'),
-                        main_mode_wave=wave_data.get('mainMode')
+                        individual_id=new_individual.id, task_id=task_id, gen_index=1, ind_index=current_step,
+                        waves_json=waves_json      # ✨ 动态波形字段
                     )
                     db.add(new_wave)
                     db.commit()
@@ -140,36 +110,26 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
                     db.close()
 
                 # --- 📡 WebSocket 推送给前端 ---
-                payload = {
-                    "type": "sweep_progress",
-                    "current": current_step,
-                    "total": total_steps,
-                    "data": result_data
-                }
+                payload = {"type": "sweep_progress", "current": current_step, "total": total_steps, "data": result_data}
                 asyncio.run_coroutine_threadsafe(ws_manager.send_to_task(json.dumps(payload), task_id), loop)
 
         finally:
             project.close()
 
-        # 5. 全部扫描完成收尾
+        # 5. 收尾逻辑保持不变 ...
         db = SessionLocal()
-        # ✨ 根据真实 flag 动态决定落库状态是 stopped 还是 completed
         final_status = "stopped" if task_status_flags.get(task_id) == "stopped" else "completed"
         db.query(Task).filter(Task.id == task_id).update({"status": final_status})
         db.commit()
         db.close()
         if task_id in task_status_flags: task_status_flags[task_id] = final_status
 
-        # 根据状态推送不同的结束文案给前端
         if final_status == "completed":
             asyncio.run_coroutine_threadsafe(
-                ws_manager.send_to_task(json.dumps({"type": "finish", "message": "✅ 网格扫参任务全部圆满完成！"}),
-                                        task_id),
-                loop)
+                ws_manager.send_to_task(json.dumps({"type": "finish", "message": "✅ 网格扫参圆满完成！"}), task_id), loop)
         else:
             asyncio.run_coroutine_threadsafe(
-                ws_manager.send_to_task(json.dumps({"type": "error", "message": "🛑 扫参任务已中断"}), task_id),
-                loop)
+                ws_manager.send_to_task(json.dumps({"type": "error", "message": "🛑 扫参任务已中断"}), task_id), loop)
 
     except Exception as e:
         db = SessionLocal()
@@ -177,10 +137,8 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
         db.commit()
         db.close()
         if task_id in task_status_flags: task_status_flags[task_id] = "error"
-
         err_msg = f"引擎异常中断: {str(e)}"
         print(f"[{task_id}] ❌ {err_msg}")
-        asyncio.run_coroutine_threadsafe(
-            ws_manager.send_to_task(json.dumps({"type": "error", "message": err_msg}), task_id), loop)
+        asyncio.run_coroutine_threadsafe(ws_manager.send_to_task(json.dumps({"type": "error", "message": err_msg}), task_id), loop)
     finally:
-        cst_env.close()
+        if cst_env: cst_env.close()
