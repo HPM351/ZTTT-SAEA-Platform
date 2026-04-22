@@ -849,38 +849,50 @@ const fetchHardwareStatus = async () => {
 // 模块 2: 最近任务逻辑 (DataTable)
 // ==========================================
 const taskColumns = [
-  { title: "任务名称", key: "name", width: 150 },
+  { 
+    title: "任务名称", 
+    key: "name", 
+    width: 170,
+    render(row) {
+      // ✨ 动态渲染任务类型的彩色标签
+      const typeMap = { 
+        opt: { type: 'success', label: '联合优化' }, 
+        sweep: { type: 'info', label: '网格扫参' }, 
+        nn: { type: 'warning', label: '在线学习' } 
+      };
+      const t = typeMap[row.type] || { type: 'default', label: '未知' };
+      
+      return h('div', { style: 'display: flex; flex-direction: column; gap: 6px; align-items: flex-start;' }, [
+        h('span', { style: 'font-weight: 600;' }, row.name),
+        h(NTag, { size: 'tiny', type: t.type, bordered: false }, { default: () => t.label })
+      ]);
+    }
+  },
   {
     title: "状态",
     key: "status",
-    width: 100,
+    width: 90,
     render(row) {
-      const typeMap = { running: "info", completed: "success", error: "error" };
-      const textMap = {
-        running: "运行中",
-        completed: "已完成",
-        error: "异常中断",
-      };
+      const typeMap = { running: "info", completed: "success", error: "error", stopped: "warning" };
+      const textMap = { running: "运行中", completed: "已完成", error: "异常中断", stopped: "已停止" };
       return h(
         NTag,
-        {
-          type: typeMap[row.status] || "default",
-          bordered: false,
-          size: "small",
-        },
+        { type: typeMap[row.status] || "default", bordered: false, size: "small" },
         { default: () => textMap[row.status] || row.status },
       );
     },
   },
   {
-    title: "演化进度 (Gen)",
+    title: "总体进度 (Progress)",
     key: "progress",
     render(row) {
-      if (row.status === "error")
-        return h("span", { style: "color: #ef4444" }, "已停止");
+      if (row.status === "error") return h("span", { style: "color: #ef4444; font-size: 13px;" }, "异常中断");
+      if (row.status === "stopped") return h("span", { style: "color: #f59e0b; font-size: 13px;" }, "手动终止");
+      
+      const pct = row.totalGen ? Math.round((row.currentGen / row.totalGen) * 100) : 0;
       return h(NProgress, {
         type: "line",
-        percentage: Math.round((row.currentGen / row.totalGen) * 100),
+        percentage: pct > 100 ? 100 : pct,
         indicatorPlacement: "inside",
         processing: row.status === "running",
       });
@@ -889,7 +901,7 @@ const taskColumns = [
   {
     title: "操作",
     key: "actions",
-    width: 100,
+    width: 110,
     render(row) {
       return h(
         NButton,
@@ -898,8 +910,11 @@ const taskColumns = [
           secondary: true,
           type: "primary",
           onClick: () => {
-            message.info(`正在跳转任务：${row.name}`);
-            goToPage("CstOpt");
+            message.info(`正在前往 ${row.name} 工作台...`);
+            // ✨ 核心机制：智能路由分发
+            if (row.type === 'sweep') goToPage("CstSweep");
+            else if (row.type === 'nn') goToPage("NeuralNet");
+            else goToPage("CstOpt");
           },
         },
         { default: () => "进入工作台" },
@@ -912,14 +927,12 @@ const recentTasks = ref([]);
 
 const fetchRecentTasks = async () => {
   try {
-    const res = await axios.get(`${API_BASE}/recent_tasks`);
+    // ✨ 新增参数：请求获取所有类型任务
+    const res = await axios.get(`${API_BASE}/recent_tasks?task_type=all`);
     if (res.data.status === "success") {
-      // ✨ 1. 读取本地缓存的“视觉黑名单”
       const hiddenTaskIds = JSON.parse(
         localStorage.getItem("zttt_hidden_tasks") || "[]",
       );
-
-      // ✨ 2. 过滤掉被隐藏的任务，只显示没被隐藏的
       recentTasks.value = res.data.tasks.filter(
         (t) => !hiddenTaskIds.includes(t.id),
       );

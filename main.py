@@ -169,55 +169,60 @@ class LoadConfigRequest(BaseModel):
 
 @app.get("/api/get_task_data/{task_id}")
 async def get_task_data(task_id: str):
-    """供前端刷新页面时，一键恢复所有历史数据（包括波形）"""
+    """供前端刷新页面时，一键恢复所有历史数据（兼容扫参的无趋势与 SAEA 的全趋势）"""
     db = SessionLocal()
     try:
-        # 1. 恢复折线图 (Generations)
+        # 🌟 1. 恢复折线图 (Generations - 专供 SAEA 优化页面)
         gens = db.query(Generation).filter(Generation.task_id == task_id).order_by(Generation.gen_index).all()
-        trend_data = {
-            "axis": [g.gen_index for g in gens],
-            "eff": [g.best_eff for g in gens],
-            "power": [g.best_power / 1e6 for g in gens],  # 数据库里是 W，转回 MW 给前端
-            "freq": [g.best_freq for g in gens]
-        }
+        trend_data = {}
+        if gens:
+            trend_data["axis"] = [g.gen_index for g in gens]
+            trend_data["score"] = [g.best_score for g in gens]
 
-        # 2. 恢复散点图 (Individuals)
+            # 动态探查当前任务到底有哪些指标，然后拼成数组
+            all_metric_keys = set()
+            for g in gens:
+                if g.best_metrics_json:
+                    all_metric_keys.update(g.best_metrics_json.keys())
+
+            # 动态组装每条曲线的数据，例如 trend_data['Power'] = [10, 20, 30...]
+            for k in all_metric_keys:
+                trend_data[k] = [g.best_metrics_json.get(k, 0.0) if g.best_metrics_json else 0.0 for g in gens]
+
+        # 🌟 2. 恢复散点图与波形的基础数据 (Individuals)
         inds = db.query(Individual).filter(Individual.task_id == task_id).all()
-        scatter_data = []
-        for ind in inds:
-            scatter_data.append({
-                "gen": ind.gen_index, "ind": ind.ind_index,
-                "value": [ind.power_val / 1e6, ind.eff_val, ind.score],
-                "params": ind.params_json
-            })
-
-        # 3. 恢复波形池 (Waveforms)
         waves = db.query(Waveform).filter(Waveform.task_id == task_id).all()
-        all_data_pool = {}
-        for w in waves:
-            if w.gen_index not in all_data_pool:
-                all_data_pool[w.gen_index] = {}
+        waves_map = {w.individual_id: w for w in waves}
 
-            all_data_pool[w.gen_index][w.ind_index] = {
-                "power": w.power_wave,
-                "eff": w.eff_wave,
-                "fft": w.fft_wave,
-                "mainMode": w.main_mode_wave,
-                # 兼容你前端的简易读取逻辑
-                "params": next((i.params_json for i in inds if i.id == w.individual_id), {})
+        all_data_pool = {}
+        for ind in inds:
+            gen_str = str(ind.gen_index)
+            ind_str = str(ind.ind_index)
+
+            if gen_str not in all_data_pool:
+                all_data_pool[gen_str] = {}
+
+            w = waves_map.get(ind.id)
+            waves_json = w.waves_json if w and w.waves_json else {}
+
+            all_data_pool[gen_str][ind_str] = {
+                "id": ind.id,
+                "params": ind.params_json or {},
+                "metrics": ind.metrics_json or {},
+                "waves": waves_json,
+                "score": ind.score
             }
 
         task = db.query(Task).filter(Task.id == task_id).first()
 
         return {
             "status": "success",
-            "trend_data": trend_data,
-            "scatter_data": scatter_data,
-            "all_data_pool": all_data_pool,
-            "config_json": task.config_json if task else None  # ✨ 核心：把配置吐给前端
+            "trend_data": trend_data,  # ✨ SAEA 优化页面的救命草
+            "all_data_pool": all_data_pool,  # ✨ 散点图和波形台的数据池
+            "config_json": task.config_json if task else None
         }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": f"后端解析数据失败: {str(e)}"}
     finally:
         db.close()
 
@@ -416,41 +421,59 @@ def get_system_status():
 
 
 @app.get("/api/recent_tasks")
-def get_recent_tasks(task_type: str = Query("opt", description="任务类型: opt 或 sweep")):
-    """从数据库读取最近的 5 次历史任务及其真实进度 (支持类型隔离)"""
+def get_recent_tasks(task_type: str = Query("all", description="任务类型: all, opt, sweep 或 nn")):
+    """从数据库读取最近的 5 次历史任务及其真实进度 (智能兼容全类型)"""
     db = SessionLocal()
     try:
-        # 🌟 核心隔离逻辑：通过 ID 前缀区分任务类型
         query = db.query(Task)
+        # 根据请求隔离类型，如果是 all 则全盘扫描
         if task_type == "sweep":
             query = query.filter(Task.id.like("sweep_%"))
-        else:
+        elif task_type == "opt":
             query = query.filter(Task.id.like("sim_%"))
+        elif task_type == "nn":
+            query = query.filter(Task.id.like("nn_%"))
 
         tasks = query.order_by(desc(Task.created_at)).limit(5).all()
 
         result = []
         for t in tasks:
-            max_gen = db.query(func.max(Generation.gen_index)).filter(Generation.task_id == t.id).scalar() or 0
-            max_score = db.query(func.max(Generation.best_score)).filter(Generation.task_id == t.id).scalar()
+            is_sweep = t.id.startswith("sweep_")
+            is_nn = t.id.startswith("nn_")
 
-            total_gen = 50
-            if t.config_json and 'algo' in t.config_json:
-                total_gen = t.config_json['algo'].get('nGen', 50)
+            # ✨ 1. 动态界定当前任务属于哪条业务线
+            task_category = "sweep" if is_sweep else ("nn" if is_nn else "opt")
 
-            # 如果是扫参任务，总进度读取 sweepVars 计算
-            if task_type == "sweep" and t.config_json:
-                sweep_vars = [v for v in t.config_json.get('paramsList', []) if v.get('isSweep')]
-                total_gen = 1
-                for v in sweep_vars:
-                    total_gen *= int(v.get('points', 1))
+            # ✨ 2. 智能提取当前进度 (Current Progress)
+            if is_sweep:
+                # 扫参任务没有 Generation，进度等于跑完的个体数 (ind_index)
+                current_progress = db.query(func.max(Individual.ind_index)).filter(
+                    Individual.task_id == t.id).scalar() or 0
+                max_score = None  # 扫参无冠军分数
+            else:
+                # 优化与在线学习，进度看已完成的代数 (gen_index)
+                current_progress = db.query(func.max(Generation.gen_index)).filter(
+                    Generation.task_id == t.id).scalar() or 0
+                max_score = db.query(func.max(Generation.best_score)).filter(Generation.task_id == t.id).scalar()
+
+            # ✨ 3. 智能计算总任务量 (Total Progress)
+            total_progress = 50
+            if t.config_json:
+                if is_sweep:
+                    sweep_vars = [v for v in t.config_json.get('paramsList', []) if v.get('isSweep')]
+                    total_progress = 1
+                    for v in sweep_vars:
+                        total_progress *= int(v.get('points', 1))
+                elif 'algo' in t.config_json:
+                    total_progress = t.config_json['algo'].get('nGen', 50)
 
             result.append({
                 "id": t.id,
                 "name": t.name,
                 "status": t.status,
-                "currentGen": max_gen,
-                "totalGen": total_gen,
+                "type": task_category,  # 告诉前端这是什么任务
+                "currentGen": current_progress,
+                "totalGen": total_progress,
                 "bestEff": f"Score: {max_score:.2e}" if max_score is not None else "--"
             })
         return {"status": "success", "tasks": result}

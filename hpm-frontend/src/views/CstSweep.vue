@@ -449,30 +449,36 @@
           <div class="card-header">
             <span class="card-title">多维结果分布 (散点映射)</span>
             <n-space align="center" :size="12">
-              <n-select
-                v-model:value="scatterConfig.xAxis"
-                :options="axisOptions"
-                size="small"
-                style="width: 150px"
-                placeholder="X轴"
-                @update:value="refreshScatterChart"
-              />
-              <n-select
-                v-model:value="scatterConfig.yAxis"
-                :options="axisOptions"
-                size="small"
-                style="width: 150px"
-                placeholder="Y轴"
-                @update:value="refreshScatterChart"
-              />
-              <n-select
-                v-model:value="scatterConfig.color"
-                :options="axisOptions"
-                size="small"
-                style="width: 150px"
-                placeholder="颜色轴"
-                @update:value="refreshScatterChart"
-              />
+              <n-input-group>
+                <n-input-group-label size="small">X轴</n-input-group-label>
+                <n-select
+                  v-model:value="scatterConfig.xAxis"
+                  :options="axisOptions"
+                  size="small"
+                  style="width: 130px"
+                  @update:value="refreshScatterChart"
+                />
+              </n-input-group>
+              <n-input-group>
+                <n-input-group-label size="small">Y轴</n-input-group-label>
+                <n-select
+                  v-model:value="scatterConfig.yAxis"
+                  :options="axisOptions"
+                  size="small"
+                  style="width: 130px"
+                  @update:value="refreshScatterChart"
+                />
+              </n-input-group>
+              <n-input-group>
+                <n-input-group-label size="small">颜色轴</n-input-group-label>
+                <n-select
+                  v-model:value="scatterConfig.color"
+                  :options="axisOptions"
+                  size="small"
+                  style="width: 130px"
+                  @update:value="refreshScatterChart"
+                />
+              </n-input-group>
               <n-button quaternary circle size="small" @click="toggleFullscreen"
                 ><n-icon><Maximize /></n-icon
               ></n-button>
@@ -494,10 +500,12 @@
           <div class="card-header">
             <span class="card-title">Sweep Log</span>
           </div>
-          <div class="log-window" ref="logWindowRef">
-            <div v-for="(log, i) in logs" :key="i" class="log-item">
-              <span class="log-prefix">root@sweep:~$</span
-              ><span v-html="log"></span>
+          <div style="flex: 1; position: relative;">
+            <div class="log-window" ref="logWindowRef">
+              <div v-for="(log, i) in logs" :key="i" class="log-item">
+                <span class="log-prefix">root@sweep:~$</span
+                ><span v-html="log"></span>
+              </div>
             </div>
           </div>
         </n-card>
@@ -552,26 +560,56 @@ const loadHistoricalTask = async (taskId) => {
   message.loading(`正在还原任务 [${taskId}] ...`);
   try {
     const resData = await axios.get(`${API_BASE}/get_task_data/${taskId}`);
-    if (resData.data.status === "success") {
-      const d = resData.data;
-      // 恢复表单配置
-      if (d.config_json) Object.assign(config, d.config_json);
-      // 恢复波形池
-      Object.assign(allDataPool, d.all_data_pool);
-      // 恢复散点图
-      refreshScatterChart();
-
-      // 更新进度条和当前波形指针
-      const keys = Object.keys(allDataPool);
-      if (keys.length > 0) {
-        currentSweepIdx.value = Math.max(...keys.map(Number));
-        inspectIdx.value = currentSweepIdx.value;
-        updateInspectorChart();
-      }
-      message.success("✅ 历史扫参数据已复原");
+    
+    // 拦截后端的错误报错并显示出来
+    if (resData.data.status !== "success") {
+      message.error(resData.data.message || "读取历史数据失败");
+      return;
     }
+
+    const d = resData.data;
+    
+    // 1. 恢复前端配置和图表动态坐标
+    if (d.config_json) {
+      Object.assign(config, d.config_json);
+      if (config.targetsList && config.targetsList.length > 0) {
+        const targetExists = config.targetsList.some(t => t.name === activeWaveTab.value);
+        if (!targetExists) activeWaveTab.value = config.targetsList[0].name;
+        
+        scatterConfig.xAxis = config.targetsList[0]?.name || "";
+        scatterConfig.yAxis = config.targetsList[1]?.name || config.targetsList[0]?.name || "";
+        scatterConfig.color = config.targetsList[2]?.name || config.targetsList[0]?.name || "";
+      }
+      if (config.cstPath) fetchModelPreview();
+    }
+
+    // 2. 数据入池
+    Object.keys(allDataPool).forEach(k => delete allDataPool[k]);
+    
+    // ✨ 后端已经把数据整理成了完美格式，直接剥离 gen="1" 的外壳即可
+    const pool = d.all_data_pool || {};
+    if (pool["1"]) {
+       Object.assign(allDataPool, pool["1"]);
+    } else {
+       Object.assign(allDataPool, pool);
+    }
+
+    // 3. 恢复指针和进度
+    const keys = Object.keys(allDataPool);
+    if (keys.length > 0) {
+      currentSweepIdx.value = Math.max(...keys.map(Number));
+      inspectIdx.value = currentSweepIdx.value;
+    }
+
+    await nextTick();
+    refreshScatterChart();
+    updateInspectorChart();
+    
+    message.success("✅ 历史扫参数据已无损复原");
+    
   } catch (err) {
-    message.error("恢复数据时发生错误");
+    message.error("网络异常，数据恢复失败");
+    console.error(err);
   }
 };
 
@@ -613,7 +651,8 @@ const saveConfig = async () => {
       message.success("扫参配置已保存！");
     }
   } catch (err) {
-    message.error("保存失败，请检查后端状态。");
+    const detail = err.response?.data?.detail || err.response?.data?.message || err.message;
+    message.error(`保存失败: ${detail}`);
   }
 };
 
@@ -725,10 +764,21 @@ const getGridColor = () =>
   isDarkMode.value ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.1)";
 
 const initCharts = () => {
-  if (inspectorChartRef.value)
+  if (inspectorChartRef.value) {
     inspectorChart = echarts.init(inspectorChartRef.value);
+  }
   if (scatterChartRef.value) {
     scatterChart = echarts.init(scatterChartRef.value);
+    
+    // 监听散点图点击事件，联动波形台
+    scatterChart.on('click', (params) => {
+      if (params.data && params.data.id) {
+        inspectIdx.value = Number(params.data.id);
+        updateInspectorChart();
+        message.info(`已切换至扫描点 ID: ${params.data.id}`);
+      }
+    });
+    
     refreshScatterChart();
   }
 };
@@ -756,18 +806,23 @@ const updateInspectorChart = () => {
   // 3. 动态配置坐标轴名称
   let xName = "Time / Freq";
   let yName = "Amplitude";
+  let multiplier = 1;
   
   // 自动从动态目标列表中查找当前激活的 Tab 配置
   const currentTargetConfig = config.targetsList.find(t => t.name === activeWaveTab.value);
   if (currentTargetConfig) {
-      yName = currentTargetConfig.display || currentTargetConfig.name;
-      // 如果提取规则是频域，X轴自动改成频率
       if (currentTargetConfig.extractMethod === 'freq_peak') {
+          // ✨ 频域专属逻辑：横轴定死为频率，纵轴强行修正为幅度，防止名字打架
           xName = "Frequency (GHz)";
+          yName = "幅度 (Amplitude)"; 
       } else {
+          // ✨ 时域常规逻辑：横轴为时间，纵轴读取你设置的显示名（如：功率(MW)）
           xName = "Time (ns)";
+          yName = currentTargetConfig.display || currentTargetConfig.name;
       }
+      multiplier = currentTargetConfig.multiplier || 1;
   }
+  const scaledY = wave.y.map(val => val * multiplier);
 
   // 4. 组装 ECharts 渲染参数 (与优化界面保持一致的霓虹绿渐变风格)
   const option = {
@@ -794,7 +849,7 @@ const updateInspectorChart = () => {
     series: [
       {
         type: "line",
-        data: wave.y,
+        data: scaledY,
         smooth: true,
         showSymbol: false,
         lineStyle: { width: 2, color: "#10b981" }, // 主题绿
@@ -1167,17 +1222,25 @@ onMounted(async () => {
 
               if (d.config_json) Object.assign(config, d.config_json);
 
-              Object.assign(allDataPool, d.all_data_pool);
-
-              // 扫参的数据全部挂在 gen=1 下面，恢复当前扫描进度
-              if (allDataPool[1]) {
-                const keys = Object.keys(allDataPool[1]);
-                if (keys.length > 0) {
-                  currentSweepIdx.value = Math.max(...keys.map(Number));
-                  inspectIdx.value = currentSweepIdx.value;
+              // 1. 清空旧数据并解包
+              Object.keys(allDataPool).forEach(k => delete allDataPool[k]);
+              if (d.all_data_pool) {
+                if (d.all_data_pool["1"] && !d.all_data_pool["1"].params && !d.all_data_pool["1"].metrics) {
+                  Object.assign(allDataPool, d.all_data_pool["1"]);
+                } else {
+                  Object.assign(allDataPool, d.all_data_pool);
                 }
               }
 
+              // 2. 更新最高扫参进度索引
+              const keys = Object.keys(allDataPool);
+              if (keys.length > 0) {
+                currentSweepIdx.value = Math.max(...keys.map(Number));
+                inspectIdx.value = currentSweepIdx.value;
+              }
+
+              // 3. 推迟重绘
+              await nextTick();
               refreshScatterChart();
               updateInspectorChart();
               message.success("✅ 扫描进度与波形已从数据库无损恢复！");
@@ -1412,15 +1475,17 @@ onUnmounted(() => {
   border-color: rgba(16, 185, 129, 0.3) !important;
 }
 .log-window {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   background-color: var(--n-code-color);
   padding: 12px;
   overflow-y: auto;
-  min-height: 0;
   font-family: "Consolas", monospace;
   font-size: 12px;
   color: var(--n-text-color);
   border-radius: 0 0 8px 8px;
+  word-break: break-all;
+  white-space: pre-wrap;
 }
 .log-window::-webkit-scrollbar {
   width: 6px;

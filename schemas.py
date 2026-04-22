@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 # --- 1. 变量参数模型 ---
 class ParamItem(BaseModel):
@@ -95,5 +95,11 @@ class OptimizationConfig(BaseModel):
     taskName: str
     env: EnvConfig
     paramsList: List[ParamItem]
-    targets: TargetsConfig
+    # 👇 删掉旧的 targets: TargetsConfig
+    targetsList: Optional[List[Dict[str, Any]]] = []  # ✨ 核心修复：允许接收任意结构的动态目标列表
     algo: AlgoConfig
+
+    # 允许额外字段，防止前端传了意外参数导致报错
+    model_config = {
+        "extra": "ignore"
+    }
