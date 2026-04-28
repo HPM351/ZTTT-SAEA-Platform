@@ -51,91 +51,47 @@
                   margin-bottom: 12px;
                 "
               >
-                <b>Top-K 强验证策略</b>:
-                强制验证高分个体，并结合经验回放机制微调网络。
+                <b>在线微调引擎</b>:
+                代理初筛 + CST 真实物理校验，结合经验回放机制微调网络权重。
               </div>
-              <n-form-item label="每代验证样本数 (K)">
-                <n-input-number
-                  v-model:value="config.online.kSamples"
-                  :min="1"
-                  :max="100"
-                />
-              </n-form-item>
-              <n-form-item label="📂 CST 项目路径">
+              <n-form-item label="📂 CST 项目路径 (用于真机校验)">
                 <n-input
                   v-model:value="config.online.cstPath"
                   placeholder="请输入完整的 .cst 路径"
                 />
               </n-form-item>
 
-              <div
-                v-for="(t, idx) in config.online.targetsList"
-                :key="t.name"
-                style="
-                  margin-top: 12px;
-                  padding: 12px;
-                  background: rgba(0, 0, 0, 0.2);
-                  border-radius: 8px;
-                  border: 1px solid var(--n-border-color);
-                "
-              >
-                <div
-                  style="
-                    font-size: 13px;
-                    font-weight: bold;
-                    color: #10b981;
-                    margin-bottom: 10px;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                  "
-                >
-                  <n-icon><Target /></n-icon> 物理验证指标: {{ t.display }}
-                </div>
+              <n-form-item label="任务自定义名称 (留空则自动生成)">
+                <n-input
+                  v-model:value="config.online.taskName"
+                  placeholder="例如：效率提升实验_V1"
+                />
+              </n-form-item>
 
-                <n-form-item label="CST 结果树路径" :show-feedback="false">
-                  <n-input
-                    v-model:value="t.path"
-                    size="small"
-                    placeholder="例如: Tables\1D Results\EFF"
+              <n-form-item label="历史任务恢复 (重载图表数据)">
+                <n-input-group>
+                  <n-select
+                    v-model:value="selectedHistoryTaskId"
+                    :options="historyTaskOptions"
+                    placeholder="选择历史记录..."
+                    filterable
+                    clearable
+                    style="flex: 1"
                   />
-                </n-form-item>
-
-                <n-grid :x-gap="12" style="margin-top: 10px">
-                  <n-gi :span="14">
-                    <n-form-item label="提取规则" :show-feedback="false">
-                      <n-select
-                        v-model:value="t.extractMethod"
-                        size="small"
-                        :options="[
-                          { label: '时域均值', value: 'time_mean' },
-                          { label: '频域主峰', value: 'freq_peak' },
-                          { label: '标量读取', value: '0d_scalar' },
-                        ]"
-                      />
-                    </n-form-item>
-                  </n-gi>
-                  <n-gi :span="10">
-                    <n-form-item
-                      :label="t.mode === 'target' ? '偏差门槛' : '生死下限'"
-                      :show-feedback="false"
-                    >
-                      <n-input-number
-                        v-if="t.mode !== 'target'"
-                        v-model:value="t.constraints.min"
-                        size="small"
-                        placeholder="无"
-                      />
-                      <n-input-number
-                        v-else
-                        v-model:value="t.constraints.max_diff"
-                        size="small"
-                        placeholder="无"
-                      />
-                    </n-form-item>
-                  </n-gi>
-                </n-grid>
-              </div>
+                  <n-button @click="restoreHistoryTask" secondary type="info">恢复</n-button>
+                </n-input-group>
+              </n-form-item>
+              
+              <n-button 
+                type="primary" 
+                secondary 
+                block 
+                @click="showOnlineConfigModal = true" 
+                style="margin-top: 8px; font-weight: bold;"
+              >
+                <template #icon><n-icon><Settings2 /></n-icon></template>
+                打开高级验证控制台
+              </n-button>
             </div>
             <div
               v-else
@@ -1092,6 +1048,23 @@
                 </n-card>
               </n-gi>
             </n-grid>
+            <n-card
+              v-if="config.online.enable"
+              class="chart-card"
+              size="small"
+              style="margin-top: 12px; height: 300px; flex-shrink: 0;"
+              content-style="padding: 0; display: flex; flex-direction: column;"
+            >
+              <div class="card-header">
+                <span class="card-title" style="color: #f59e0b;">
+                  <n-icon><Activity /></n-icon> 在线微调动态监控 (Surrogate Fine-tuning)
+                </span>
+                <n-button quaternary circle size="small" @click="toggleFullscreen" title="全屏查看">
+                  <n-icon><Maximize /></n-icon>
+                </n-button>
+              </div>
+              <div ref="onlineLossChartRef" class="echarts-container" style="flex: 1"></div>
+            </n-card>
           </div>
         </n-tab-pane>
 
@@ -1365,6 +1338,223 @@
         </n-tab-pane>
       </n-tabs>
     </div>
+<n-modal
+      v-model:show="showOnlineConfigModal"
+      preset="card"
+      title="⚙️ 物理验证与微调控制台"
+      :style="modalFrostedStyle"
+      :mask-style="maskFrostedStyle"
+      :bordered="false"
+      size="huge"
+    >
+      <div style="margin-bottom: 16px; padding: 14px 16px; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2);">
+        <span style="font-size: 13px; color: var(--n-text-color); line-height: 1.6;">
+          <n-icon color="#10b981" style="transform: translateY(2px); margin-right: 4px;"><Info /></n-icon>
+          <b>双轨验证机制</b>：在此配置 CST 真机校验时的提取路径与容忍底线。当代理模型的高分个体送入CST后，若触发以下红线（如时域起伏过大、频域模式不纯），将被视为无效解并执行强力惩罚，随后进入网络微调。
+        </span>
+      </div>
+
+      <n-form label-placement="top" size="small">
+        <n-grid :x-gap="24" :cols="2">
+          <n-gi>
+            <n-form-item label="每代验证样本数 (Top-K)">
+              <n-input-number v-model:value="config.online.kSamples" :min="1" :max="100">
+                <template #suffix>个个体</template>
+              </n-input-number>
+            </n-form-item>
+          </n-gi>
+        </n-grid>
+
+        <n-divider dashed>指标约束矩阵 (CST Reality Check)</n-divider>
+
+        <n-scrollbar style="max-height: 50vh; padding-right: 12px;">
+          
+          <div v-if="config.online.targetsList.length === 0" style="padding: 40px 0; display: flex; justify-content: center;">
+            <n-empty description="请先在主界面加载神经网络模型，这里将自动生成对应的物理指标约束项" />
+          </div>
+
+          <div
+            v-for="(target, index) in config.online.targetsList"
+            :key="target.name"
+            :style="{
+              marginBottom: '16px',
+              padding: '20px',
+              backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.5)',
+              borderRadius: '10px',
+              border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid rgba(0, 0, 0, 0.05)',
+              boxShadow: isDarkMode ? 'inset 0 1px 1px rgba(255, 255, 255, 0.03)' : '0 2px 12px rgba(0, 0, 0, 0.02)'
+            }"
+          >
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div style="font-size: 14px; font-weight: bold; color: #10b981; display: flex; align-items: center; gap: 6px;">
+              <n-icon><Target /></n-icon> 提取目标: {{ target.display }}
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; width: 260px;">
+               <span style="font-size: 12px; color: var(--n-text-color-3); white-space: nowrap; flex-shrink: 0;">独立验证权重:</span>
+               <n-slider v-model:value="target.weight" :step="5" :min="0" :max="100" style="flex: 1;" />
+               <span style="color: #10b981; font-weight: bold; font-size: 13px; width: 45px; text-align: right; white-space: nowrap; flex-shrink: 0;">{{ target.weight }}%</span>
+            </div>
+          </div>
+
+            <n-grid :x-gap="16" :y-gap="14" :cols="2" style="margin-bottom: 16px">
+              <n-gi :span="2">
+                <n-input-group>
+                  <n-input-group-label>路径</n-input-group-label>
+                  <n-input v-model:value="target.path" placeholder="CST 结果树路径 (例如: Tables\1D Results\EFF)" />
+                </n-input-group>
+              </n-gi>
+
+              <n-gi>
+                <n-input-group>
+                  <n-input-group-label>优化模式</n-input-group-label>
+                  <n-select
+                    v-model:value="target.mode"
+                    :options="[
+                      { label: '最大化 (Maximize)', value: 'maximize' },
+                      { label: '最小化 (Minimize)', value: 'minimize' },
+                      { label: '逼近定值 (Target)', value: 'target' },
+                    ]"
+                  />
+                </n-input-group>
+              </n-gi>
+              <n-gi>
+                <n-input-group>
+                  <n-input-group-label>提取规则</n-input-group-label>
+                  <n-select
+                    v-model:value="target.extractMethod"
+                    :options="[
+                      { label: '稳态后求均值', value: 'time_mean' },
+                      { label: '寻找最大主峰', value: 'freq_peak' },
+                      { label: '读取单值标量', value: '0d_scalar' },
+                    ]"
+                  />
+                </n-input-group>
+              </n-gi>
+            </n-grid>
+
+            <div
+              style="
+                background: rgba(16, 185, 129, 0.05);
+                padding: 14px;
+                border-radius: 8px;
+                border: 1px dashed rgba(16, 185, 129, 0.3);
+                margin-bottom: 16px;
+              "
+            >
+              <div style="font-size: 13px; font-weight: bold; color: #10b981; margin-bottom: 12px;">
+                柔性归一化与基准设定
+              </div>
+              <n-grid :x-gap="20" :cols="2">
+                <n-gi>
+                  <n-input-number v-model:value="target.reference_scale" :step="1">
+                    <template #prefix><span class="text-sub" style="font-size: 13px">基准尺 (Scale)</span></template>
+                  </n-input-number>
+                </n-gi>
+                <n-gi>
+                   <n-select
+                      v-model:value="target.multiplier"
+                      filterable
+                      tag
+                      :options="[
+                        { label: '保持原值 (× 1.0)', value: 1.0 },
+                        { label: 'W → MW (× 1e-6)', value: 1e-6 },
+                        { label: '小数 → % (× 100)', value: 100.0 },
+                      ]"
+                      placeholder="量纲乘数 (如: 0.5 或 1e-3)"
+                    />
+                </n-gi>
+              </n-grid>
+
+              <n-grid
+                v-if="target.mode === 'target'"
+                :x-gap="20"
+                :cols="2"
+                style="margin-top: 12px"
+              >
+                <n-gi>
+                  <n-input-number v-model:value="target.target_val">
+                    <template #prefix><span class="text-sub" style="font-size: 13px">靶心值 (Target)</span></template>
+                  </n-input-number>
+                </n-gi>
+                <n-gi>
+                  <n-input-number v-model:value="target.tolerance" :step="0.01">
+                    <template #prefix><span class="text-sub" style="font-size: 13px">完美容差 ±</span></template>
+                  </n-input-number>
+                </n-gi>
+              </n-grid>
+            </div>
+
+            <div
+              style="
+                background: rgba(245, 158, 11, 0.05);
+                padding: 14px;
+                border-radius: 8px;
+                border: 1px dashed rgba(245, 158, 11, 0.3);
+              "
+            >
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 13px; font-weight: bold; color: #f59e0b;">刚性拦截 (触发即判为死区解)</span>
+                <n-switch v-model:value="target.constraints.enable" />
+              </div>
+
+              <div v-if="target.constraints.enable">
+                <n-grid :x-gap="16" :cols="2" :y-gap="12">
+                  <template v-if="target.mode !== 'target'">
+                    <n-gi>
+                      <n-input-number v-model:value="target.constraints.min" placeholder="无">
+                        <template #prefix><span class="text-sub" style="font-size: 13px">下限 (Min)</span></template>
+                      </n-input-number>
+                    </n-gi>
+                    <n-gi>
+                      <n-input-number v-model:value="target.constraints.max" placeholder="无">
+                        <template #prefix><span class="text-sub" style="font-size: 13px">上限 (Max)</span></template>
+                      </n-input-number>
+                    </n-gi>
+                  </template>
+                  <template v-else>
+                    <n-gi>
+                      <n-input-number v-model:value="target.constraints.max_diff" placeholder="无">
+                        <template #prefix><span class="text-sub" style="font-size: 13px">最大偏离容差 (Max Diff ±)</span></template>
+                      </n-input-number>
+                    </n-gi>
+                  </template>
+
+                  <n-gi v-if="target.extractMethod === 'time_mean'">
+                          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                             <span class="text-sub" style="font-size: 13px">波动容差模式</span>
+                             <n-switch v-model:value="target.constraints.fluc_type" checked-value="relative" unchecked-value="absolute" size="small">
+                               <template #checked>百分比(相对)</template>
+                               <template #unchecked>物理量(绝对)</template>
+                             </n-switch>
+                          </div>
+                          <n-input-number v-model:value="target.constraints.max_fluc" placeholder="无(默认不限)">
+                            <template #prefix>
+                              <span class="text-sub" style="font-size: 13px">
+                                {{ target.constraints.fluc_type === 'relative' ? '最大波动 (±%)' : '最大波动 (绝对值)' }}
+                              </span>
+                            </template>
+                          </n-input-number>
+                        </n-gi>
+                  <n-gi v-if="target.extractMethod === 'freq_peak'">
+                    <n-input-number v-model:value="target.constraints.max_side_ratio" placeholder="无(默认10%)">
+                      <template #prefix><span class="text-sub" style="font-size: 13px">最大杂模占比 (%)</span></template>
+                    </n-input-number>
+                  </n-gi>
+                </n-grid>
+              </div>
+            </div>
+          </div>
+        </n-scrollbar>
+      </n-form>
+      
+      <template #action>
+        <div style="display: flex; justify-content: flex-end; width: 100%;">
+          <n-button type="primary" size="large" @click="showOnlineConfigModal = false">
+            确认并收起
+          </n-button>
+        </div>
+      </template>
+    </n-modal>
   </div>
 </template>
 
@@ -1396,6 +1586,7 @@ import {
   Repeat,
   Grid,
   Maximize,
+  Info
 } from "lucide-vue-next";
 import * as echarts from "echarts";
 import "echarts-gl";
@@ -1441,27 +1632,47 @@ const getTooltipStyle = () => ({
 });
 
 const isRunning = ref(false);
+const currentTaskId = ref(null);
+const showOnlineConfigModal = ref(false);
 const isModelLoaded = ref(false);
 const currentModelKey = ref(null);
 const API_BASE = "/api";
 const WS_BASE = `ws://${window.location.host}/api/nn/ws`;
 const onlineLogs = ref([]);
+const modalFrostedStyle = computed(() => ({
+  width: '850px',
+  maxWidth: '95vw',
+  backgroundColor: isDarkMode.value ? 'rgba(28, 28, 32, 0.65)' : 'rgba(255, 255, 255, 0.70)',
+  backdropFilter: 'blur(24px) saturate(150%)',
+  WebkitBackdropFilter: 'blur(24px) saturate(150%)',
+  border: isDarkMode.value ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(0, 0, 0, 0.08)',
+  boxShadow: '0 16px 48px rgba(0, 0, 0, 0.25)',
+  borderRadius: '14px'
+}));
+
+// ✨ 新增：弹窗背后全屏遮罩的虚化样式
+const maskFrostedStyle = computed(() => ({
+  backgroundColor: isDarkMode.value ? 'rgba(0, 0, 0, 0.45)' : 'rgba(0, 0, 0, 0.25)',
+  backdropFilter: 'blur(6px)',
+  WebkitBackdropFilter: 'blur(6px)'
+}));
 const config = reactive({
   online: {
     enable: false,
     kSamples: 5,
     cstPath: "F:\\cst files\\ACO for report\\ACO FR.cst",
     targetsList: [],
+    taskName: "",
   },
   algo: {
     popSize: 20,
-    nGen: 30,
+    nGen: 20,
     pc: 0.7,
     pm: 0.2,
     targetFreq: 6.0,
     weights: {},
-    useAdaptiveMut: false,
-    mutPhases: [0.3, 0.7],
+    useAdaptiveMut: true,
+    mutPhases: [0.5, 0.7],
   },
 });
 const currentParams = ref([]);
@@ -1742,6 +1953,7 @@ const bestGlobalMetrics = ref({ power: null, eff: null, freq: null });
 const parallelData = []; // 平行坐标系数据
 const paretoData = []; // 帕累托散点数据
 const boxplotData = []; // 箱线图数据 (现在存储的是包含多个指标的字典数组)
+const onlineLossData = { gen: [], loss: [], error: [] };
 const boxplotTarget = ref(null); // 箱线图当前选中的下拉目标
 const localShapTarget = ref(null);
 
@@ -1812,6 +2024,7 @@ const gaugeChartRef = ref(null);
 const globalImportanceChartRef = ref(null);
 const shapWaterfallChartRef = ref(null);
 const correlationHeatmapRef = ref(null);
+const onlineLossChartRef = ref(null); // 新增图表 Ref
 let parallelChart,
   paretoChart,
   boxplotChart,
@@ -1819,7 +2032,8 @@ let parallelChart,
   gaugeChart,
   globalImportanceChart,
   shapWaterfallChart,
-  correlationHeatmapChart;
+  correlationHeatmapChart,
+  onlineLossChart; // 新增实例
 
 // ================= 基础逻辑 =================
 const getThemeColor = () =>
@@ -2011,9 +2225,63 @@ const fetchModelsList = async () => {
 };
 
 // 确保在页面加载时调用
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener("resize", handleResize);
-  fetchModelsList();
+  fetchHistoryTasks();
+  await fetchModelsList(); // ✨ 必须先拉取模型清单，否则接管时找不到模型配置
+
+  // ✨ 新增：神经网络任务抢救逻辑
+  try {
+    const resTask = await fetch(`${API_BASE}/get_running_task`);
+    const taskData = await resTask.json();
+    
+    if (resTask.ok && taskData.status === "success") {
+      const activeTaskId = taskData.task_id;
+
+      if (activeTaskId.startsWith("nn_")) {
+                dialog.info({
+                  title: "发现运行中的后台演化任务",
+                  content: `检测到代理演化任务 [${activeTaskId}] 正在后台独立运算中。是否无缝接管实时监控台？`,
+                  positiveText: "接管监控台",
+                  negativeText: "强制终止",
+                  onPositiveClick: async () => {
+                    currentTaskId.value = activeTaskId;
+                    isRunning.value = true;
+
+                    if (islandState) {
+                      islandState.NeuralNet.isRunning = true;
+                      islandState.NeuralNet.modelName = activeTaskId;
+                      islandState.NeuralNet.isOnlineLearning = true;
+                      islandState.NeuralNet.abortFn = stopOptimization;
+                    }
+
+                    // 1. 优先加载模型底座 (确保图表知道有几个维度)
+                    const possibleModelName = activeTaskId.split('_')[1];
+                    if (possibleModelName && modelRegistry.value[possibleModelName]) {
+                        currentModelKey.value = possibleModelName;
+                        await loadModel(); 
+                    }
+
+                    // 2. 恢复已有的历史数据到图表
+                    selectedHistoryTaskId.value = activeTaskId;
+                    await restoreHistoryTask();
+
+                    // 3. 连接纯监听 WebSocket 接收后续的新数据
+                    connectWebSocket(activeTaskId);
+                    message.success("✅ 成功接管后台数据引擎！");
+                  },
+                  onNegativeClick: async () => {
+                     await fetch(`${API_BASE}/stop_optimization/${activeTaskId}`, { method: 'POST' });
+                     message.success("✅ 终止指令已发送给后台引擎。");
+                     isRunning.value = false;
+                     if (islandState) islandState.NeuralNet.isRunning = false;
+                  }
+                });
+              }
+    }
+  } catch (err) {
+    console.error("检查后台任务失败:", err);
+  }
 });
 
 const loadModel = async () => {
@@ -2038,35 +2306,30 @@ const loadModel = async () => {
 
       config.algo.targetFreq = configObj.meta?.target_freq || 6.0;
 
-      config.online.targetsList = configObj.outputs.map((out) => {
+      const optTargetsCount = configObj.outputs.filter(o => !o.name.toLowerCase().includes('logit')).length;
+      const defaultWeight = Math.floor(100 / (optTargetsCount || 1));
+
+      config.online.targetsList = configObj.outputs.map((out, idx) => {
         const isFreq = out.name.toLowerCase().includes("freq");
         const isEff = out.name.toLowerCase().includes("eff");
+        const isLogit = out.name.toLowerCase().includes("logit");
 
         return {
           name: out.name,
           display: out.display,
-          path: "", // 留给用户在 UI 填写
+          path: "",
           mode: isFreq ? "target" : "maximize",
           extractMethod: isFreq ? "freq_peak" : "time_mean",
-          // 自动继承模型定义的倍率转换
-          multiplier:
-            out.scale_factor !== undefined
-              ? out.scale_factor
-              : isEff
-                ? 100.0
-                : 1.0,
-          reference_scale: isFreq
-            ? configObj.meta?.target_freq || 1.0
-            : isEff
-              ? 100.0
-              : 1.0,
-          target_val: isFreq ? configObj.meta?.target_freq || 0 : 0,
-          tolerance: isFreq ? 0.05 : 0.0,
+          weight: isLogit ? 0 : defaultWeight, // ✨ 独立权重初始化
+          // ... 其余 reference_scale 等保持不变
           constraints: {
             enable: true,
+            fluc_type: 'relative',
             min: null,
             max: null,
             max_diff: isFreq ? 0.5 : null,
+            max_fluc: null,
+            max_side_ratio: null
           },
         };
       });
@@ -2114,6 +2377,8 @@ const loadModel = async () => {
           nextTick(() => {
             initAllCharts();
             renderGlobalShap(res.importance);
+            // ✨ 核心修复：等待 Tabs 滑入动画彻底结束后，强制所有 ECharts 重新适配真实尺寸！
+            setTimeout(handleResize, 350);
           });
         });
     } else {
@@ -2156,18 +2421,20 @@ const clearParallelBrush = () => {
 const clearAllData = () => {
   // 清空 Vue 响应式数组
   currentGen.value = 0;
-  bestGlobalMetrics.value = {
-    power: null,
-    eff: null,
-    freq: null,
-    params: null,
-  };
+  bestGlobalMetrics.value = { power: null, eff: null, freq: null };
   parallelData.length = 0;
   paretoData.length = 0;
   boxplotData.length = 0;
 
+  // ✨ 核心修复：启动时彻底清空在线微调的残余数据，防止新老代数拼接到一起
+  onlineLossData.gen = [];
+  onlineLossData.loss = [];
+  onlineLossData.error = [];
+
   // 强制向 ECharts 注入空数组，覆盖残留的画面
   if (parallelChart) parallelChart.setOption({ series: [{ data: [] }] });
+  if (onlineLossChart)
+    onlineLossChart.setOption({ xAxis: { data: [] }, series: [{ data: [] }, { data: [] }] });
   if (paretoChart)
     paretoChart.setOption({
       xAxis: {
@@ -2181,6 +2448,72 @@ const clearAllData = () => {
     boxplotChart.setOption({ xAxis: { data: [] }, series: [{ data: [] }] });
 };
 
+const connectWebSocket = (taskId) => {
+  if (wsClient) wsClient.close();
+  
+  // ✨ 核心替换：连接到全新的纯监听端口
+  wsClient = new WebSocket(`ws://${window.location.host}/api/nn/ws/monitor/${taskId}`);
+
+  wsClient.onopen = () => {
+     console.log(`已成功连接数据隧道: ${taskId}`);
+     onlineLogs.value.push(`> [SYSTEM] 成功接管数据管道: ${taskId}`);
+  };
+
+  wsClient.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === "info") {
+      onlineLogs.value.push(data.message);
+      if (onlineLogs.value.length > 5) onlineLogs.value.shift();
+      return;
+    }
+    if (data.error) {
+      message.error("演化出错: " + data.error);
+      stopOptimization();
+      return;
+    }
+    if (data.status === "complete") {
+      message.success("🧬 演化完成！");
+      isRunning.value = false;
+      if (islandState) islandState.NeuralNet.isRunning = false;
+      return;
+    }
+
+    currentGen.value = data.gen;
+    if (islandState && islandState.NeuralNet.isRunning) {
+      islandState.NeuralNet.progress = Math.round((currentGen.value / config.algo.nGen) * 100);
+    }
+
+    if (data.best_global_metrics) bestGlobalMetrics.value = data.best_global_metrics;
+    if (parallelChart) parallelChart.setOption({ series: [{ data: data.parallel_data }] });
+    
+    paretoData.push(...data.pareto_data);
+    if (paretoChart) updateScatterChart();
+
+    boxplotData.push(data.boxplot_data);
+    if (boxplotChart) updateBoxplotChart();
+
+    if (data.heatmap_data) renderCorrelationHeatmap(data.heatmap_data);
+
+    if (config.online.enable && data.online_metrics) {
+      onlineLossData.gen.push(`G${data.gen}`);
+      onlineLossData.loss.push(data.online_metrics.loss);
+      onlineLossData.error.push(data.online_metrics.error);
+      
+      if (!onlineLossChart && onlineLossChartRef.value) initOnlineLossChart();
+      if (onlineLossChart) {
+        onlineLossChart.setOption({
+          xAxis: { data: onlineLossData.gen },
+          series: [{ data: onlineLossData.loss }, { data: onlineLossData.error }]
+        });
+      }
+    }
+  };
+
+  wsClient.onclose = () => {
+    isRunning.value = false;
+    if (islandState) islandState.NeuralNet.isRunning = false;
+  };
+};
 // 模拟演化流式数据生成
 const startOptimization = () => {
   if (!isModelLoaded.value) return message.warning("请先加载模型！");
@@ -2216,9 +2549,31 @@ const startOptimization = () => {
 
   // 2. 提取配置与物理边界
   const bounds = currentParams.value.map((p) => [p.min, p.max]);
+
+  // ✨ [架构师修复]：打通前后端数据契约！
+  // 强制同步左右面板的数据，确保后端 The Dreamer 引擎拿到的是用户真实调整的值
+  if (!config.online.enable) {
+    // 离线模式：以左侧简易面板的滑动条和靶心为准，强行注入到底层 targetsList
+    config.online.targetsList.forEach(t => {
+      if (config.algo.weights[t.name] !== undefined) {
+        t.weight = config.algo.weights[t.name];
+      }
+      if (t.name.toLowerCase().includes('freq')) {
+        t.target_val = config.algo.targetFreq;
+      }
+    });
+  } else {
+    // 在线模式：以高级控制台 (targetsList) 的精细配置为准，反向更新左侧 UI 保持视觉一致
+    config.online.targetsList.forEach(t => {
+      if (config.algo.weights[t.name] !== undefined) {
+        config.algo.weights[t.name] = t.weight;
+      }
+    });
+  }
+
   const wsConfig = {
     bounds: bounds,
-    param_names: currentParams.value.map((p) => p.cstName), // ✨ 必须传给后端查 CST 字典
+    param_names: currentParams.value.map((p) => p.cstName), 
     pop_size: config.algo.popSize || 20,
     n_gen: config.algo.nGen || 20,
     pc: config.algo.pc || 0.7,
@@ -2227,94 +2582,49 @@ const startOptimization = () => {
     weights: config.algo.weights,
     use_adaptive_mut: config.algo.useAdaptiveMut,
     mut_phases: config.algo.mutPhases,
-    online: config.online, // ✨ 透传完整的在线学习配置给后端
+    online: config.online,
   };
 
-  // 3. 建立 WebSocket 连接
-  // 注意：如果是线上环境，这里需要改成 wss:// 并且动态获取域名
-  wsClient = new WebSocket(`${WS_BASE}/evolve`);
-
-  wsClient.onopen = () => {
-    onlineLogs.value = []; // ✨ 每次启动时清空历史日志
-    wsClient.send(JSON.stringify(wsConfig));
-  };
-
-  wsClient.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-
-    // ✨ 拦截后端的实时终端日志
-    if (data.type === "info") {
-      onlineLogs.value.push(data.message);
-      // 保持只显示最新的 5 条，形成滚动效果
-      if (onlineLogs.value.length > 5) onlineLogs.value.shift();
-      return;
-    }
-
-    if (data.error) {
-      message.error("演化出错: " + data.error);
-      stopOptimization();
-      return;
-    }
-    if (data.status === "complete") {
-      message.success("🧬 演化完成！");
+  // ✨ 核心替换：先发送 POST 请求把配置交给后台独立线程
+  onlineLogs.value.push("> [SYSTEM] 正在下发演化配置到独立后台引擎...");
+  fetch(`${API_BASE}/nn/start_evolve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(wsConfig)
+  })
+  .then(res => res.json())
+  .then(data => {
+      if (data.status === "success") {
+          currentTaskId.value = data.task_id;
+          // 拿着后端生成的 task_id 去连接纯监听的 WebSocket
+          connectWebSocket(data.task_id);
+      } else {
+          message.error(data.message || "启动失败");
+          isRunning.value = false;
+          if (islandState) islandState.NeuralNet.isRunning = false;
+      }
+  })
+  .catch(err => {
+      message.error("请求失败，检查后端");
       isRunning.value = false;
-      if (islandState) islandState.NeuralNet.isRunning = false; // ✨ 修复结束状态
-      return;
-    }
-
-    // 更新状态文本
-    currentGen.value = data.gen;
-
-    // ✨ 驱动灵动岛进度条
-    if (islandState && islandState.NeuralNet.isRunning) {
-      islandState.NeuralNet.progress = Math.round(
-        (currentGen.value / config.algo.nGen) * 100,
-      );
-    }
-
-    if (data.best_global_metrics) {
-      bestGlobalMetrics.value = data.best_global_metrics;
-    }
-
-    // ================= 图表更新 =================
-    // 1. 平行坐标系：只显示当前代，产生流动的视觉效果
-    if (parallelChart) {
-      parallelChart.setOption({ series: [{ data: data.parallel_data }] });
-    }
-
-    // 2. 帕累托散点 / 代际群体云图
-    paretoData.push(...data.pareto_data);
-    if (paretoChart) {
-      updateScatterChart();
-    }
-
-    // 3. 收敛箱线图
-    boxplotData.push(data.boxplot_data);
-    if (boxplotChart) {
-      updateBoxplotChart(); // 交给独立的函数处理
-    }
-
-    // 4. 相关性热力图
-    renderCorrelationHeatmap(data.heatmap_data); // 👈 每一代更新热力图
-  };
-
-  wsClient.onclose = () => {
-    isRunning.value = false;
-    if (islandState) islandState.NeuralNet.isRunning = false;
-  };
+      if (islandState) islandState.NeuralNet.isRunning = false;
+  });
 };
 
 // 新代码
-const stopOptimization = () => {
-  if (wsClient) {
-    wsClient.close();
-    wsClient = null;
+const stopOptimization = async () => {
+  if (!currentTaskId.value) return;
+  message.loading("正在向后台发送急停指令...");
+  try {
+    const res = await fetch(`${API_BASE}/stop_optimization/${currentTaskId.value}`, { method: 'POST' });
+    if (res.ok) {
+      message.success("急停指令已下发！等待底层释放...");
+      onlineLogs.value.push("> [SYSTEM] 收到强制终止指令，引擎即将退出...");
+    }
+  } catch (e) {
+    message.error("急停指令下发失败，请检查后台状态");
   }
-  isRunning.value = false;
-  if (islandState) islandState.NeuralNet.isRunning = false; // ✨ 修复中断状态
-  message.info("已手动终止演化");
 };
-
 // ================= 图表初始化区 =================
 const initAllCharts = () => {
   const tc = getThemeColor();
@@ -2532,6 +2842,77 @@ const initAllCharts = () => {
       },
     });
   }
+
+  if (onlineLossChartRef.value) {
+    onlineLossChart = echarts.init(onlineLossChartRef.value);
+    onlineLossChart.setOption({
+      backgroundColor: "transparent",
+      tooltip: { trigger: 'axis', ...getTooltipStyle() },
+      legend: { data: ['反向传播 Loss', '代理预测误差 (vs CST)'], textStyle: { color: tc } },
+      grid: { top: 40, right: 60, bottom: 30, left: 60 },
+      xAxis: { type: 'category', data: [], axisLabel: { color: tc }, splitLine: { show: false } },
+      yAxis: [
+        { 
+          type: 'value', 
+          name: '训练 Loss', 
+          position: 'left', 
+          splitLine: { lineStyle: { color: gc, type: 'dashed' } }, 
+          axisLabel: { color: '#f59e0b' },
+          nameTextStyle: { color: '#f59e0b' }
+        },
+        { 
+          type: 'value', 
+          name: '预测误差', 
+          position: 'right', 
+          splitLine: { show: false }, 
+          axisLabel: { color: '#ef4444' },
+          nameTextStyle: { color: '#ef4444' }
+        }
+      ],
+      series: [
+        { name: '反向传播 Loss', type: 'line', smooth: true, itemStyle: { color: '#f59e0b' }, areaStyle: { color: 'rgba(245, 158, 11, 0.1)' }, data: [] },
+        { name: '代理预测误差 (vs CST)', type: 'line', smooth: true, yAxisIndex: 1, itemStyle: { color: '#ef4444' }, data: [] }
+      ]
+    }, true);
+  }
+};
+
+const initOnlineLossChart = () => {
+  if (!onlineLossChartRef.value || onlineLossChart) return;
+  
+  const tc = getThemeColor();
+  const gc = getGridColor();
+  
+  onlineLossChart = echarts.init(onlineLossChartRef.value);
+  onlineLossChart.setOption({
+    backgroundColor: "transparent",
+    tooltip: { trigger: 'axis', ...getTooltipStyle() },
+    legend: { data: ['反向传播 Loss', '代理预测误差 (vs CST)'], textStyle: { color: tc } },
+    grid: { top: 40, right: 60, bottom: 30, left: 60 },
+    xAxis: { type: 'category', data: [], axisLabel: { color: tc }, splitLine: { show: false } },
+    yAxis: [
+      { 
+        type: 'value', 
+        name: '训练 Loss', 
+        position: 'left', 
+        splitLine: { lineStyle: { color: gc, type: 'dashed' } }, 
+        axisLabel: { color: '#f59e0b' },
+        nameTextStyle: { color: '#f59e0b' }
+      },
+      { 
+        type: 'value', 
+        name: '预测误差', 
+        position: 'right', 
+        splitLine: { show: false }, 
+        axisLabel: { color: '#ef4444' },
+        nameTextStyle: { color: '#ef4444' }
+      }
+    ],
+    series: [
+      { name: '反向传播 Loss', type: 'line', smooth: true, itemStyle: { color: '#f59e0b' }, areaStyle: { color: 'rgba(245, 158, 11, 0.1)' }, data: [] },
+      { name: '代理预测误差 (vs CST)', type: 'line', smooth: true, yAxisIndex: 1, itemStyle: { color: '#ef4444' }, data: [] }
+    ]
+  }, true);
 };
 
 // 预测执行
@@ -2619,6 +3000,162 @@ const predictSingle = async () => {
     message.error("推演失败，检查后端连接");
   }
 };
+
+const historyTasks = ref([]);
+const selectedHistoryTaskId = ref(null);
+
+const historyTaskOptions = computed(() => {
+  return historyTasks.value
+    .filter(t => t.id.startsWith('nn_'))
+    .map(t => ({
+      label: `${t.name} (${new Date(t.created_at).toLocaleString()})`,
+      value: t.id
+    }));
+});
+
+const fetchHistoryTasks = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/tasks`);
+    const data = await res.json();
+    historyTasks.value = data;
+  } catch (e) {
+    console.error("获取历史任务失败");
+  }
+};
+
+// ✨ 核心功能：从数据库恢复数据并重新填充所有图表
+const restoreHistoryTask = async () => {
+  if (!selectedHistoryTaskId.value) return message.warning("请先选择一个历史任务");
+  const taskId = selectedHistoryTaskId.value;
+  
+  clearAllData(); // 先清空当前看板
+  message.loading("正在回溯历史演化数据...", { duration: 0 });
+
+  try {
+    // 1. 恢复微调日志图表 (Loss/Error)
+    const logRes = await fetch(`${API_BASE}/tasks/${taskId}/nn_logs`);
+    if (logRes.ok) {
+      const logData = await logRes.json();
+      
+      if (logData && logData.length > 0) {
+        // 发现存在历史微调数据，强制开启面板
+        config.online.enable = true; 
+        
+        // 等待 Vue 将 v-if 容器渲染到 DOM 中
+        await nextTick(); 
+        
+        // 补救初始化：如果图表未实例化但容器已就绪，立即初始化
+        if (!onlineLossChart && onlineLossChartRef.value) {
+          initOnlineLossChart();
+        }
+
+        logData.forEach(log => {
+          onlineLossData.gen.push(`G${log.gen_index}`);
+          onlineLossData.loss.push(log.loss);
+          onlineLossData.error.push(log.error);
+        });
+
+        // 注入数据并渲染图表
+        if (onlineLossChart) {
+          onlineLossChart.setOption({
+            xAxis: { data: onlineLossData.gen },
+            series: [{ data: onlineLossData.loss }, { data: onlineLossData.error }]
+          });
+        }
+      }
+    }
+
+    // 2. 恢复个体演化数据 (Pareto/Boxplot/Parallel)
+    const indRes = await fetch(`${API_BASE}/tasks/${taskId}/individuals`);
+    const indData = await indRes.json();
+    const inds = indData.individuals || [];
+
+    if (inds.length > 0) {
+      // 按代分组处理数据
+      const gensMap = {};
+      // 提取当前模型配置的输出头，用于对齐前端平行坐标系
+      const outputs = optimizableTargets.value || [];
+      const primaryTarget = outputs[0]?.name;
+      const secondaryTarget = outputs.length > 1 ? outputs[1]?.name : primaryTarget;
+
+      inds.forEach(ind => {
+        // 构建帕累托数据
+        const pNode = { Gen: ind.gen_index, ...ind.metrics_json };
+        paretoData.push(pNode);
+
+        // ✨ 修复 1：严格按模型要求的顺序组装平行坐标系数据
+        const pNames = currentParams.value.map(p => p.cstName);
+        const parallelRow = pNames.map(name => ind.params_json[name] || 0);
+        
+        // 补上输出指标 (顺序必须是：..., secondary, primary) 适配前端 ECharts 规则
+        if (primaryTarget) {
+            const p1 = ind.metrics_json[primaryTarget] || 0;
+            const p2 = ind.metrics_json[secondaryTarget] || 0;
+            parallelRow.push(p2, p1);
+        }
+        parallelData.push(parallelRow);
+
+        // 为箱线图分组
+        if (!gensMap[ind.gen_index]) gensMap[ind.gen_index] = {};
+        Object.keys(ind.metrics_json).forEach(mKey => {
+          if (!gensMap[ind.gen_index][mKey]) gensMap[ind.gen_index][mKey] = [];
+          gensMap[ind.gen_index][mKey].push(ind.metrics_json[mKey]);
+        });
+      });
+
+      // 填充箱线图
+      Object.keys(gensMap).sort((a, b) => a - b).forEach(gIdx => {
+        const statsDict = {};
+        
+        Object.keys(gensMap[gIdx]).forEach(mKey => {
+          const rawArr = gensMap[gIdx][mKey];
+          if (!rawArr || rawArr.length === 0) {
+            statsDict[mKey] = [0, 0, 0, 0, 0];
+            return;
+          }
+          
+          // 1. 从小到大排序
+          const sorted = [...rawArr].sort((a, b) => a - b);
+          
+          // 2. 定义百分位数计算函数 (完美对齐 NumPy percentile)
+          const calcPercentile = (p) => {
+            const idx = (sorted.length - 1) * p;
+            const lower = Math.floor(idx);
+            const upper = Math.ceil(idx);
+            const weight = idx - lower;
+            return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+          };
+
+          // 3. 压缩为 ECharts 需要的 5 维标准统计格式
+          statsDict[mKey] = [
+            sorted[0],              // Min
+            calcPercentile(0.25),   // Q1
+            calcPercentile(0.50),   // Median
+            calcPercentile(0.75),   // Q3
+            sorted[sorted.length - 1] // Max
+          ];
+        });
+        
+        boxplotData.push(statsDict);
+      });
+
+      currentGen.value = inds.length > 0 ? Math.max(...inds.map(i => i.gen_index)) : 0;
+      
+      updateScatterChart();
+      updateBoxplotChart();
+      // ✨ 修复 2：把组装好的平行坐标数据塞给图表进行重绘！
+      if (parallelChart) {
+        parallelChart.setOption({ series: [{ data: parallelData }] });
+      }
+      message.destroyAll();
+      message.success("历史数据重载完成");
+    }
+  } catch (e) {
+    message.destroyAll();
+    message.error("恢复任务失败：" + e.message);
+  }
+};
+
 
 // 生成 3D 曲面
 const generate3DScan = async () => {
@@ -2775,6 +3312,7 @@ const handleResize = () => {
     globalImportanceChart,
     shapWaterfallChart,
     correlationHeatmapChart,
+    onlineLossChart
   ].forEach((c) => c && c.resize());
 };
 

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import text
 
-from database import SessionLocal, Task, Individual, Generation, Waveform, DB_PATH
+from database import SessionLocal, Task, Individual, Generation, Waveform, NnOnlineLog, DB_PATH
 
 router = APIRouter(prefix="/api", tags=["DataCenter"])
 
@@ -102,3 +102,11 @@ def export_to_excel(task_id: str, db: Session = Depends(get_db)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={'Content-Disposition': f'attachment; filename="SAEA_Task_{task_id}.xlsx"'}
     )
+
+@router.get("/tasks/{task_id}/nn_logs")
+def get_nn_logs(task_id: str, db: Session = Depends(get_db)):
+    """获取神经网络在线微调曲线数据"""
+    logs = db.query(NnOnlineLog).filter(NnOnlineLog.task_id == task_id).order_by(NnOnlineLog.gen_index).all()
+    if not logs:
+        raise HTTPException(status_code=404, detail="未找到微调日志")
+    return [{"gen_index": log.gen_index, "loss": log.loss, "error": log.error} for log in logs]

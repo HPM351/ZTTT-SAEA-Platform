@@ -53,7 +53,7 @@ def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg
             # 将字典中的标量 (数值) 与矢量 (曲线) 自动剥离
             # =======================================================
             current_metrics = {k: v for k, v in m.items() if not k.endswith('_curve') and k != 'error'}
-            current_waves = {k: v for k, v in m.items() if k.endswith('_curve') or k == 'main_mode_curve'}
+            current_waves = {k: v for k, v in m.items() if k.endswith('_curve')}
 
             rec = {
                 "No": i + 1,
@@ -334,11 +334,57 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
                 finally:
                     db.close()
 
+                telemetry_data = {}
+                try:
+                    if algo_type == 'SAEA-GA':
+                        # GA遥测：种群多样性(基因标准差) 与 当前变异策略
+                        diversity = np.mean(np.std(Chrom, axis=0))
+                        current_pm = algo_cfg['ga']['pm']
+                        if algo_cfg['ga'].get('useAutoMut', False):
+                            r_low = algo_cfg['ga']['autoMutRange'][0] / 100.0
+                            r_high = algo_cfg['ga']['autoMutRange'][1] / 100.0
+                            if gen / n_gen <= r_low:
+                                current_pm = f"探索期(均匀变异)"
+                            elif gen / n_gen <= r_high:
+                                current_pm = f"收敛期(高斯变异)"
+                            else:
+                                current_pm = f"微调期(布列德变异)"
+                        telemetry_data = {
+                            "种群多样性 (Diversity)": f"{diversity:.4f}",
+                            "当前变异状态": str(current_pm)
+                        }
+
+                    elif algo_type == 'PSO':
+                        # PSO遥测：粒子群平均飞行速度 与 全局极值
+                        avg_vel = np.mean(np.abs(pso_V)) if pso_V is not None else 0.0
+                        telemetry_data = {
+                            "群平均速度 (Velocity)": f"{avg_vel:.4f}",
+                            "当前全局极值 (gBest)": f"{gbest_Fit:.2f}" if gbest_Fit != -np.inf else "N/A"
+                        }
+
+                    elif algo_type == 'BO':
+                        # BO遥测：当前采集函数 与 代理模型对新样本的预测不确定度(方差)
+                        model_uncertainty = "评估中..."
+                        if bo_opt and len(bo_opt.models) > 0:
+                            try:
+                                # 让高斯过程模型输出刚刚预测的这一批点的标准差(不确定度)
+                                _, std = bo_opt.models[-1].predict(bo_opt.space.transform(bo_batch), return_std=True)
+                                model_uncertainty = f"{np.mean(std):.4f}"
+                            except:
+                                pass
+                        telemetry_data = {
+                            "当前采集策略 (Acq)": current_bo_acq,
+                            "模型不确定度 (Std)": model_uncertainty
+                        }
+                except Exception as tele_e:
+                    print(f"[{task_id}] ⚠️ 遥测数据提取失败: {tele_e}")
+
                 progress_data = {
                     "type": "progress", "gen": gen, "total_gen": n_gen,
-                    "best_metrics": best_ind['metrics'],  # 🌟 终极版：下发给前端整个最优指标字典
+                    "best_metrics": best_ind['metrics'],
                     "message": f"第 {gen} 批次计算完成！{algo_type} 本轮最高得分: {best_ind['Score']:.2e}",
-                    "batch_logs": batch_logs, "waves_dict": waves_dict
+                    "batch_logs": batch_logs, "waves_dict": waves_dict,
+                    "telemetry": telemetry_data  # 🌟 终极版：挂载遥测数据推给前端
                 }
                 asyncio.run_coroutine_threadsafe(ws_manager.send_to_task(json.dumps(progress_data), task_id), loop)
 

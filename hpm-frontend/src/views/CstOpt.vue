@@ -201,7 +201,7 @@
             </transition-group>
           </n-card>
           <n-collapse :default-expanded-names="['env', 'targets', 'algo']">
-            <n-collapse-item title="🌍 全局环境与展示设置" name="env">
+            <n-collapse-item title="全局变量设置" name="env">
               <div class="inner-panel">
                 <n-grid :x-gap="24" :cols="2">
                   <n-gi>
@@ -240,46 +240,12 @@
                     </n-form-item>
                   </n-gi>
 
-                  <n-gi>
-                    <n-form-item>
-                      <template #label>
-                        主模端口路径 (波形审查用)
-                        <n-tooltip trigger="hover">
-                          <template #trigger
-                            ><span style="cursor: help; margin-left: 4px"
-                              >❔</span
-                            ></template
-                          >
-                          非优化指标，仅用于在波形审查台中渲染曲线
-                        </n-tooltip>
-                      </template>
-                      <n-input-group>
-                        <n-button
-                          :type="
-                            config.env.mainMode.enable ? 'primary' : 'default'
-                          "
-                          @click="
-                            config.env.mainMode.enable =
-                              !config.env.mainMode.enable
-                          "
-                        >
-                          {{
-                            config.env.mainMode.enable ? "读取: 开" : "读取: 关"
-                          }}
-                        </n-button>
-                        <n-input
-                          v-model:value="config.env.mainMode.path"
-                          :disabled="!config.env.mainMode.enable"
-                          style="flex: 1"
-                        />
-                      </n-input-group>
-                    </n-form-item>
-                  </n-gi>
+                  
                 </n-grid>
               </div>
             </n-collapse-item>
 
-            <n-collapse-item title="🎯 演化寻优目标 (动态)" name="targets">
+            <n-collapse-item title="演化寻优目标" name="targets">
               <template #header-extra>
                 <n-button
                   type="primary"
@@ -361,6 +327,7 @@
                             { label: '最大化 (Maximize)', value: 'maximize' },
                             { label: '最小化 (Minimize)', value: 'minimize' },
                             { label: '逼近定值 (Target)', value: 'target' },
+                            { label: '仅波形展示 (Display Only)', value: 'display_only' },
                           ]"
                         />
                       </n-input-group>
@@ -371,9 +338,9 @@
                         <n-select
                           v-model:value="target.extractMethod"
                           :options="[
-                            { label: '时域稳态求均值', value: 'time_mean' },
-                            { label: '频域找寻最大主峰', value: 'freq_peak' },
-                            { label: '直接读取单值标量', value: '0d_scalar' },
+                            { label: '稳态后求均值', value: 'time_mean' },
+                            { label: '寻找最大主峰', value: 'freq_peak' },
+                            { label: '读取单值标量', value: '0d_scalar' },
                           ]"
                         />
                       </n-input-group>
@@ -391,13 +358,14 @@
                             { label: 'W → MW (× 1e-6)', value: 1e-6 },
                             { label: '小数 → % (× 100)', value: 100.0 },
                           ]"
-                          placeholder="自定义数值"
+                          placeholder="仅限纯数字 (如: 0.5 或 1e-3)"
                         />
                       </n-input-group>
                     </n-gi>
                   </n-grid>
 
                   <div
+                    v-if="target.mode !== 'display_only'"
                     style="
                       background: rgba(16, 185, 129, 0.05);
                       padding: 14px;
@@ -414,7 +382,7 @@
                         margin-bottom: 12px;
                       "
                     >
-                      柔性归一化与加权 (角逐场)
+                      柔性归一化与加权
                     </div>
                     <n-grid :x-gap="20" :cols="2">
                       <n-gi>
@@ -474,6 +442,7 @@
                   </div>
 
                   <div
+                    v-if="target.mode !== 'display_only'"
                     style="
                       background: rgba(245, 158, 11, 0.05);
                       padding: 14px;
@@ -495,56 +464,45 @@
                           font-weight: bold;
                           color: #f59e0b;
                         "
-                        >刚性拦截网 (生死线)</span
+                        >刚性拦截</span
                       >
                       <n-switch v-model:value="target.constraints.enable" />
                     </div>
 
                     <div v-if="target.constraints.enable">
-                      <n-grid
-                        v-if="target.mode !== 'target'"
-                        :x-gap="20"
-                        :cols="2"
-                      >
-                        <n-gi>
-                          <n-input-number
-                            v-model:value="target.constraints.min"
-                            placeholder="无"
-                          >
-                            <template #prefix
-                              ><span class="text-sub" style="font-size: 13px"
-                                >下限死区 (Min)</span
-                              ></template
-                            >
-                          </n-input-number>
-                        </n-gi>
-                        <n-gi>
-                          <n-input-number
-                            v-model:value="target.constraints.max"
-                            placeholder="无"
-                          >
-                            <template #prefix
-                              ><span class="text-sub" style="font-size: 13px"
-                                >上限死区 (Max)</span
-                              ></template
-                            >
-                          </n-input-number>
-                        </n-gi>
-                      </n-grid>
+                      <n-grid :x-gap="16" :cols="2" :y-gap="12">
+                        
+                        <template v-if="target.mode !== 'target'">
+                          <n-gi>
+                            <n-input-number v-model:value="target.constraints.min" placeholder="无">
+                              <template #prefix><span class="text-sub" style="font-size: 13px">下限 (Min)</span></template>
+                            </n-input-number>
+                          </n-gi>
+                          <n-gi>
+                            <n-input-number v-model:value="target.constraints.max" placeholder="无">
+                              <template #prefix><span class="text-sub" style="font-size: 13px">上限 (Max)</span></template>
+                            </n-input-number>
+                          </n-gi>
+                        </template>
+                        <template v-else>
+                          <n-gi>
+                            <n-input-number v-model:value="target.constraints.max_diff" placeholder="无">
+                              <template #prefix><span class="text-sub" style="font-size: 13px">最大偏离容差 (Max Diff ±)</span></template>
+                            </n-input-number>
+                          </n-gi>
+                        </template>
 
-                      <n-grid v-else :x-gap="20" :cols="1">
-                        <n-gi>
-                          <n-input-number
-                            v-model:value="target.constraints.max_diff"
-                            placeholder="无"
-                          >
-                            <template #prefix
-                              ><span class="text-sub" style="font-size: 13px"
-                                >最大允许偏离差值 (Max Diff ±)</span
-                              ></template
-                            >
+                        <n-gi v-if="target.extractMethod === 'time_mean'">
+                          <n-input-number v-model:value="target.constraints.max_fluc" placeholder="无(默认不限)">
+                            <template #prefix><span class="text-sub" style="font-size: 13px">最大波动容差 (±%)</span></template>
                           </n-input-number>
                         </n-gi>
+                        <n-gi v-if="target.extractMethod === 'freq_peak'">
+                          <n-input-number v-model:value="target.constraints.max_side_ratio" placeholder="无(默认10%)">
+                            <template #prefix><span class="text-sub" style="font-size: 13px">最大杂模占比 (%)</span></template>
+                          </n-input-number>
+                        </n-gi>
+
                       </n-grid>
                     </div>
                   </div>
@@ -1123,12 +1081,7 @@
                     {{ target.name }}
                   </n-radio-button>
 
-                  <n-radio-button
-                    v-if="config.env.mainMode.enable"
-                    value="mainMode"
-                  >
-                    主模波形
-                  </n-radio-button>
+                  
                 </n-radio-group>
               </n-space>
 
@@ -1199,7 +1152,7 @@
                   :key="k"
                   size="small"
                   type="info"
-                  bordered="false"
+                  :bordered="false"
                   style="
                     font-family: monospace;
                     font-size: 13px;
@@ -1240,6 +1193,29 @@
         >
           <div class="card-header">
             <span class="card-title">Engine Log</span>
+            <transition name="fade">
+              <n-space
+                v-if="isRunning && Object.keys(telemetryData).length > 0"
+                size="small"
+                align="center"
+              >
+                <span
+                  class="text-sub"
+                  style="font-size: 12px; font-family: monospace"
+                  >[动态遥测]</span
+                >
+                <n-tag
+                  v-for="(val, key) in telemetryData"
+                  :key="key"
+                  type="info"
+                  size="small"
+                  :bordered="false"
+                  style="font-family: monospace; font-weight: bold"
+                >
+                  {{ key }}: {{ val }}
+                </n-tag>
+              </n-space>
+            </transition>
           </div>
           <div class="log-window" ref="logWindowRef">
             <div v-for="(log, index) in logs" :key="index" class="log-item">
@@ -1305,37 +1281,38 @@
           style="flex: 45"
           content-style="padding: 0; display: flex; flex-direction: column;"
         >
-          <div class="card-header">
-            <span class="card-title"
-              >帕累托散点云图
-              <span style="font-size: 12px" class="text-sub"
-                >(红:高分 | 蓝:低分)</span
-              ></span
-            >
-            <n-space align="center">
-              <span class="text-sub" style="font-size: 12px">得分底线:</span>
-              <n-slider
-                v-model:value="scatterFilterScore"
-                :min="-1000"
-                :max="500"
-                :step="10"
-                style="width: 80px"
-                @update:value="refreshScatterFilter"
-              />
-              <span
-                style="font-size: 12px; font-weight: bold"
-                class="text-neon-green"
-                >{{ scatterFilterScore }} 分</span
-              >
-              <n-button
-                quaternary
-                circle
-                size="small"
-                @click="toggleFullscreen"
-                title="全屏查看"
-                ><n-icon><Maximize /></n-icon
-              ></n-button>
-            </n-space>
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 24px 16px 16px;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <n-space align="center">
+                <span class="card-title">多维结果分布 (散点映射)</span>
+                <n-button quaternary circle size="small" @click="toggleFullscreen" title="全屏查看">
+                  <n-icon><Maximize /></n-icon>
+                </n-button>
+              </n-space>
+              
+              <n-space align="center" :size="12">
+                <span class="text-sub" style="font-size: 12px">过滤底线:</span>
+                <n-slider v-model:value="scatterFilterScore" :min="scatterSliderMin" :max="scatterSliderMax" :step="1" style="width: 120px" @update:value="refreshScatterFilter" />
+                <span style="font-size: 13px; font-weight: bold; width: 65px; display: inline-block; text-align: left;" class="text-neon-green">{{ scatterFilterScore }}</span>
+              </n-space>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px; width: 185px;">
+              <n-input-group style="display: flex; width: 100%">
+                <n-input-group-label size="small" style="width: 48px; justify-content: center;">X轴</n-input-group-label>
+                <n-select v-model:value="scatterConfig.xAxis" :options="axisOptions" size="small" style="flex: 1;" @update:value="refreshScatterFilter" />
+              </n-input-group>
+              
+              <n-input-group style="display: flex; width: 100%">
+                <n-input-group-label size="small" style="width: 48px; justify-content: center;">Y轴</n-input-group-label>
+                <n-select v-model:value="scatterConfig.yAxis" :options="axisOptions" size="small" style="flex: 1;" @update:value="refreshScatterFilter" />
+              </n-input-group>
+              
+              <n-input-group style="display: flex; width: 100%">
+                <n-input-group-label size="small" style="width: 48px; justify-content: center;">颜色</n-input-group-label>
+                <n-select v-model:value="scatterConfig.color" :options="axisOptions" size="small" style="flex: 1;" @update:value="refreshScatterFilter" />
+              </n-input-group>
+            </div>
           </div>
           <div style="flex: 1; position: relative; min-width: 0; min-height: 0">
             <div
@@ -1447,11 +1424,6 @@ const config = reactive({
   cstPath: "F:\\cst files\\ACO for report\\ACO FR.cst",
   selectedHistoryTask: null,
   taskName: "Run_001",
-  env: {
-    useStableTime: true, // 新增：稳态时间提取开关
-    stableTime: 20.0,
-    mainMode: { enable: true, path: "1D Results\\Port signals\\o2(1),pic" }, // 主模移到这里
-  },
   paramsList: [
     {
       id: generateId(),
@@ -1503,6 +1475,8 @@ const config = reactive({
         min: 15.0,
         max: null,
         max_diff: null,
+        max_fluc: 5.0, // ✨ 新增：时域稳态波动容差 (%)
+        max_side_ratio: null, // ✨ 新增：频域杂模比 (%)
       },
     },
     {
@@ -1521,12 +1495,13 @@ const config = reactive({
         min: null,
         max: null,
         max_diff: 0.5,
+        max_side_ratio: 10.0,
       },
     },
   ],
-  // 保留主模等仅用于展示的路径
-  displayPaths: {
-    mainMode: { enable: true, path: "1D Results\\Port signals\\o2(1),pic" },
+  env: {
+    useStableTime: true,
+    stableTime: 20.0,
   },
   algo: {
     type: "SAEA-GA", // 新增：默认选中的核心算法
@@ -1575,7 +1550,14 @@ const addTarget = () => {
     weight: 1.0,
     target_val: 0.0,
     tolerance: 0.0,
-    constraints: { enable: false, min: null, max: null, max_diff: null },
+    constraints: {
+      enable: false,
+      min: null,
+      max: null,
+      max_diff: null,
+      max_fluc: null,
+      max_side_ratio: null,
+    },
   });
 };
 
@@ -1610,12 +1592,25 @@ const tryLoadConfig = async (path) => {
 
       // 合并全局环境设置
       if (saved.env) {
-        config.env = { ...config.env, ...saved.env };
+        config.env = {
+          ...config.env,
+          ...saved.env
+        };
       }
 
       if (saved.targetsList && Array.isArray(saved.targetsList)) {
-        // 直接用后端的动态目标数组覆盖当前前端的配置
-        config.targetsList = saved.targetsList;
+        // 覆盖目标，并为旧版本数据主动补全可能缺失的 constraints 等深层字段
+        config.targetsList = saved.targetsList.map((t) => ({
+          ...t,
+          constraints: t.constraints || {
+            enable: false,
+            min: null,
+            max: null,
+            max_diff: null,
+            max_fluc: null,
+            max_side_ratio: null,
+          },
+        }));
       }
 
       // ✨ 最关键的修复点：合并算法配置
@@ -1746,6 +1741,9 @@ const bestMetrics = reactive({});
 const logs = ref(["[SYSTEM] WAITING FOR SAEA TASKS."]);
 const logWindowRef = ref(null);
 
+// ✨ 新增：用于存储后端传来的算法遥测特征数据
+const telemetryData = reactive({});
+
 const modelImageUrl = ref("");
 const isFetchingImage = ref(false);
 
@@ -1791,7 +1789,9 @@ const trendChartRef = ref(null);
 let inspectorChart = null;
 let scatterChart = null;
 let trendChart = null;
-
+let inspectorResizeObserver = null;
+let scatterResizeObserver = null;
+let trendResizeObserver = null;
 const initCharts = () => {
   // ✨ 直接使用响应式的主题颜色函数
   const textColor = getThemeColor();
@@ -1803,11 +1803,21 @@ const initCharts = () => {
 
   // 1. 波形审查台
   if (inspectorChartRef.value) {
+    if (inspectorChart) { echarts.dispose(inspectorChartRef.value); } // ✨ 销毁旧实例
     inspectorChart = echarts.init(inspectorChartRef.value);
+    if (!inspectorResizeObserver) {
+      inspectorResizeObserver = new ResizeObserver(() => { if (inspectorChart) inspectorChart.resize(); });
+      inspectorResizeObserver.observe(inspectorChartRef.value);
+    }
   }
   // 2. 帕累托散点云图
   if (scatterChartRef.value) {
+    if (scatterChart) { echarts.dispose(scatterChartRef.value); } // ✨ 销毁旧实例
     scatterChart = echarts.init(scatterChartRef.value);
+    if (!scatterResizeObserver) {
+      scatterResizeObserver = new ResizeObserver(() => { if (scatterChart) scatterChart.resize(); });
+      scatterResizeObserver.observe(scatterChartRef.value);
+    }
 
     // 动态提取 X 和 Y 轴（如果只有一个目标，X轴退化为得分）
     const xName = config.targetsList[0]?.name || "指标1";
@@ -1820,9 +1830,9 @@ const initCharts = () => {
         feature: {
           dataZoom: {
             yAxisIndex: "none",
-            title: { zoom: "区域缩放", back: "还原" },
-          },
-          restore: { title: "还原" },
+            title: { zoom: "区域缩放", back: "取消缩放" }, // ✨ 改个更明确的名字
+          }
+          // ✨ 彻底删除了坑人的 restore 功能
         },
         right: 15,
         top: 10,
@@ -1872,7 +1882,7 @@ const initCharts = () => {
 
           return `<div style="font-family: monospace;">
                     <b>Gen ${d[3]} - No.${d[4]}</b><br/>
-                    Score: <span style="color:#ef4444">${d[2].toFixed(2)}</span><br/>
+                    Score: <span style="color:#ef4444">${Number(d[7]).toFixed(2)}</span><br/>
                     <hr style="margin:4px 0; border:0; border-top:1px dashed rgba(255,255,255,0.2)" />
                     ${metricsHtml}
                     <hr style="margin:4px 0; border:0; border-top:1px dashed rgba(255,255,255,0.2)" />
@@ -1881,7 +1891,7 @@ const initCharts = () => {
                   </div>`;
         },
       },
-      grid: { top: 30, right: 80, bottom: 40, left: 50 },
+      grid: { top: 30, right: 80, bottom:55, left: 50 },
       xAxis: {
         type: "value",
         name: xName,
@@ -1901,7 +1911,7 @@ const initCharts = () => {
         orient: "vertical",
         right: 15,
         top: 60,
-        text: ["高分", "低分"],
+        text: ["Max", "Min"],
         textStyle: { color: textColor },
         calculable: true,
         min: "dataMin",
@@ -1930,7 +1940,7 @@ const initCharts = () => {
           data: [],
         },
       ],
-    });
+    },true);
 
     scatterChart.on("click", function (params) {
       autoTrackLatest.value = false;
@@ -1944,7 +1954,12 @@ const initCharts = () => {
   // 3. 代数最优收敛趋势图 (动态多Y轴)
   // ==========================================
   if (trendChartRef.value) {
+    if (trendChart) { echarts.dispose(trendChartRef.value); } // ✨ 销毁旧实例
     trendChart = echarts.init(trendChartRef.value);
+    if (!trendResizeObserver) {
+      trendResizeObserver = new ResizeObserver(() => { if (trendChart) trendChart.resize(); });
+      trendResizeObserver.observe(trendChartRef.value);
+    }
 
     // 动态生成 Y 轴和折线 Series
     const yAxisArr = [];
@@ -2000,68 +2015,82 @@ const initCharts = () => {
       },
       yAxis: yAxisArr,
       series: seriesArr,
-    });
+    },true);
   }
+  selectedTrendLines.value = config.targetsList.map(t => t.name);
 };
 // ✨ 散点图过滤器 (从一维数据变为了 ECharts 专用的二维数组格式)
+// ✨ 散点图过滤器 (终极防线版)
+// ✨ 寻优版：散点图过滤器 (动态多维映射引擎)
 const refreshScatterFilter = () => {
   if (!scatterChart) return;
-  // 根据得分进行过滤
-  const filteredData = scatterDataArrayRaw.filter(
-    (item) => item.score >= scatterFilterScore.value,
-  );
+  
+  // 1. 刚性底线过滤：无论怎么切换维度，Score 底线过滤绝不妥协
+  const filteredData = scatterDataArrayRaw.filter(d => d.score >= scatterFilterScore.value);
 
-  const xName = config.targetsList[0]?.name;
-  const yName =
-    config.targetsList.length > 1 ? config.targetsList[1].name : null;
+  // 2. 核心适配逻辑：从个体对象中根据 Key 提取数值 (兼容参数/指标/得分)
+  const getVal = (d, key) => {
+    if (key === 'score') return d.score;
+    if (d.metrics && d.metrics[key] !== undefined) return d.metrics[key];
+    if (d.params && d.params[key] !== undefined) return d.params[key];
+    return 0;
+  };
 
-  // 转成 ECharts 需要的纯数据格式: [X, Y, Score, Gen, Ind, MetricsDict, ParamDict]
-  const plotData = filteredData.map((d) => [
-    d.metrics[xName] || 0,
-    yName ? d.metrics[yName] || 0 : d.score, // 如果只有一个目标，Y轴画 Score
-    d.score,
-    d.gen,
-    d.ind,
-    d.metrics,
-    d.params,
-  ]);
+  // 辅助函数：根据选项值获取中文 Label
+  const getLabel = (val) => axisOptions.value.find(o => o.value === val)?.label || val;
 
-  let minScore = 0,
-    maxScore = 200;
-  if (filteredData.length > 0) {
-    const scores = filteredData.map((d) => d.score).filter((v) => !isNaN(v));
-    if (scores.length > 0) {
-      minScore = Math.min(...scores);
-      maxScore = Math.max(...scores);
-      if (minScore === maxScore) {
-        minScore -= 10;
-        maxScore += 10;
-      }
-    }
-  }
-  scatterChart.setOption({
-    visualMap: { min: minScore, max: maxScore },
-    series: [{ data: plotData }],
+  let colorMin = Infinity, colorMax = -Infinity;
+
+  // 3. 映射为 ECharts 坐标数据并实时扫描颜色极值
+  const plotData = filteredData.map(d => {
+    const cVal = Number(getVal(d, scatterConfig.color)) || 0;
+    if (cVal < colorMin) colorMin = cVal;
+    if (cVal > colorMax) colorMax = cVal;
+    
+    return [
+      Number(getVal(d, scatterConfig.xAxis)) || 0,
+      Number(getVal(d, scatterConfig.yAxis)) || 0,
+      cVal,      // d[2]: 颜色映射值 (交由 visualMap 处理)
+      d.gen,     // d[3]
+      d.ind,     // d[4]
+      d.metrics, // d[5]
+      d.params,  // d[6]
+      d.score    // ✨ d[7]: 原始得分始终保留，专供 Tooltip 悬浮框使用
+    ];
   });
+
+  // 4. 颜色轴极值自适应及防 NaN 崩溃机制
+  if (colorMin === Infinity || colorMin === colorMax) {
+    colorMin = colorMin === Infinity ? 0 : Math.floor(colorMin) - 1;
+    colorMax = Math.ceil(colorMax) + 1;
+  }
+  if (isNaN(colorMin) || !isFinite(colorMin)) colorMin = 0;
+  if (isNaN(colorMax) || !isFinite(colorMax)) colorMax = 200;
+
   scatterChart.setOption({
-    xAxis: { name: xName }, // 动态更新 X 轴名称
-    yAxis: { name: yName }, // 动态更新 Y 轴名称
-    visualMap: { min: minScore, max: maxScore },
+    xAxis: { name: getLabel(scatterConfig.xAxis) }, 
+    yAxis: { name: getLabel(scatterConfig.yAxis) }, 
+    visualMap: { min: colorMin, max: colorMax },
     series: [{ data: plotData }],
   });
 };
-
 // ✨ 趋势图显隐切换 (完全动态适配选中数组)
 const updateTrendVisibility = (valArray) => {
   if (!trendChart) return;
   const selectedDict = {};
+  const yAxisOpts = [];
 
   config.targetsList.forEach((t) => {
-    selectedDict[t.name] = valArray.includes(t.name);
+    const isVisible = valArray.includes(t.name);
+    selectedDict[t.name] = isVisible;
+    yAxisOpts.push({
+      show: isVisible // 动态控制这根 Y 轴的显示与隐藏
+    });
   });
 
   trendChart.setOption({
     legend: { selected: selectedDict },
+    yAxis: yAxisOpts
   });
 };
 
@@ -2107,71 +2136,49 @@ const updateInspectorChart = () => {
     // ==========================================
     // 处理系统级固有波形 (主模)
     // ==========================================
-    if (currentTab === "mainMode" && data.main_mode_curve) {
-      let plotData = data.main_mode_curve.x.map((xVal, idx) => [
+    const targetCfg = config.targetsList.find((t) => t.name === currentTab);
+    
+    const isDisplayOnly = targetCfg && targetCfg.mode === 'display_only';
+    const curveKey = `${currentTab}_curve`;
+    const curveData = data[curveKey];
+
+    if (curveData && curveData.x && curveData.y) {
+      const isFft = targetCfg && targetCfg.extractMethod === "freq_peak";
+      const multiplier = targetCfg ? Number(targetCfg.multiplier) : 1.0;
+
+      let plotData = curveData.x.map((xVal, idx) => [
         xVal,
-        data.main_mode_curve.y[idx],
+        curveData.y[idx] * multiplier,
       ]);
-      option.xAxis.name = "Time (ns)";
-      option.yAxis.name = "Amplitude";
-      option.yAxis.nameTextStyle = { color: "#8b5cf6" };
+
+      // 自动分配颜色：主模/仅展示用紫色，频域红色，其余绿色
+      const themeColor = isDisplayOnly ? "#8b5cf6" : (isFft ? "#ef4444" : "#10b981");
+
+      option.xAxis.name = isFft ? "Freq (GHz)" : "Time (ns)";
+      option.yAxis.name = currentTab;
+      option.yAxis.nameTextStyle = { color: themeColor };
+
       option.series = [
         {
-          name: "主模信号",
+          name: currentTab,
           type: "line",
-          smooth: true,
+          smooth: !isFft,
           showSymbol: false,
-          itemStyle: { color: "#8b5cf6" },
+          itemStyle: { color: themeColor },
+          ...(isFft ? {
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: "rgba(239,68,68,0.8)" },
+                { offset: 1, color: "rgba(239,68,68,0.1)" },
+              ]),
+            }
+          } : {}),
           data: plotData,
         },
       ];
-    }
-    // ==========================================
-    // 处理所有动态配置的演化目标波形
-    // ==========================================
-    else {
-      // 1. 拼凑出后端传来的动态曲线 Key (如 "效率_curve")
-      const curveKey = `${currentTab}_curve`;
-      const curveData = data[curveKey];
-
-      if (curveData && curveData.x && curveData.y) {
-        // 2. 去配置表里找这个目标的元数据
-        const targetCfg = config.targetsList.find((t) => t.name === currentTab);
-        const isFft = targetCfg && targetCfg.extractMethod === "freq_peak";
-        // ✨ 核心：提取你配置的量纲缩放倍数！
-        const multiplier = targetCfg ? Number(targetCfg.multiplier) : 1.0;
-
-        // 3. 将 CST 原始曲线的 Y 轴数值，强行乘以配置的 multiplier，做到波形与散点数值的绝对统一！
-        let plotData = curveData.x.map((xVal, idx) => [
-          xVal,
-          curveData.y[idx] * multiplier,
-        ]);
-
-        // 4. 动态设置坐标轴文字
-        option.xAxis.name = isFft ? "Freq (GHz)" : "Time (ns)";
-        option.yAxis.name = currentTab;
-        option.yAxis.nameTextStyle = { color: isFft ? "#ef4444" : "#10b981" };
-
-        // 5. 动态挂载系列参数 (频域画面积图，时域画平滑折线)
-        option.series = [
-          {
-            name: currentTab,
-            type: "line",
-            smooth: !isFft,
-            showSymbol: false,
-            itemStyle: { color: isFft ? "#ef4444" : "#10b981" },
-            areaStyle: isFft
-              ? {
-                  color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: "rgba(239,68,68,0.8)" },
-                    { offset: 1, color: "rgba(239,68,68,0.1)" },
-                  ]),
-                }
-              : null,
-            data: plotData,
-          },
-        ];
-      }
+    } else {
+      // 容错处理，防止 Unknown series 报错
+      option.series = [{ name: "等待数据...", type: "line", data: [] }];
     }
   }
 
@@ -2250,6 +2257,15 @@ onMounted(async () => {
             isRunning.value = true;
             connectWebSocket(activeTaskId);
 
+            // ✨ 核心修复：接管任务时，同步通知外层 App.vue 唤醒灵动岛
+            if (islandState) {
+              islandState.CstOpt.isRunning = true;
+              islandState.CstOpt.taskName = activeTaskId; // 临时显示 ID，等下面拿到详细数据后可覆盖
+              islandState.CstOpt.filePath = config.cstPath || "恢复中...";
+              islandState.CstOpt.progress = 0;
+              islandState.CstOpt.abortFn = stopOptimization;
+            }
+
             message.loading("🔄 正在从数据库恢复历史波形与图表...");
             const resData = await axios.get(
               `${API_BASE}/get_task_data/${currentTaskId.value}`,
@@ -2259,16 +2275,45 @@ onMounted(async () => {
 
               // ✨ 修复：优先全量恢复配置面板，如果没有老配置，再退化回只改总代数
               if (d.config_json) {
-                Object.assign(config, d.config_json);
+                const saved = d.config_json;
+                if (saved.taskName) config.taskName = saved.taskName;
+                if (saved.paramsList) config.paramsList = saved.paramsList;
+                if (saved.env) {
+                  config.env = {
+                    ...config.env,
+                    ...saved.env,
+                    mainMode: {
+                      ...config.env.mainMode,
+                      ...(saved.env.mainMode || {}),
+                    },
+                  };
+                }
+                if (saved.algo) config.algo = { ...config.algo, ...saved.algo };
+                if (saved.targetsList && Array.isArray(saved.targetsList)) {
+                  config.targetsList = saved.targetsList.map((t) => ({
+                    ...t,
+                    constraints: t.constraints || {
+                      enable: false,
+                      min: null,
+                      max: null,
+                      max_diff: null,
+                      max_fluc: null,
+                      max_side_ratio: null,
+                    },
+                  }));
+                }
               } else {
                 config.algo.nGen = d.total_gen || 50;
               }
+
+              initCharts();
               Object.assign(allDataPool, d.all_data_pool);
               scatterDataArrayRaw.splice(
                 0,
                 scatterDataArrayRaw.length,
                 ...d.scatter_data,
               );
+              updateScatterBounds();
               refreshScatterFilter();
               trendAxisData.splice(
                 0,
@@ -2342,10 +2387,16 @@ onMounted(async () => {
 });
 onUnmounted(() => {
   window.removeEventListener("resize", handleResize);
+  document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  
+  // ✨ 安全断开所有尺寸监听器，防止内存泄漏
+  if (inspectorResizeObserver) inspectorResizeObserver.disconnect();
+  if (scatterResizeObserver) scatterResizeObserver.disconnect();
+  if (trendResizeObserver) trendResizeObserver.disconnect();
+
   if (inspectorChart) inspectorChart.dispose();
   if (scatterChart) scatterChart.dispose();
   if (trendChart) trendChart.dispose();
-  document.removeEventListener("fullscreenchange", handleFullscreenChange);
 });
 
 // ========================================================
@@ -2353,8 +2404,50 @@ onUnmounted(() => {
 // ========================================================
 const trendAxisData = reactive([]);
 const trendSeriesData = reactive({}); // 字典池，格式如: { "效率": [], "频率": [] }
-const selectedTrendLines = ref([]); // 默认勾选状态会在请求发出前动态填满
-const scatterFilterScore = ref(-500); // 散点图默认过滤得分低于 -500 的致命死区点
+const selectedTrendLines = ref([]); 
+const scatterFilterScore = ref(-500); 
+// ✨ 新增：散点图滑块的动态边界
+const scatterSliderMin = ref(-50000);
+const scatterSliderMax = ref(500);
+
+// ✨ 寻优版新增：散点图的动态轴向配置 (默认全部看 Score，符合寻优直觉)
+const scatterConfig = reactive({
+  xAxis: "score",
+  yAxis: "score",
+  color: "score"
+});
+
+// ✨ 寻优版新增：动态汇聚“参数、指标、得分”作为可选项
+const axisOptions = computed(() => {
+  const options = [{ label: "综合得分 (Score)", value: "score" }];
+  // 仅提取勾选了 opt 的优化变量，过滤掉无关紧要的固定参数
+  config.paramsList.forEach(p => {
+    if (p.opt) options.push({ label: `[参数] ${p.name}`, value: p.name });
+  });
+  // 提取所有的目标指标
+  config.targetsList.forEach(t => {
+     options.push({ label: `[指标] ${t.name}`, value: t.name });
+  });
+  return options;
+});
+
+// ✨ 新增：动态计算并更新滑块边界的函数
+const updateScatterBounds = () => {
+  if (scatterDataArrayRaw.length === 0) return;
+  const scores = scatterDataArrayRaw.map((d) => Number(d.score)).filter((v) => !isNaN(v));
+  if (scores.length > 0) {
+    const minS = Math.min(...scores);
+    const maxS = Math.max(...scores);
+    // 稍微向外扩展一点范围，防止滑块卡死在边缘
+    scatterSliderMin.value = Math.floor(minS) - 100;
+    scatterSliderMax.value = Math.ceil(maxS) + 100;
+    
+    // 如果当前的过滤阈值已经超出了新数据的范围，自动把阈值拉到底线，确保至少能看到点
+    if (scatterFilterScore.value < scatterSliderMin.value || scatterFilterScore.value > scatterSliderMax.value) {
+      scatterFilterScore.value = scatterSliderMin.value;
+    }
+  }
+};
 
 const fetchHistoryTasks = async () => {
   try {
@@ -2382,10 +2475,32 @@ const loadHistoricalTask = async (taskId) => {
 
       // ✨ 修复：与上面保持完全一致的配置恢复逻辑
       if (d.config_json) {
-        Object.assign(config, d.config_json);
+        const saved = d.config_json;
+        if (saved.taskName) config.taskName = saved.taskName;
+        if (saved.paramsList) config.paramsList = saved.paramsList;
+        if (saved.env) {
+          config.env = {
+            ...config.env,
+            ...saved.env
+          };
+        }
+        if (saved.algo) config.algo = { ...config.algo, ...saved.algo };
+        if (saved.targetsList && Array.isArray(saved.targetsList)) {
+          config.targetsList = saved.targetsList.map((t) => ({
+            ...t,
+            constraints: t.constraints || {
+              enable: false,
+              min: null,
+              max: null,
+              max_diff: null,
+            },
+          }));
+        }
       } else {
         config.algo.nGen = d.total_gen || 50;
       }
+
+      initCharts();
 
       // 2. 注入波形池与散点数据
       Object.assign(allDataPool, d.all_data_pool);
@@ -2394,6 +2509,7 @@ const loadHistoricalTask = async (taskId) => {
         scatterDataArrayRaw.length,
         ...d.scatter_data,
       );
+      updateScatterBounds();
       refreshScatterFilter();
 
       // 3. 恢复收敛趋势图
@@ -2578,6 +2694,13 @@ const connectWebSocket = (taskId) => {
         );
       }
 
+      // ✨ 1.5 接收并解析算法专属遥测数据 (如果后端发了的话)
+      if (data.telemetry) {
+        // 清空旧遥测数据，混入新数据
+        for (const key in telemetryData) delete telemetryData[key];
+        Object.assign(telemetryData, data.telemetry);
+      }
+
       logs.value.push(
         `<span style='color:#10b981;'>[SYSTEM]</span> ${data.message}`,
       );
@@ -2617,6 +2740,7 @@ const connectWebSocket = (taskId) => {
           params: ind.params,
         });
       });
+      updateScatterBounds();
       refreshScatterFilter();
     } else if (data.type === "finish") {
       isRunning.value = false;
@@ -2667,18 +2791,12 @@ const startOptimization = async () => {
   Object.keys(trendSeriesData).forEach((k) => (trendSeriesData[k] = []));
   scatterDataArrayRaw.length = 0;
   for (const key in allDataPool) delete allDataPool[key]; // 清空波形池
+  for (const key in telemetryData) delete telemetryData[key]; // ✨ 清空旧遥测数据
   logs.value = []; // 清空日志
 
   // 强制重置 Echarts 画面
-  if (trendChart) {
-    const emptySeries = config.targetsList.map((t) => ({
-      name: t.name,
-      data: [],
-    }));
-    trendChart.setOption({ xAxis: { data: [] }, series: emptySeries });
-  }
-  if (scatterChart) scatterChart.setOption({ series: [{ data: [] }] });
-  if (inspectorChart) inspectorChart.setOption({ series: [] });
+  initCharts();
+    if (inspectorChart) inspectorChart.setOption({ series: [] });
 
   // 2. 界面状态锁定，开始请求
   isRunning.value = true;
@@ -2809,6 +2927,8 @@ watch(isDarkMode, () => {
   font-weight: 600;
   font-size: 14px;
   color: var(--n-text-color);
+  white-space: nowrap; /* ✨ 新增：强制文字不换行 */
+  flex-shrink: 0; /* ✨ 新增：防止被右侧空间挤压变形 */
 }
 .var-item {
   padding: 16px;
@@ -3132,8 +3252,16 @@ watch(isDarkMode, () => {
 }
 
 /* 穿透修改内容层，打断 flex 尺寸死锁 */
-.chart-card,
+.chart-card {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
 :deep(.n-card__content) {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
   min-width: 0 !important;
   min-height: 0 !important;
 }

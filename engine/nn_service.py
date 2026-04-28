@@ -1,17 +1,24 @@
 import os
 import json
-import torch
-import numpy as np
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
-from typing import Dict, Any, List
-import geatpy as ea
+import random
 import asyncio
-import shap # [新增] SHAP 可解释性库
-import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
 import traceback
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from fastapi import BackgroundTasks,WebSocketDisconnect
+import time
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import pandas as pd
+import geatpy as ea
 
+from fastapi import APIRouter, HTTPException, WebSocket
+from pydantic import BaseModel
+from typing import Dict, List
+
+from database import SessionLocal, Task, NnOnlineLog, Individual, Waveform
 # ==========================================
 # 1. 全局状态与 Pydantic 数据模型
 # ==========================================
@@ -85,6 +92,53 @@ async def get_models_list():
     }
 
 
+class NNConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, WebSocket] = {}
+
+    async def connect(self, websocket: WebSocket, task_id: str):
+        await websocket.accept()
+        self.active_connections[task_id] = websocket
+
+    def disconnect(self, task_id: str, websocket: WebSocket):
+        # ✨ 终极防御：断开时必须核对 WebSocket 实例的内存地址！
+        # 防止旧连接的延迟断开把用户刚刚接管的新连接给误杀了
+        if task_id in self.active_connections and self.active_connections[task_id] == websocket:
+            del self.active_connections[task_id]
+
+    async def send_json(self, task_id: str, data: dict):
+        if task_id in self.active_connections:
+            try:
+                await self.active_connections[task_id].send_json(data)
+            except Exception as e:
+                print(f"WS发送失败 [{task_id}]: {e}")
+
+
+nn_ws_manager = NNConnectionManager()
+
+@nn_router.websocket("/ws/monitor/{task_id}")
+async def nn_monitor_ws(websocket: WebSocket, task_id: str):
+    await nn_ws_manager.connect(websocket, task_id)
+    try:
+        while True:
+            # 纯净监听挂起，维持心跳即可，不承担任何计算逻辑
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        nn_ws_manager.disconnect(task_id, websocket) # ✨ 传入自身实例进行比对
+    except Exception as e:
+        nn_ws_manager.disconnect(task_id, websocket)
+# ==========================================
+# 新增：独立的 POST 启动接口 (外壳)
+# ==========================================
+@nn_router.post("/start_evolve")
+async def start_nn_evolve(config: dict, background_tasks: BackgroundTasks):
+    # 1. 生成唯一任务 ID
+    task_id = f"nn_{int(time.time())}"
+
+    # 注：此时我们还没写后台任务函数，所以先注释掉
+    background_tasks.add_task(run_nn_evolution_background, task_id, config)
+
+    return {"status": "success", "task_id": task_id, "message": "后台演化线程已就绪"}
 @nn_router.post("/load")
 async def load_model(req: LoadModelRequest):
     """终极进化版：JSON 确立配置主权，TorchScript 免解耦加载"""
@@ -223,7 +277,6 @@ async def predict_single(data: PredictRequest):
                 "local_shap": local_shap  # 👈 新增：返回局部参数推移数组
             }
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"预测计算出错: {str(e)}")
 
@@ -275,19 +328,15 @@ async def generate_3d_scan(data: ScanRequest):
         surface_data = [[float(X_flat[i]), float(Y_grid_flat[i]), float(z_values[i])] for i in range(len(X_flat))]
         return {"status": "success", "surface_data": surface_data}
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"矩阵计算失败: {str(e)}")
 
-
-
-@nn_router.websocket("/ws/evolve")
-async def nn_evolve_ws(websocket: WebSocket):
-    """完全动态降维遗传算法核心 - 引入自适应变异与在线验证"""
-    await websocket.accept()
+# ==========================================
+# 新增：完全解耦的后台演化核心逻辑 (保留了全部原逻辑)
+# ==========================================
+async def run_nn_evolution_background(task_id: str, config: dict):
+    """从 WebSocket 剥离出来的纯后台演化线程"""
     try:
-        config = json.loads(await websocket.receive_text())
-
         # 1. 提取基础遗传参数
         bounds = config.get("bounds", [])
         pop_size = config.get("pop_size", 100)
@@ -296,7 +345,7 @@ async def nn_evolve_ws(websocket: WebSocket):
         target_freq = config.get("target_freq", 6.0)
         weights = config.get("weights", {})
 
-        # ✨ 修复核心：补上自适应变异的参数提取，否则下方循环会报 NameError 崩溃！
+        # ✨ 修复核心：补上自适应变异的参数提取
         use_adaptive_mut = config.get("use_adaptive_mut", False)
         mut_phases = config.get("mut_phases", [0.3, 0.7])
 
@@ -312,21 +361,45 @@ async def nn_evolve_ws(websocket: WebSocket):
 
         cst_env = None
         project = None
+        # 注意：此处 task_id 由外部传入，故不再重新生成
 
         # 🌟 3. 如果开启了在线微调，提前拉起 CST 引擎并发送通知
         if is_online:
             if not os.path.exists(cst_path):
-                await websocket.send_json({"error": "在线验证失败: CST 项目路径不存在！"})
+                await nn_ws_manager.send_json(task_id, {"error": "在线验证失败: CST 项目路径不存在！"})
                 return
 
-            await websocket.send_json({"type": "info", "message": "⚙️ 正在后台唤醒 CST 引擎，请稍候..."})
+            # ✨ 任务初始化入库
+            db = SessionLocal()
+            try:
+                # ✨ 优先使用用户输入的名称，若为空则自动生成
+                custom_name = config.get('online', {}).get('taskName', '').strip()
+                display_name = custom_name if custom_name else f"在线微调_{datetime.now().strftime('%m%d_%H%M')}"
+
+                new_task = Task(
+                    id=task_id,
+                    name=display_name,
+                    cst_path=cst_path,
+                    status="running",
+                    config_json=config
+                )
+                db.add(new_task)
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                print(f"入库失败: {e}")
+            finally:
+                db.close()
+
+            await nn_ws_manager.send_json(task_id, {"type": "info", "message": "⚙️ 正在后台唤醒 CST 引擎，请稍候..."})
             import cst.interface
             loop = asyncio.get_running_loop()  # ✨ 获取当前事件循环
 
             # ✨ 改用 loop.run_in_executor 强绑定到单线程池
             cst_env = await loop.run_in_executor(CST_EXECUTOR, cst.interface.DesignEnvironment)
             project = await loop.run_in_executor(CST_EXECUTOR, cst_env.open_project, cst_path)
-            await websocket.send_json({"type": "info", "message": "✅ CST 引擎连接成功，准备开始在线联合演化！"})
+            await nn_ws_manager.send_json(task_id,
+                                          {"type": "info", "message": "✅ CST 引擎连接成功，准备开始在线联合演化！"})
 
         n_params = len(bounds)
         lows, highs = np.array([b[0] for b in bounds]), np.array([b[1] for b in bounds])
@@ -344,23 +417,17 @@ async def nn_evolve_ws(websocket: WebSocket):
         history_Y_power = []
 
         if is_online and NN_STATE["model"] is not None:
-            import torch.optim as optim
-            import torch.nn as nn
-            import random
-            import time
-
             model = NN_STATE["model"]
 
-            # 1. 强制解锁 TorchScript 模型的梯度（默认是冻结的）
+            # 1. 强制解锁 TorchScript 模型的梯度
             for param in model.parameters():
                 param.requires_grad = True
 
-            # 2. 定义微调优化器（学习率 1e-4，微调不能步子太大）
-            optimizer = optim.Adam(model.parameters(), lr=1e-4)
+            # 2. 定义微调优化器
+            optimizer = optim.Adam(model.parameters(), lr=1e-3)
             criterion = nn.MSELoss()
 
-            # 3. 读取历史训练集 (Experience Replay Buffer)
-            # ⚠️ 假设你把训练集存成了 models/dataset.json，格式为 {"X": [[...], ...], "Y_power": [850, 920, ...]}
+            # 3. 读取历史训练集
             dataset_path = "models/dataset.json"
             try:
                 if os.path.exists(dataset_path):
@@ -369,15 +436,16 @@ async def nn_evolve_ws(websocket: WebSocket):
                         history_X = hist_data.get('X', [])
                         history_Y_power = hist_data.get('Y_power', [])
 
-                    await websocket.send_json({
+                    await nn_ws_manager.send_json(task_id, {
                         "type": "info",
                         "message": f"📦 成功读取 {len(history_X)} 条历史数据进入防遗忘记忆池"
                     })
                 else:
-                    await websocket.send_json(
-                        {"type": "info", "message": "⚠️ 未找到历史数据集，本次微调将仅依赖新探索数据"})
+                    await nn_ws_manager.send_json(task_id,
+                                                  {"type": "info",
+                                                   "message": "⚠️ 未找到历史数据集，本次微调将仅依赖新探索数据"})
             except Exception as e:
-                await websocket.send_json({"type": "info", "message": f"⚠️ 历史数据解析失败: {e}"})
+                await nn_ws_manager.send_json(task_id, {"type": "info", "message": f"⚠️ 历史数据解析失败: {e}"})
 
         # 记录整个在线学习过程中收集到的所有真实真机数据
         total_online_collected_X = []
@@ -386,26 +454,22 @@ async def nn_evolve_ws(websocket: WebSocket):
 
             # 🌟 核心引擎：自适应变异策略动态调度
             current_pm = pm
-            mut_oper = 'mutuni'  # 默认均匀变异
+            mut_oper = 'mutuni'
 
             if use_adaptive_mut:
                 progress = gen / n_gen
                 if progress < mut_phases[0]:
-                    # 阶段1：探索期。使用均匀变异，稍微放大变异率
                     mut_oper = 'mutuni'
                     current_pm = min(1.0, pm * 1.2)
                 elif progress < mut_phases[1]:
-                    # 阶段2：收敛期。切换为高斯/布列德变异(mutbga)，聚焦局部
                     mut_oper = 'mutbga'
                     current_pm = pm
                 else:
-                    # 阶段3：微调期。保持布列德变异，但大幅降低变异率，保护精英解
                     mut_oper = 'mutbga'
                     current_pm = pm * 0.3
 
             if gen > 0 and FitnV is not None:
                 SelCh = pop[ea.selecting('rws', FitnV, pop_size - 1), :]
-                # 🌟 应用动态的 变异算子(mut_oper) 和 变异率(current_pm)
                 SelCh = ea.mutate(mut_oper, 'RI', ea.recombin('xovdp', SelCh, pc), FieldD, current_pm)
                 BestInd = pop[np.argmax(FitnV), :]
                 pop = np.vstack([BestInd, SelCh])
@@ -414,7 +478,6 @@ async def nn_evolve_ws(websocket: WebSocket):
             if len(pop.shape) == 1:
                 pop = pop.reshape(1, -1)
 
-                # 如果 Geatpy 意外导致列数不匹配，强制用上一代的最优解补齐 (极小概率发生，但必须防备)
             if pop.shape[1] != n_params:
                 print(f"⚠️ 警告: Geatpy 维度异常 {pop.shape}，已强制修复")
                 pop = np.tile(BestInd, (pop_size, 1))
@@ -424,11 +487,13 @@ async def nn_evolve_ws(websocket: WebSocket):
                 model_out = NN_STATE["model"](torch.FloatTensor(pop_scaled))
 
                 # ========================================================
-                # 🌟 第一步：动态解析多头模型输出，挂载到 head_cache
+                # 🌟 第一步：动态解析多头模型输出
                 # ========================================================
                 outputs_cfg = NN_STATE.get("outputs_config", [])
                 head_cache = {}
-                logit_val = np.ones(pop_size)  # 默认都起振
+                logit_val = np.ones(pop_size)
+
+                targets_list = online_cfg.get("targetsList", [])
 
                 if isinstance(model_out, tuple):
                     if outputs_cfg:
@@ -436,16 +501,22 @@ async def nn_evolve_ws(websocket: WebSocket):
                             name = cfg.get('name', f'Out_{c_idx}')
                             val_batch = model_out[cfg.get('model_index', c_idx)].numpy()
 
-                            # 自动反归一化
                             if cfg.get('needs_inverse', False) and NN_STATE["scaler_y"] is not None:
                                 val_batch = NN_STATE["scaler_y"].inverse_transform(val_batch)
 
                             if 'logit' in name.lower() or 'class' in name.lower():
                                 logit_val = val_batch[:, 0]
                             else:
-                                head_cache[name] = val_batch[:, 0]
+                                t_cfg = next((t for t in targets_list if t.get('name') == name), {})
+                                multiplier = float(t_cfg.get('multiplier', 1.0))
+
+                                vals = val_batch[:, 0]
+                                if ('eff' in name.lower() or '效率' in name) and multiplier == 1.0 and np.max(
+                                        vals) <= 1.05:
+                                    multiplier = 100.0
+
+                                head_cache[name] = vals * multiplier
                     else:
-                        # 兜底：处理丢失了 outputs_cfg 的多头模型 (防崩兜底)
                         logit_val = model_out[0].numpy()[:, 0]
                         pout_scaled = model_out[1].numpy()
                         if NN_STATE["scaler_y"] is not None:
@@ -456,34 +527,88 @@ async def nn_evolve_ws(websocket: WebSocket):
                         if len(model_out) > 2:
                             head_cache["Frequency"] = model_out[2].numpy()[:, 0]
                 else:
-                    # 兼容真正的单头老模型 (此时 model_out 才是真正的单 Tensor)
                     raw_pred = NN_STATE["scaler_y"].inverse_transform(model_out.numpy())
                     head_cache["Efficiency"] = np.clip(raw_pred[:, 0], 0, 1) * 100
 
                 # ========================================================
-                # 🌟 第二步：离线打分 (The Dreamer) -> 彻底剥离物理硬编码
+                # 🌟 第二步：离线打分 (纯数值宽容引导)
                 # ========================================================
+                targets_list = online_cfg.get("targetsList", [])
                 fitness_score = np.zeros(pop_size)
 
-                for t_name, pred_vals in head_cache.items():
-                    w = weights.get(t_name, 0) / 100.0
-                    if 'freq' in t_name.lower():
-                        # 频率：靶点逼近惩罚 (平滑的绝对误差)
-                        fitness_score -= np.abs(pred_vals - target_freq) * (1e8 * w)
-                    else:
-                        # 功率/效率：线性奖励
-                        fitness_score += pred_vals * w
+                for t_cfg in targets_list:
+                    t_name = t_cfg.get('name')
+                    if t_name not in head_cache:
+                        continue
 
-                # 断崖死区：物理不上电(未起振)直接枪毙
-                fitness_score[logit_val < 0] = -1e12
-                FitnV = ea.ranking(np.array([fitness_score]).T * -1.0)
+                    pred_vals = head_cache[t_name]
+                    mode = t_cfg.get('mode', 'maximize')
+                    weight = float(t_cfg.get('weight', 1.0))
+                    scale = float(t_cfg.get('reference_scale', 1.0))
+
+                    if mode == 'maximize':
+                        if scale != 1.0:
+                            norm_vals = pred_vals / scale
+                        else:
+                            v_min, v_max = np.min(pred_vals), np.max(pred_vals)
+                            v_range = (v_max - v_min) if (v_max - v_min) > 1e-5 else 1.0
+                            norm_vals = (pred_vals - v_min) / v_range
+                        fitness_score += norm_vals * weight
+
+                    elif mode == 'minimize':
+                        if scale != 1.0:
+                            norm_vals = pred_vals / scale
+                        else:
+                            v_min, v_max = np.min(pred_vals), np.max(pred_vals)
+                            v_range = (v_max - v_min) if (v_max - v_min) > 1e-5 else 1.0
+                            norm_vals = (pred_vals - v_min) / v_range
+                        fitness_score -= norm_vals * weight
+
+                    elif mode == 'target':
+                        target_val = float(t_cfg.get('target_val', 0.0))
+                        diff = np.abs(pred_vals - target_val)
+                        if scale != 1.0:
+                            norm_diff = diff / scale
+                        else:
+                            d_min, d_max = np.min(diff), np.max(diff)
+                            d_range = (d_max - d_min) if (d_max - d_min) > 1e-5 else 1.0
+                            norm_diff = (diff - d_min) / d_range
+                        fitness_score -= norm_diff * weight * 10.0
+
+                fitness_score *= 100.0
+
+                dead_mask = logit_val < 0
+                fitness_score[dead_mask] = -1e12
+
+                for k in head_cache.keys():
+                    head_cache[k][dead_mask] = 0.0
 
                 # ========================================================
-                # 🌟 第三步：在线物理验证与网络微调 (The Reality Check)
+                # 🌟 第三步：在线物理验证与网络微调
                 # ========================================================
+                current_online_metrics = None
+
                 if is_online:
-                    top_k_indices = np.argsort(fitness_score)[-k_samples:]
-                    await websocket.send_json({
+                    sorted_indices = np.argsort(fitness_score)
+                    exploit_k = max(1, k_samples - 1)
+                    explore_k = k_samples - exploit_k
+
+                    exploit_indices = sorted_indices[-exploit_k:].tolist()
+                    pool_for_explore = sorted_indices[:-exploit_k].tolist()
+
+                    if pool_for_explore and explore_k > 0:
+                        explore_indices = random.sample(pool_for_explore, explore_k)
+                    else:
+                        explore_indices = []
+
+                    top_k_indices = np.array(exploit_indices + explore_indices)
+
+                    original_topk_scores = fitness_score[top_k_indices].copy()
+                    original_topk_preds = {}
+                    for k, v_arr in head_cache.items():
+                        original_topk_preds[k] = v_arr[top_k_indices].copy()
+
+                    await nn_ws_manager.send_json(task_id, {
                         "type": "info",
                         "message": f"🔍 Gen {gen + 1}: 将 Top-{k_samples} 优胜个体送入 CST 真实物理引擎校验..."
                     })
@@ -494,58 +619,100 @@ async def nn_evolve_ws(websocket: WebSocket):
                     targets_list = online_cfg.get("targetsList", [])
 
                     real_X = []
-                    real_Y_all = []  # ✨ 存储包含所有头的复合向量，替代原先单一的 real_Y_power
+                    real_Y_all = []
+                    waves_dict_for_ui = {}
 
                     for idx in top_k_indices:
                         p_dict = {param_names[j]: float(pop[idx][j]) for j in range(len(param_names))}
                         env_cfg = {"useStableTime": True, "stableTime": 20.0}
 
-                        # 发送给 CST 物理层提取
                         m = await loop.run_in_executor(
                             CST_EXECUTOR,
                             run_single_simulation, project, p_dict, targets_list, env_cfg, cst_path
                         )
 
-                        # 如果没有报错，且频率不是默认的失败值
-                        is_freq_failed = any(
-                            t.get('extractMethod') == 'freq_peak' and m.get(t['name'], 0) == -1
-                            for t in targets_list
-                        )
-
-                        # 只要 CST 没报系统级 error，且频域提取没彻底失败，就交给打分器
-                        if 'error' not in m and not is_freq_failed:
-                            # 1. 使用严格网关算出物理真机得分
+                        if 'error' not in m:
                             real_score = calc_score(m, targets_list, algo_type="SAEA-GA")
-                            fitness_score[idx] = real_score  # 修正基因池得分
 
-                            # 2. ✨ 构建与 outputs_cfg 严格对齐的多头靶向特征向量
+                            is_freq_failed = any(
+                                t.get('extractMethod') == 'freq_peak' and m.get(t['name'], 0) == -1 for t in
+                                targets_list)
+                            is_dead_zone = real_score <= -10000.0 or is_freq_failed
+
+                            fitness_score[idx] = -1e12 if is_dead_zone else real_score
+
+                            # 真机数据持久化与波形挂载
+                            current_metrics = {k: v for k, v in m.items() if not k.endswith('_curve') and k != 'error'}
+                            current_waves = {k: v for k, v in m.items() if
+                                             k.endswith('_curve') or k == 'main_mode_curve'}
+
+                            waves_dict_for_ui[str(idx + 1)] = {**current_waves, "params": p_dict}
+
+                            db_ind = SessionLocal()
+                            try:
+                                new_ind = Individual(
+                                    task_id=task_id,
+                                    gen_index=gen + 1,
+                                    ind_index=idx + 1,
+                                    params_json=p_dict,
+                                    score=float(real_score) if not is_dead_zone else -1e12,
+                                    metrics_json=current_metrics,
+                                    is_valid=not is_dead_zone
+                                )
+                                db_ind.add(new_ind)
+                                db_ind.flush()
+
+                                new_wave = Waveform(
+                                    individual_id=new_ind.id,
+                                    task_id=task_id,
+                                    gen_index=gen + 1,
+                                    ind_index=idx + 1,
+                                    waves_json=current_waves
+                                )
+                                db_ind.add(new_wave)
+                                db_ind.commit()
+                            except Exception as db_e:
+                                db_ind.rollback()
+                                print(f"⚠️ 真机数据入库失败: {db_e}")
+                            finally:
+                                db_ind.close()
+
+                            # 构建微调数据集
                             real_y_vec = []
-                            for c_idx, cfg in enumerate(outputs_cfg):
-                                name = cfg.get('name')
-                                if 'logit' in name.lower() or 'class' in name.lower():
-                                    real_y_vec.append(1.0)  # 起振标志位
-                                else:
-                                    real_y_vec.append(m.get(name, 0.0))  # 读取 CST 中真实的 功率/频率等
+                            if outputs_cfg:
+                                for c_idx, cfg in enumerate(outputs_cfg):
+                                    name = cfg.get('name')
+                                    if 'logit' in name.lower() or 'class' in name.lower():
+                                        real_y_vec.append(-1.0 if is_dead_zone else 1.0)
+                                    else:
+                                        fallback_val = m.get(name, 0.0)
+                                        t_cfg = next((t for t in targets_list if t.get('name') == name), {})
+                                        multiplier = float(t_cfg.get('multiplier', 1.0))
 
-                            # 加入微调训练集
-                            real_X.append(pop[idx].tolist())
-                            real_Y_all.append(real_y_vec)
+                                        if (
+                                                'eff' in name.lower() or '效率' in name) and multiplier == 1.0 and fallback_val > 1.05:
+                                            multiplier = 100.0
 
-                            # 为了让 Vue 界面能及时把真实值画在图上，反写回 head_cache 缓存
+                                        raw_val_for_nn = fallback_val / multiplier if multiplier != 0 else fallback_val
+                                        real_y_vec.append(raw_val_for_nn)
+                            else:
+                                real_y_vec.append(m.get("Efficiency", 0.0))
+
+                            if not is_dead_zone:
+                                real_X.append(pop[idx].tolist())
+                                real_Y_all.append(real_y_vec)
+
                             for k, v in m.items():
                                 if k in head_cache:
-                                    head_cache[k][idx] = v
+                                    head_cache[k][idx] = 0.0 if is_dead_zone else v
 
-                            await websocket.send_json({
-                                "type": "info",
-                                "message": f"   -> 校验成功: 预测分修正为 {real_score:.2f} (真实指标已提取)"
-                            })
+                            msg_str = f"   -> 校验完毕: 得分修正为 {fitness_score[idx]:.2f}"
+                            if is_dead_zone: msg_str += "(触发物理红线，归入死区)"
+                            await nn_ws_manager.send_json(task_id, {"type": "info", "message": msg_str})
                         else:
                             fitness_score[idx] = -1e12
-                            await websocket.send_json({
-                                "type": "info",
-                                "message": f"   -> 校验失败: 未起振或提取异常"
-                            })
+                            await nn_ws_manager.send_json(task_id, {"type": "info",
+                                                                    "message": f"   -> 校验失败: CST 引擎计算异常"})
 
                     # ✨✨ 执行神经网络全头微调 ✨✨
                     if is_online and len(real_X) > 0:
@@ -553,81 +720,190 @@ async def nn_evolve_ws(websocket: WebSocket):
                         batch_X = list(real_X)
                         batch_Y = list(real_Y_all)
 
-                        # 经验回放 (抽历史池)
                         sample_size = min(len(history_X), len(real_X) * 5)
                         if sample_size > 0:
-                            import random
-                            indices = random.sample(range(len(history_X)), sample_size)
-                            batch_X.extend([history_X[i] for i in indices])
-                            # 如果 history 存的不是向量而是旧标量，需额外处理，建议未来存向量
-                            batch_Y.extend([history_Y_power[i] if isinstance(history_Y_power[0], list) else [1.0,
-                                                                                                             history_Y_power[
-                                                                                                                 i],
-                                                                                                             4.8] for i
-                                            in indices])
+                            target_dim = len(outputs_cfg) if outputs_cfg else 1
+                            is_history_valid = False
+
+                            if len(history_Y_power) > 0:
+                                if isinstance(history_Y_power[0], list) and len(history_Y_power[0]) == target_dim:
+                                    is_history_valid = True
+                                elif target_dim == 1 and not isinstance(history_Y_power[0], list):
+                                    is_history_valid = True
+
+                            if is_history_valid:
+                                indices = random.sample(range(len(history_X)), sample_size)
+                                batch_X.extend([history_X[i] for i in indices])
+
+                                if isinstance(history_Y_power[0], list):
+                                    batch_Y.extend([history_Y_power[i] for i in indices])
+                                else:
+                                    batch_Y.extend([[history_Y_power[i]] for i in indices])
+                            else:
+                                print(
+                                    f"⚠️ 智能拦截: 历史数据维度与当前加载模型({target_dim}头)不兼容，已自动跳过经验回放。")
+                                await nn_ws_manager.send_json(task_id, {"type": "info",
+                                                                        "message": f"🛡️ 历史数据维度不匹配，已自动隔离，本次微调将专注于全新探索的真机数据。"})
 
                         X_tensor = torch.FloatTensor(NN_STATE["scaler_X"].transform(batch_X))
-
-                        # 缩放真实 Y 目标
                         Y_arr = np.array(batch_Y)
-                        if NN_STATE["scaler_y"] is not None:
-                            Y_scaled = NN_STATE["scaler_y"].transform(Y_arr)
+
+                        if outputs_cfg:
+                            Y_scaled_list = []
+                            for c_idx, cfg in enumerate(outputs_cfg):
+                                col_data = Y_arr[:, c_idx].reshape(-1, 1)
+                                name = cfg.get('name', '')
+
+                                if ('eff' in name.lower() or '效率' in name) and np.max(col_data) > 1.05:
+                                    col_data = col_data / 100.0
+
+                                if cfg.get('needs_inverse', False) and NN_STATE["scaler_y"] is not None:
+                                    col_scaled = NN_STATE["scaler_y"].transform(col_data)
+                                    Y_scaled_list.append(col_scaled[:, 0])
+                                else:
+                                    Y_scaled_list.append(col_data[:, 0])
+
+                            Y_tensor = torch.FloatTensor(np.column_stack(Y_scaled_list))
                         else:
-                            Y_scaled = Y_arr
-                        Y_tensor = torch.FloatTensor(Y_scaled)
+                            if Y_arr.shape[1] == 1 and np.max(Y_arr) > 1.05:
+                                Y_arr = Y_arr / 100.0
+                            if NN_STATE["scaler_y"] is not None:
+                                Y_scaled = NN_STATE["scaler_y"].transform(Y_arr)
+                            else:
+                                Y_scaled = Y_arr
+                            Y_tensor = torch.FloatTensor(Y_scaled)
 
                         model.train()
-                        for epoch in range(3):
-                            optimizer.zero_grad()
-                            preds = model(X_tensor)
+                        with torch.enable_grad():
+                            for epoch in range(15):
+                                optimizer.zero_grad()
+                                preds = model(X_tensor)
 
-                            # 累加所有回归头的 MSE 误差
-                            loss = 0
-                            for c_idx, cfg in enumerate(outputs_cfg):
-                                pred_tensor = preds[cfg.get('model_index', c_idx)].squeeze()
-                                target_tensor = Y_tensor[:, c_idx]
-                                loss += criterion(pred_tensor, target_tensor)
+                                loss = 0
+                                for c_idx, cfg in enumerate(outputs_cfg):
+                                    name = cfg.get('name', '')
 
-                            loss.backward()
-                            optimizer.step()
+                                    if 'logit' in name.lower() or 'class' in name.lower():
+                                        continue
+
+                                    if isinstance(preds, tuple):
+                                        pred_tensor = preds[cfg.get('model_index', c_idx)].squeeze()
+                                    else:
+                                        pred_tensor = preds.squeeze()
+
+                                    if pred_tensor.dim() == 0:
+                                        pred_tensor = pred_tensor.unsqueeze(0)
+
+                                    target_tensor = Y_tensor[:, c_idx]
+                                    loss += criterion(pred_tensor, target_tensor)
+
+                                if isinstance(loss, torch.Tensor):
+                                    loss.backward()
+                                    optimizer.step()
 
                         model.eval()
-                        await websocket.send_json({
+                        loss_val = loss.item()
+
+                        all_errors = []
+                        for head_name, pred_vals in original_topk_preds.items():
+                            real_vals = head_cache[head_name][top_k_indices]
+                            valid_mask = real_vals > 0
+                            if np.any(valid_mask):
+                                head_mae = np.mean(np.abs(pred_vals[valid_mask] - real_vals[valid_mask]))
+                                if "eff" in head_name.lower() or "ratio" in head_name.lower():
+                                    all_errors.append(head_mae)
+                                else:
+                                    mean_val = np.mean(real_vals[valid_mask]) + 1e-9
+                                    all_errors.append((head_mae / mean_val) * 100)
+
+                        pred_error = float(np.mean(all_errors)) if all_errors else 0.0
+                        current_online_metrics = {"loss": round(loss_val, 4), "error": round(pred_error, 4)}
+
+                        db = SessionLocal()
+                        try:
+                            new_log = NnOnlineLog(
+                                task_id=task_id,
+                                gen_index=gen + 1,
+                                loss=current_online_metrics['loss'],
+                                error=current_online_metrics['error']
+                            )
+                            db.add(new_log)
+                            db.commit()
+                        except Exception as e:
+                            db.rollback()
+                        finally:
+                            db.close()
+
+                        await nn_ws_manager.send_json(task_id, {
                             "type": "info",
-                            "message": f"🧠 代理模型自适应微调完成 (全局 Loss: {loss.item():.4f})"
+                            "message": f"🧠 代理模型自适应微调完成 (Loss: {loss_val:.4f}, 预测误差: {pred_error:.2f})"
                         })
 
             # ========================================================
-            # 🌟 第四步：图表数据下发整理 -> 彻底消除硬编码
+            # 🌟 第四步：图表数据下发整理
             # ========================================================
-            best_idx_gen = np.argmax(fitness_score)
-            if fitness_score[best_idx_gen] > global_best_score:
+            if is_online:
+                valid_indices = [idx for idx in top_k_indices if fitness_score[idx] > -10000.0]
+
+                if not valid_indices:
+                    for i in range(pop_size):
+                        if i not in top_k_indices:
+                            fitness_score[i] = -1e12
+                            for k in head_cache.keys():
+                                head_cache[k][i] = 0.0
+                else:
+                    max_real_score = max(fitness_score[i] for i in valid_indices)
+                    max_pred_score = max(original_topk_scores[list(top_k_indices).index(i)] for i in valid_indices)
+
+                    if max_pred_score > max_real_score:
+                        hallucination_gap = max_pred_score - max_real_score
+                        for i in range(pop_size):
+                            if i not in top_k_indices:
+                                fitness_score[i] -= hallucination_gap
+                                if fitness_score[i] >= max_real_score:
+                                    fitness_score[i] = max_real_score - abs(max_real_score * 0.01) - 1.0
+
+            FitnV = ea.ranking(np.array([fitness_score]).T * -1.0)
+
+            best_idx_gen = None
+            if is_online:
+                verified_valid_indices = [idx for idx in top_k_indices if fitness_score[idx] > -10000.0]
+                if verified_valid_indices:
+                    best_idx_gen = max(verified_valid_indices, key=lambda i: fitness_score[i])
+            else:
+                best_idx_gen = int(np.argmax(fitness_score))
+
+            if best_idx_gen is not None:
                 global_best_score = float(fitness_score[best_idx_gen])
                 global_best_metrics = {
                     "params": {param_names[j]: float(pop[best_idx_gen][j]) for j in range(len(param_names))}
                 }
-                # 动态填充最优指标值
+
                 for k, v_arr in head_cache.items():
-                    # Vue 界面的发光指标卡片依赖 eff, power, freq 等小写命名
-                    if 'eff' in k.lower(): global_best_metrics['eff'] = float(v_arr[best_idx_gen])
-                    if 'power' in k.lower(): global_best_metrics['power'] = float(v_arr[best_idx_gen])
-                    if 'freq' in k.lower(): global_best_metrics['freq'] = float(v_arr[best_idx_gen])
+                    key_lower = k.lower()
+                    if 'eff' in key_lower or '效率' in key_lower:
+                        global_best_metrics['eff'] = float(v_arr[best_idx_gen])
+                    elif 'power' in key_lower or '功率' in key_lower:
+                        global_best_metrics['power'] = float(v_arr[best_idx_gen])
+                    elif 'freq' in key_lower or '频率' in key_lower:
+                        global_best_metrics['freq'] = float(v_arr[best_idx_gen])
+                    else:
+                        global_best_metrics[k] = float(v_arr[best_idx_gen])
+
+                best_global_eff = global_best_metrics.get('eff', global_best_metrics.get('power', 0.0))
 
             parallel_data, pareto_data = [], []
             opt_names_list = list(head_cache.keys())
 
-            # 匹配 Vue 平行坐标系期待的排列顺序 [..., Secondary, Primary]
             primary_name = opt_names_list[0] if len(opt_names_list) > 0 else None
             secondary_name = opt_names_list[1] if len(opt_names_list) > 1 else primary_name
 
             for i in range(pop_size):
-                # 1. 散点数据
                 pareto_dict = {"Gen": gen + 1}
                 for k, v_arr in head_cache.items():
                     pareto_dict[k] = float(v_arr[i])
                 pareto_data.append(pareto_dict)
 
-                # 2. 平行坐标数据
                 display_params = [float(val) for val in pop[i]]
                 if primary_name:
                     p1 = float(head_cache[primary_name][i])
@@ -635,7 +911,6 @@ async def nn_evolve_ws(websocket: WebSocket):
                     display_params.extend([p2, p1])
                 parallel_data.append(display_params)
 
-            # 3. 箱线图数据
             boxplot_dict = {}
             for k, v_arr in head_cache.items():
                 sorted_arr = np.sort(v_arr)
@@ -644,59 +919,79 @@ async def nn_evolve_ws(websocket: WebSocket):
                     float(np.median(sorted_arr)), float(np.percentile(sorted_arr, 75)), float(sorted_arr[-1])
                 ]
 
-                # 4. 计算优胜个体的参数相关性热力图 (Pearson Correlation)
             heatmap_data = []
             if pop.shape[0] > 1:
-                # np.corrcoef 期望每一行代表一个变量，所以需要对 pop 进行转置 (pop.T)
-                corr_matrix = np.corrcoef(pop.T)
-                n_p = pop.shape[1]
-                for r_idx in range(n_p):
-                    for c_idx in range(n_p):
-                        val = corr_matrix[r_idx, c_idx]
-                        if np.isnan(val): val = 0.0  # 防止某个参数这一代完全没变化导致方差为0除以0 (NaN)
-                        heatmap_data.append([r_idx, c_idx, round(float(val), 2)])
+                all_cols = param_names + list(head_cache.keys())
+                all_vals = np.hstack([pop] + [head_cache[k].reshape(-1, 1) for k in head_cache.keys()])
+                df_corr = pd.DataFrame(all_vals, columns=all_cols)
+                corr_matrix = df_corr.corr().fillna(0).values.tolist()
 
-            await websocket.send_json({
+                for r_idx in range(len(all_cols)):
+                    for c_idx in range(len(all_cols)):
+                        heatmap_data.append([r_idx, c_idx, round(float(corr_matrix[r_idx][c_idx]), 2)])
+
+            ws_payload = {
                 "gen": gen + 1,
                 "best_global_eff": float(best_global_eff),
                 "best_global_metrics": global_best_metrics,
                 "parallel_data": parallel_data,
                 "pareto_data": pareto_data,
                 "boxplot_data": boxplot_dict,
-                "heatmap_data": heatmap_data  # 👈 新增：向前端推送热力图数据
-            })
+                "heatmap_data": heatmap_data,
+                "waves_dict": waves_dict_for_ui if is_online else {}
+            }
+            if is_online and current_online_metrics:
+                ws_payload["online_metrics"] = current_online_metrics
+
+            await nn_ws_manager.send_json(task_id, ws_payload)
             await asyncio.sleep(0.15)
 
         if is_online and len(total_online_collected_X) > 0:
             timestamp = int(time.time())
-
-            # 使用时间戳防覆盖，例如 models/Finetuned_1712300000.pt
             new_model_name = f"Finetuned_{timestamp}"
             save_path = os.path.join("models", f"{new_model_name}_traced.pt")
 
             try:
                 model.eval()
-                # TorchScript 需要一个 Dummy Input 来追踪网络结构
                 dummy_input = torch.randn(1, n_params)
                 traced_model = torch.jit.trace(model, dummy_input)
                 torch.jit.save(traced_model, save_path)
 
-                await websocket.send_json({
+                await nn_ws_manager.send_json(task_id, {
                     "type": "info",
                     "message": f"💾 在线学习圆满结束！共探索 {len(total_online_collected_X)} 个真机数据，新模型已保存为: {new_model_name}"
                 })
             except Exception as e:
-                await websocket.send_json({"type": "info", "message": f"⚠️ 新模型保存失败: {e}"})
+                await nn_ws_manager.send_json(task_id, {"type": "info", "message": f"⚠️ 新模型保存失败: {e}"})
 
-        await websocket.send_json({"status": "complete"})
-        await websocket.close()
+        if is_online:
+            db = SessionLocal()
+            db.query(Task).filter(Task.id == task_id).update({"status": "completed"})
+            db.commit()
+            db.close()
+
+        await nn_ws_manager.send_json(task_id, {"status": "complete"})
+
     except Exception as e:
         traceback.print_exc()
-        try:
-            await websocket.close()
-        except:
-            pass
+        if 'is_online' in locals() and is_online and 'task_id' in locals():
+            db = SessionLocal()
+            db.query(Task).filter(Task.id == task_id).update({"status": "error"})
+            db.commit()
+            db.close()
 
+        await nn_ws_manager.send_json(task_id, {"type": "error", "message": f"后台演化线程异常: {str(e)}"})
+    finally:
+        if project is not None:
+            try:
+                project.close()
+            except:
+                pass
+        if cst_env is not None:
+            try:
+                cst_env.close()
+            except:
+                pass
 
 @nn_router.get("/global_importance")
 async def get_global_importance():
@@ -739,6 +1034,5 @@ async def get_global_importance():
             "importance": [float(v) for v in importance]  # 直接返回数组即可
         }
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"敏感度矩阵计算失败: {str(e)}")

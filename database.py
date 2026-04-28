@@ -52,5 +52,14 @@ class Waveform(Base):
     ind_index = Column(Integer)
     waves_json = Column(JSON)         # ✨ 动态收纳所有的波形字典，前端按 Key 解析即可
 
+class NnOnlineLog(Base):
+    __tablename__ = "nn_online_logs"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_id = Column(String, ForeignKey("tasks.id"), index=True)
+    gen_index = Column(Integer, index=True)
+    loss = Column(Float)
+    error = Column(Float)
+    details_json = Column(JSON, nullable=True) # 预留字段：记录学习率等其他微调超参
+
 def init_db():
     Base.metadata.create_all(bind=engine)

@@ -33,12 +33,30 @@
                     class="nav-tabs"
                   >
                     <n-tab-pane name="Home" tab="平台主页"></n-tab-pane>
-                    <n-tab-pane name="CstSweep" tab="CST 联合扫参"></n-tab-pane>
-                    <n-tab-pane name="CstOpt" tab="CST 联合优化"></n-tab-pane>
-                    <n-tab-pane
-                      name="NeuralNet"
-                      tab="神经网络优化"
-                    ></n-tab-pane>
+                    <n-tab-pane name="CstSweep">
+                      <template #tab>
+                        <div class="tab-label-wrapper">
+                          CST 联合扫参
+                          <div v-if="islandState.CstSweep.isRunning" class="tab-pulse-dot"></div>
+                        </div>
+                      </template>
+                    </n-tab-pane>
+                    <n-tab-pane name="CstOpt">
+                      <template #tab>
+                        <div class="tab-label-wrapper">
+                          CST 联合优化
+                          <div v-if="islandState.CstOpt.isRunning" class="tab-pulse-dot"></div>
+                        </div>
+                      </template>
+                    </n-tab-pane>
+                    <n-tab-pane name="NeuralNet">
+                      <template #tab>
+                        <div class="tab-label-wrapper">
+                          神经网络优化
+                          <div v-if="islandState.NeuralNet.isRunning" class="tab-pulse-dot"></div>
+                        </div>
+                      </template>
+                    </n-tab-pane>
                     <n-tab-pane name="DataCenter" tab="数据库管理"></n-tab-pane>
                   </n-tabs>
                 </div>
@@ -621,17 +639,23 @@ watch(
 }
 
 /* ✨ 5. 灵动岛呼吸灯效果 */
-.is-global-running :deep(.n-tabs-capsule)::after {
-  content: "";
+/* ✨ 5. 模块独立呼吸灯效果 */
+.tab-label-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.tab-pulse-dot {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 14px;
-  height: 14px;
+  top: -2px;
+  right: -12px;
+  width: 10px;
+  height: 10px;
   background: #10b981;
   border-radius: 50%;
-  border: 2px solid v-bind('isDarkMode ? "#18181c" : "#fff"');
-  box-shadow: 0 0 16px #10b981;
+  border: 1.5px solid v-bind('isDarkMode ? "#18181c" : "#fff"');
+  box-shadow: 0 0 12px #10b981;
   animation: island-pulse 1.2s infinite ease-in-out;
   z-index: 100;
 }
@@ -644,7 +668,7 @@ watch(
   50% {
     transform: scale(1.3);
     opacity: 1;
-    box-shadow: 0 0 18px #10b981;
+    box-shadow: 0 0 16px #10b981;
   }
   100% {
     transform: scale(0.8);

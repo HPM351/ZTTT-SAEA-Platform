@@ -15,6 +15,7 @@
           <n-radio-button value="all" style="flex: 1; text-align: center;">全部</n-radio-button>
           <n-radio-button value="opt" style="flex: 1; text-align: center;">联合优化</n-radio-button>
           <n-radio-button value="sweep" style="flex: 1; text-align: center;">网格扫参</n-radio-button>
+          <n-radio-button value="nn" style="flex: 1; text-align: center;">在线微调</n-radio-button>
         </n-radio-group>
       </div>
 
@@ -152,8 +153,10 @@
         </n-grid>
 
         <n-tabs
+          v-model:value="activeMainTab"
           type="card"
           animated
+          @update:value="handleMainTabChange"
           style="
             background: var(--n-card-color);
             border: 1px solid var(--n-border-color);
@@ -174,6 +177,9 @@
             <div class="json-code">
               <pre>{{ JSON.stringify(selectedTask.config_json, null, 2) }}</pre>
             </div>
+          </n-tab-pane>
+          <n-tab-pane v-if="isNnTask" name="monitor" tab="📈 神经网络微调监控" display-directive="show">
+            <div ref="nnLogChartRef" style="height: 400px; width: 100%; padding: 16px; box-sizing: border-box;"></div>
           </n-tab-pane>
         </n-tabs>
 
@@ -308,23 +314,66 @@ let waveformChart = null;
 
 const fetchedWaves = ref({});
 const activeWaveTab = ref("");
-
+const activeMainTab = ref("data"); 
+const handleMainTabChange = (val) => {
+  activeMainTab.value = val;
+  if (val === "monitor") {
+    nextTick(() => {
+      setTimeout(() => {
+        if (nnLogChart) nnLogChart.resize();
+      }, 350);
+    });
+  }
+};
+const isSweepTask = computed(() => selectedTask.value?.id?.startsWith("sweep_") || false);
+const isNnTask = computed(() => selectedTask.value?.id?.startsWith("nn_") || false);
 // ✨ 将 columns 改为响应式，实现动态表头
 const columns = ref([]);
 
 const filteredTasks = computed(() => {
   if (taskFilter.value === "all") return tasks.value;
-  if (taskFilter.value === "sweep")
-    return tasks.value.filter((t) => t.id.startsWith("sweep_"));
-  if (taskFilter.value === "opt")
-    return tasks.value.filter((t) => t.id.startsWith("sim_"));
+  if (taskFilter.value === "sweep") return tasks.value.filter((t) => t.id.startsWith("sweep_"));
+  if (taskFilter.value === "opt") return tasks.value.filter((t) => t.id.startsWith("sim_"));
+  // ✨ 2. 拦截并过滤以 nn_ 开头的任务ID
+  if (taskFilter.value === "nn") return tasks.value.filter((t) => t.id.startsWith("nn_"));
   return tasks.value;
 });
+const nnLogChartRef = ref(null);
+let nnLogChart = null;
+const fetchAndRenderNnLogs = async (taskId) => {
+  try {
+    const res = await axios.get(`${API_BASE}/tasks/${taskId}/nn_logs`);
+    if (res.data && res.data.length > 0) {
+      nextTick(() => {
+        if (!nnLogChartRef.value) return;
+        if (nnLogChart) nnLogChart.dispose();
+        nnLogChart = echarts.init(nnLogChartRef.value);
 
+        const gens = res.data.map(d => `G${d.gen_index}`);
+        const losses = res.data.map(d => d.loss);
+        const errors = res.data.map(d => d.error);
+
+        nnLogChart.setOption({
+          tooltip: { trigger: 'axis', ...tooltipFrostedGlass },
+          legend: { data: ['反向传播 Loss', '预测误差 (vs CST)'], textStyle: { color: '#e2e8f0' } },
+          grid: { left: '5%', right: '5%', bottom: '10%', top: '15%', containLabel: true },
+          xAxis: { type: 'category', data: gens, axisLabel: { color: '#e2e8f0' } },
+          yAxis: [
+            { type: 'value', name: 'Loss', position: 'left', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }, axisLabel: { color: '#f59e0b' }, nameTextStyle: { color: '#f59e0b' } },
+            { type: 'value', name: 'Error', position: 'right', splitLine: { show: false }, axisLabel: { color: '#ef4444' }, nameTextStyle: { color: '#ef4444' } }
+          ],
+          series: [
+            { name: '反向传播 Loss', type: 'line', smooth: true, itemStyle: { color: '#f59e0b' }, areaStyle: { color: 'rgba(245, 158, 11, 0.1)' }, data: losses },
+            { name: '预测误差 (vs CST)', type: 'line', smooth: true, yAxisIndex: 1, itemStyle: { color: '#ef4444' }, data: errors }
+          ]
+        });
+      });
+    }
+  } catch (e) {
+    console.warn("暂无微调日志或后端未提供接口");
+  }
+};
 // 判断当前选中的是不是扫参任务
-const isSweepTask = computed(() => {
-  return selectedTask.value?.id?.startsWith("sweep_") || false;
-});
 
 const fetchAndShowWaveform = async (individualId) => {
   try {
@@ -434,6 +483,7 @@ const fetchTasks = async () => {
 const selectTask = async (task) => {
   selectedTaskId.value = task.id;
   selectedTask.value = task;
+  activeMainTab.value = "data";
   try {
     const res = await axios.get(`${API_BASE}/tasks/${task.id}/individuals`);
     const inds = Array.isArray(res.data)
@@ -450,7 +500,23 @@ const selectTask = async (task) => {
     // ✨ 动态生成表格的列 (Base Columns + Dynamic Metrics)
     const baseCols = [
       { title: "代数", key: "gen_index", width: 80, sorter: "default" },
-      { title: "编号", key: "ind_index", width: 80 },
+      { 
+        title: "追踪标识", 
+        key: "id", 
+        width: 110, 
+        render: (row) => {
+          // ✨ 彻底弃用存在编码冲突隐患的 ind_index
+          // 直接提取底层 100% 安全的数据库 UUID 主键作为唯一标识
+          const safeId = String(row.id || '--');
+          const displayId = safeId.length > 8 ? safeId.substring(0, 8) : safeId;
+          
+          return h(
+            NTag,
+            { size: "small", type: "default", bordered: false, style: "font-family: monospace; font-weight: bold;" },
+            { default: () => displayId }
+          );
+        }
+      },
       {
         title: "物理参数 (Params)",
         key: "params_json",
@@ -539,6 +605,9 @@ const selectTask = async (task) => {
     };
 
     columns.value = [...baseCols, ...dynamicCols, actionCol];
+    if (isNnTask.value) {
+      fetchAndRenderNnLogs(task.id);
+    }
   } catch (e) {
     message.error("无法读取任务明细数据");
   }

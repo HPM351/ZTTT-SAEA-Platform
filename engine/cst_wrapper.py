@@ -96,11 +96,6 @@ def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path):
         import cst.results
         res = cst.results.ProjectFile(cst_path, allow_interactive=True)
 
-        # 4. 提取主模波形 (仅波形展示用，不参与打分)
-        main_mode_cfg = env_cfg.get('mainMode', {})
-        if main_mode_cfg.get('enable') and main_mode_cfg.get('path'):
-            m_data = get_time_domain_metric(res, main_mode_cfg['path'], stable_time)
-            metrics['main_mode_curve'] = m_data.get('curve')
 
         # 5. 🌟 核心：遍历前端传来的动态目标列表进行数据抓取
         for t_cfg in targets_list:
@@ -140,6 +135,9 @@ def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path):
                     val = data.get('mean', 0.0)
                     metrics[t_name] = val * multiplier
                     metrics[f'{t_name}_curve'] = data.get('curve')
+                    # ✨ 提取双轨波动率，且绝对波动必须同频乘以用户的量纲！
+                    metrics[f'{t_name}_fluc_rel'] = data.get('fluc_rel', 0.0)
+                    metrics[f'{t_name}_fluc_abs'] = data.get('fluc_abs', 0.0) * multiplier
 
             except Exception as inner_e:
                 # 🛡️ 容错拦截：如果这个特定的指标没提出来（比如路径错了，或者 CST 没出这个图）

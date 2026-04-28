@@ -27,6 +27,13 @@
   ],
   "outputs": [
     {
+      "name": "Class_Logit",
+      "display": "起振分类",
+      "type": "classification",
+      "model_index": 0,
+      "needs_inverse": false
+    },
+    {
       "name": "Power",
       "display": "功率(W)",
       "type": "primary",

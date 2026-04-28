@@ -404,7 +404,7 @@
                   :key="k"
                   size="small"
                   type="info"
-                  bordered="false"
+                  :bordered="false"
                   style="
                     font-family: monospace;
                     font-size: 13px;
@@ -586,12 +586,32 @@ const loadHistoricalTask = async (taskId) => {
     // 2. 数据入池
     Object.keys(allDataPool).forEach(k => delete allDataPool[k]);
     
-    // ✨ 后端已经把数据整理成了完美格式，直接剥离 gen="1" 的外壳即可
+    // ✨ 核心修复：严谨的特征侦测解包。
+    // 如果 pool["1"] 里面没有 params/metrics，说明它真的是个 gen 壳子；否则它就是真实的扫参点数据！
     const pool = d.all_data_pool || {};
-    if (pool["1"]) {
+    if (pool["1"] && !pool["1"].params && !pool["1"].metrics) {
        Object.assign(allDataPool, pool["1"]);
     } else {
        Object.assign(allDataPool, pool);
+    }
+
+    try {
+      const indRes = await fetch(`${API_BASE}/tasks/${taskId}/individuals`);
+      const indData = await indRes.json();
+      const inds = indData.individuals || [];
+      
+      // 将真实数据库 ID 注入到内存池中，为后续按需加载波形做准备
+      // ✨ 修复：同时把数据库中完好的参数与指标字典注入到内存池，以供散点图提取坐标
+      inds.forEach(ind => {
+        if (!allDataPool[ind.ind_index]) {
+          allDataPool[ind.ind_index] = {}; // 兜底，防止该节点丢失
+        }
+        allDataPool[ind.ind_index].db_id = ind.id;
+        allDataPool[ind.ind_index].params = ind.params_json || {};
+        allDataPool[ind.ind_index].metrics = ind.metrics_json || {};
+      });
+    } catch (e) {
+      console.warn("拉取数据库个体数据失败", e);
     }
 
     // 3. 恢复指针和进度
@@ -755,6 +775,8 @@ const axisOptions = computed(() => {
 // === ECharts 初始化 ===
 let inspectorChart = null;
 let scatterChart = null;
+let inspectorResizeObserver = null;
+let scatterResizeObserver = null;
 const inspectorChartRef = ref(null);
 const scatterChartRef = ref(null);
 
@@ -766,7 +788,14 @@ const getGridColor = () =>
 const initCharts = () => {
   if (inspectorChartRef.value) {
     inspectorChart = echarts.init(inspectorChartRef.value);
+    
+    // 👇 新增：监听波形图容器自身尺寸变化，自动触发重绘
+    inspectorResizeObserver = new ResizeObserver(() => {
+      if (inspectorChart) inspectorChart.resize();
+    });
+    inspectorResizeObserver.observe(inspectorChartRef.value);
   }
+  
   if (scatterChartRef.value) {
     scatterChart = echarts.init(scatterChartRef.value);
     
@@ -779,11 +808,18 @@ const initCharts = () => {
       }
     });
     
+    // 👇 新增：监听散点图容器自身尺寸变化，自动触发重绘
+    scatterResizeObserver = new ResizeObserver(() => {
+      if (scatterChart) scatterChart.resize();
+    });
+    scatterResizeObserver.observe(scatterChartRef.value);
+    
     refreshScatterChart();
   }
 };
 
-const updateInspectorChart = () => {
+// ✨ 修复 1：加上 async，使函数支持异步请求
+const updateInspectorChart = async () => {
   if (!inspectorChart) return;
 
   // 1. 取出当前选中的 Sweep ID 对应的数据
@@ -793,8 +829,29 @@ const updateInspectorChart = () => {
     return;
   }
 
-  // 2. 根据选中的标签 (power, eff, fft, mainMode) 提取对应的波形坐标数组
-  const wave = currentData.waves ? currentData.waves[activeWaveTab.value] : null;
+  const targetName = activeWaveTab.value;
+
+  // ✨ 核心修复：补全按需加载逻辑。如果内存里没有波形数据，但存在 db_id，就向后端 DataCenter 发起请求拉取波形
+  if (!currentData.waves && !currentData[`${targetName}_curve`] && currentData.db_id) {
+    try {
+      const res = await axios.get(`${API_BASE}/individuals/${currentData.db_id}/waveform`);
+      if (res.data.status === "success" && res.data.waveforms) {
+        // 将后端返回的全量字典缓存到内存中，避免重复请求
+        currentData.waves = res.data.waveforms;
+      }
+    } catch (e) {
+      console.warn(`[Sweep] 按需加载波形失败 (ID: ${currentData.db_id})`, e);
+    }
+  }
+
+  // 2. 根据选中的标签提取对应的波形坐标数组
+  let wave = null;
+  if (currentData.waves && currentData.waves[targetName]) {
+    wave = currentData.waves[targetName];           // 走实时扫参或刚拉取的数据流
+  } else if (currentData[`${targetName}_curve`]) {
+    wave = currentData[`${targetName}_curve`];      // 兼容历史老版本格式
+  }
+
   if (!wave || !wave.x || !wave.y || wave.x.length === 0) {
     inspectorChart.clear();
     return;
@@ -1213,6 +1270,15 @@ onMounted(async () => {
             isRunning.value = true;
             connectWebSocket(activeTaskId);
 
+            // ✨ 核心修复：接管任务时，同步通知外层 App.vue 唤醒灵动岛
+            if (islandState) {
+              islandState.CstSweep.isRunning = true;
+              islandState.CstSweep.taskName = activeTaskId;
+              islandState.CstSweep.filePath = config.cstPath || "恢复中...";
+              islandState.CstSweep.progress = 0;
+              islandState.CstSweep.abortFn = stopOptimization;
+            }
+
             message.loading("🔄 正在恢复扫描进度与图表...");
             const resData = await axios.get(
               `${API_BASE}/get_task_data/${activeTaskId}`,
@@ -1265,6 +1331,11 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener("resize", handleResize);
   document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  
+  // 👇 新增：断开尺寸监听器
+  if (inspectorResizeObserver) inspectorResizeObserver.disconnect();
+  if (scatterResizeObserver) scatterResizeObserver.disconnect();
+  
   if (inspectorChart) inspectorChart.dispose();
   if (scatterChart) scatterChart.dispose();
 });

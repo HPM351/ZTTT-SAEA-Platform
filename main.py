@@ -169,66 +169,81 @@ class LoadConfigRequest(BaseModel):
 
 @app.get("/api/get_task_data/{task_id}")
 async def get_task_data(task_id: str):
-    """供前端刷新页面时，一键恢复所有历史数据（兼容扫参的无趋势与 SAEA 的全趋势）"""
+    """供前端刷新页面时，一键恢复所有历史数据（动态 JSON 版）"""
     db = SessionLocal()
     try:
-        # 🌟 1. 恢复折线图 (Generations - 专供 SAEA 优化页面)
-        gens = db.query(Generation).filter(Generation.task_id == task_id).order_by(Generation.gen_index).all()
-        trend_data = {}
-        if gens:
-            trend_data["axis"] = [g.gen_index for g in gens]
-            trend_data["score"] = [g.best_score for g in gens]
-
-            # 动态探查当前任务到底有哪些指标，然后拼成数组
-            all_metric_keys = set()
-            for g in gens:
-                if g.best_metrics_json:
-                    all_metric_keys.update(g.best_metrics_json.keys())
-
-            # 动态组装每条曲线的数据，例如 trend_data['Power'] = [10, 20, 30...]
-            for k in all_metric_keys:
-                trend_data[k] = [g.best_metrics_json.get(k, 0.0) if g.best_metrics_json else 0.0 for g in gens]
-
-        # 🌟 2. 恢复散点图与波形的基础数据 (Individuals)
-        inds = db.query(Individual).filter(Individual.task_id == task_id).all()
-        waves = db.query(Waveform).filter(Waveform.task_id == task_id).all()
-        waves_map = {w.individual_id: w for w in waves}
-
-        all_data_pool = {}
-        for ind in inds:
-            gen_str = str(ind.gen_index)
-            ind_str = str(ind.ind_index)
-
-            if gen_str not in all_data_pool:
-                all_data_pool[gen_str] = {}
-
-            w = waves_map.get(ind.id)
-            waves_json = w.waves_json if w and w.waves_json else {}
-
-            all_data_pool[gen_str][ind_str] = {
-                "id": ind.id,
-                "params": ind.params_json or {},
-                "metrics": ind.metrics_json or {},
-                "waves": waves_json,
-                "score": ind.score
-            }
-
         task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            return {"status": "error", "message": "任务不存在"}
+
+        # 🌟 1. 提取所有个体的散点数据 (修复核心：填补缺失的 scatter_data)
+        inds = db.query(Individual).filter(Individual.task_id == task_id).all()
+        scatter_data = [{
+            "gen": ind.gen_index,
+            "ind": ind.ind_index,
+            "score": ind.score,
+            "metrics": ind.metrics_json or {},
+            "params": ind.params_json or {}
+        } for ind in inds]
+
+        # 🌟 2. 提取波形池数据
+        waves = db.query(Waveform).filter(Waveform.task_id == task_id).all()
+        all_data_pool = {}
+        for w in waves:
+            g, i = w.gen_index, w.ind_index
+            if str(g) not in all_data_pool:
+                all_data_pool[str(g)] = {}
+
+            wave_dict = w.waves_json or {}
+            # 从个体列表中找到对应的参数，挂载到波形字典上，供前端波形审查台显示
+            match_ind = next((x for x in inds if x.gen_index == g and x.ind_index == i), None)
+            if match_ind:
+                wave_dict["params"] = match_ind.params_json or {}
+
+            all_data_pool[str(g)][str(i)] = wave_dict
+
+        # 🌟 3. 提取收敛趋势数据 (动态多目标自适应)
+        gens = db.query(Generation).filter(Generation.task_id == task_id).order_by(Generation.gen_index).all()
+        trend_data = {"axis": [g.gen_index for g in gens]}
+
+        # 根据配置 JSON 动态初始化目标的空列表 (如 "效率": [], "频率": [])
+        targets = []
+        if task.config_json and "targetsList" in task.config_json:
+            targets = [t["name"] for t in task.config_json["targetsList"]]
+
+        for t_name in targets:
+            trend_data[t_name] = []
+
+        # 遍历代数，将对应的指标填入
+        for g in gens:
+            metrics = g.best_metrics_json or {}
+            for t_name in targets:
+                # 容错处理：如果旧数据没这个指标，就给 0
+                trend_data[t_name].append(metrics.get(t_name, 0.0))
+
+        # 提取总代数兜底
+        total_gen = 50
+        if task.config_json and "algo" in task.config_json:
+            total_gen = task.config_json["algo"].get("nGen", 50)
 
         return {
             "status": "success",
-            "trend_data": trend_data,  # ✨ SAEA 优化页面的救命草
-            "all_data_pool": all_data_pool,  # ✨ 散点图和波形台的数据池
-            "config_json": task.config_json if task else None
+            "config_json": task.config_json,
+            "total_gen": getattr(task, "total_gen", total_gen),
+            "scatter_data": scatter_data,    # ✨ 救命字段！前端再也不会爆 undefined 了
+            "trend_data": trend_data,
+            "all_data_pool": all_data_pool
         }
     except Exception as e:
-        return {"status": "error", "message": f"后端解析数据失败: {str(e)}"}
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": f"后端解析数据异常: {str(e)}"}
     finally:
         db.close()
 
 @app.post("/api/load_config")
 async def api_load_config(req: LoadConfigRequest):
-    """前端输入路径后，尝试加载本地的历史配置"""
+    """前端输入路径后，尝试加载本地的历史配置"""   
     filename = get_config_filename(req.cstPath)
     if os.path.exists(filename):
         try:

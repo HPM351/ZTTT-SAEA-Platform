@@ -37,7 +37,12 @@ def get_time_domain_metric(results_obj, result_path, stable_start):
         if len(stable_y) > 10:
             p_mean = np.mean(stable_y)
             res['mean'] = p_mean
-            res['fluc'] = (np.max(stable_y) - np.min(stable_y)) / abs(p_mean) if abs(p_mean) > 1e-9 else 0.0
+
+            # ✨ 架构师修复：改用“最大绝对偏差”完全对齐人类视觉！
+            max_dev = np.max(np.abs(stable_y - p_mean))
+            # 同时提取相对值与绝对值
+            res['fluc_rel'] = max_dev / abs(p_mean) if abs(p_mean) > 1e-9 else 0.0
+            res['fluc_abs'] = max_dev
             res['valid'] = True
     except:
         pass
@@ -96,11 +101,17 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
     any_dead = False
 
     # 遍历所有目标，执行评估
+    # 遍历所有目标，执行评估
     for t_cfg in targets_list:
+        mode = t_cfg.get('mode', 'maximize')
+
+        # ✨ 架构师补丁：遇到“仅展示模式”，直接放行，不产生任何分数和惩罚！
+        if mode == 'display_only':
+            continue
+
         t_name = t_cfg.get('name')
         val = metrics.get(t_name, 0.0)
 
-        mode = t_cfg.get('mode', 'maximize')
         weight = float(t_cfg.get('weight', 1.0))
         scale = float(t_cfg.get('reference_scale', 1.0))
         constraints = t_cfg.get('constraints', {})
@@ -110,12 +121,11 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
         base_score = 0.0
 
         # ==========================================
-        # Level 1: 计算无视死区的基础得分 (锚定连续性)
+        # Level 1: 计算无视死区的基础得分
         # ==========================================
         if mode == 'maximize':
             base_score = (val / (scale + 1e-9)) * weight
         elif mode == 'minimize':
-            # 翻转为正向奖励，表现越好越接近满分 weight
             base_score = (1.0 - (val / (scale + 1e-9))) * weight
         elif mode == 'target':
             target_val = float(t_cfg.get('target_val', 0.0))
@@ -124,27 +134,72 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
             if diff <= tol:
                 base_score = 1.0 * weight
             else:
-                # 容差外平滑衰减
                 base_score = (1.0 - (diff - tol) / (scale + 1e-9)) * weight
 
         # ==========================================
-        # Level 2: 刚性约束拦截网校验
+        # ✨ Level 1.5: 时域波动率软/硬惩罚
+        # ==========================================
+        if constraints.get('enable', False) and constraints.get('max_fluc') is not None:
+            fluc_type = constraints.get('fluc_type', 'relative')
+            max_fluc_input = float(constraints.get('max_fluc'))
+
+            # 智能分发判定基准
+            if fluc_type == 'relative':
+                actual_fluc = metrics.get(f"{t_name}_fluc_rel", 0.0)
+                fluc_A = max_fluc_input / 100.0
+                fluc_B = fluc_A * 3.0
+            else:
+                actual_fluc = metrics.get(f"{t_name}_fluc_abs", 0.0)
+                fluc_A = max_fluc_input
+                fluc_B = fluc_A * 3.0
+
+            if actual_fluc > fluc_A:
+                if actual_fluc <= fluc_B:
+                    # ✨ 加重惩罚梯度！最高削减 95% 基础分，让震荡波形彻底失去竞争力
+                    penalty_ratio = 0.95 * ((actual_fluc - fluc_A) / (fluc_B - fluc_A))
+                    base_score *= (1.0 - penalty_ratio)
+                else:
+                    is_dead = True
+                    depth += (actual_fluc - fluc_B) / (fluc_B + 1e-6)
+
+        # ==========================================
+        # ✨ Level 1.6: 频域杂模抑制软/硬惩罚
+        # ==========================================
+        side_ratio_key = f"{t_name}_side_ratio"
+        if side_ratio_key in metrics and constraints.get('enable', False):
+            # 前端如果没传，默认 A 为 10%，B 为 30%
+            ratio_A = float(constraints.get('max_side_ratio', 10.0)) / 100.0
+            ratio_B = float(constraints.get('max_side_ratio_B', ratio_A * 3.0)) / 100.0
+
+            actual_ratio = metrics[side_ratio_key]
+            if actual_ratio > ratio_A:
+                if actual_ratio <= ratio_B:
+                    # 缓坡惩罚
+                    p_ratio = 0.5 * ((actual_ratio - ratio_A) / (ratio_B - ratio_A))
+                    base_score *= (1.0 - p_ratio)
+                else:
+                    # 杂模超过 B：频域崩溃，触发死区！
+                    is_dead = True
+                    depth += (actual_ratio - ratio_B) / (ratio_B + 1e-6)
+
+        # ==========================================
+        # Level 2: 刚性约束拦截网校验 (原始 min/max)
         # ==========================================
         if constraints.get('enable', False):
             if mode == 'target':
                 max_diff = constraints.get('max_diff')
                 if max_diff is not None and abs(val - target_val) > max_diff:
                     is_dead = True
-                    depth = abs(val - target_val) - max_diff
+                    depth += (abs(val - target_val) - max_diff) / (max_diff + 1e-6)
             else:
                 min_val = constraints.get('min')
                 max_val = constraints.get('max')
                 if min_val is not None and val < min_val:
                     is_dead = True
-                    depth = (min_val - val) / (abs(min_val) + 1e-6)
+                    depth += (min_val - val) / (abs(min_val) + 1e-6)
                 if max_val is not None and val > max_val:
                     is_dead = True
-                    depth = (val - max_val) / (abs(max_val) + 1e-6)
+                    depth += (val - max_val) / (abs(max_val) + 1e-6)
 
         # ==========================================
         # Level 3: 策略结算与惩罚融合
@@ -152,11 +207,9 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
         if is_dead:
             any_dead = True
             if algo_type == "BO":
-                # BO 专属：消除断崖！继承该个体的优秀基础分，仅叠加平滑斜率惩罚
+                # ✨ 恢复 BO 的负梯度深渊设计
                 smooth_penalty = 500.0 * depth
                 total_score += (base_score - smooth_penalty)
-            else:
-                pass  # GA 模式下只要有一次 dead，总分直接作废，这里无需累加
         else:
             total_score += base_score
 
@@ -164,7 +217,6 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
     # 最终总评与量级放大
     # ==========================================
     if any_dead and algo_type != "BO":
-        return -1e7  # GA/PSO 一票否决
+        return -1e7  # GA/PSO 只要踩到任何红线，直接打入深渊
 
-    # 统一放大 100 倍，拉开方差，刺激算法寻找梯度
     return total_score * 100.0
