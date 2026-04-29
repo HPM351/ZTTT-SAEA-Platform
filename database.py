@@ -5,7 +5,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 # 1. 数据库文件路径
 DB_PATH = os.path.join(os.path.dirname(__file__), "saea_data.db")
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
+# 优先读取环境变量，默认回退到当前目录下的 db 文件
+SQLALCHEMY_DATABASE_URL = os.getenv("DB_PATH", f"sqlite:///{DB_PATH}")
 
 # 2. 创建数据库引擎
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})

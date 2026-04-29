@@ -758,7 +758,7 @@
                             font-weight: bold;
                           "
                         >
-                          🎯 最优参数组合 (Opt Params)
+                          最优参数组合 (Opt Params)
                         </div>
                         <div style="display: flex; flex-wrap: wrap; gap: 6px">
                           <n-tag
@@ -1363,6 +1363,13 @@
               </n-input-number>
             </n-form-item>
           </n-gi>
+          <n-gi>
+            <n-form-item label="稳态提取起始时间 (Stable Time)">
+              <n-input-number v-model:value="config.online.stableTime" :min="0" :step="1">
+                <template #suffix>ns</template>
+              </n-input-number>
+            </n-form-item>
+          </n-gi>
         </n-grid>
 
         <n-divider dashed>指标约束矩阵 (CST Reality Check)</n-divider>
@@ -1663,6 +1670,7 @@ const config = reactive({
     cstPath: "F:\\cst files\\ACO for report\\ACO FR.cst",
     targetsList: [],
     taskName: "",
+    stableTime: 20.0,
   },
   algo: {
     popSize: 20,

@@ -483,7 +483,7 @@
                         <b>功能：</b>
                         观察多目标的权衡边界与种群质量分布。<br /><b>读法：</b>
                         X/Y
-                        轴可自由切换指标。颜色映射该个体的“综合打分”。暖色（红/橙）代表高分优质解，冷色（深蓝）代表被惩罚的劣质解或死波。
+                        轴以及颜色都可以自由切换变量或者目标，通常建议将横纵轴设置为优化目标，颜色设置为分数。暖色（红/橙）代表高分优质解，冷色（深蓝）代表被惩罚的劣质解或死波。
                       </div>
                     </div>
                   </n-collapse-item>
@@ -498,8 +498,8 @@
                         <b>功能：</b> 监控遗传算法的演化健康度。<br /><b
                           >读法：</b
                         >
-                        双 Y
-                        轴分别追踪每一代的最高效率和最高功率。如果曲线稳步爬升说明演化正常；如果曲线长期平坦（超过10代毫无波澜），说明算法已收敛至物理极限，或陷入了局部最优死胡同。
+                        多 Y
+                        轴可通过用户自定义选取，分析不同的优化目标在GA迭代过程中的变化趋势。如果曲线稳步爬升说明演化正常；如果曲线长期平坦（超过10代毫无波澜），说明算法已收敛至物理极限，或陷入了局部最优死胡同。
                       </div>
                     </div>
                   </n-collapse-item>
@@ -514,7 +514,7 @@
                         <b>功能：</b> 验证高分个体的物理真实性。<br /><b
                           >读法：</b
                         >
-                        为保证网页流畅，后台对时频域曲线进行了降采样。主要用于快速观察波形是否平顶起振、是否存在严重杂波干扰。严谨的细节分析仍需返回
+                        为保证网页流畅，后台对时频域曲线稍微进行了降采样。主要用于快速观察波形是否平顶起振、是否存在严重杂波干扰。严谨的细节分析仍需返回
                         CST 软件内查看原始数据。
                       </div>
                     </div>
@@ -524,7 +524,7 @@
 
               <div class="faq-module" style="margin-top: 24px">
                 <div class="faq-module-title nn-title" style="font-size: 16px">
-                  <n-icon><Network /></n-icon> 代理辅助 AI 图表 (XAI)
+                  <n-icon><Network /></n-icon> 代理辅助进化算法图表 (SAEA)
                 </div>
                 <n-collapse class="faq-collapse">
                   <n-collapse-item name="a1">
@@ -548,7 +548,7 @@
                   <n-collapse-item name="a2">
                     <template #header
                       ><span class="faq-q"
-                        >2. 局部参数贡献解构 (Local SHAP)</span
+                        >2. 局部参数贡献解构 (正向预测部分)</span
                       ></template
                     >
                     <div class="faq-a-box">
@@ -556,7 +556,7 @@
                         <b>功能：</b> 微观拆解单次预测得分的“因果关系”。<br /><b
                           >读法：</b
                         >
-                        在正向推演时生成。红色柱代表正向提升，绿色柱代表反向拉扯（或反之，视具体指标而定）。它能清晰回答：“为什么这次效率能到
+                        在正向预测时生成。红色柱代表正向提升，绿色柱代表反向拉扯（或反之，视具体指标而定）。它能清晰回答：“为什么这次效率能到
                         80%？是因为电压拉高贡献了 20%，还是半径缩小贡献了 15%？”
                       </div>
                     </div>
@@ -573,7 +573,7 @@
                           >读法：</b
                         >
                         仅提取历代排名前 50%
-                        的“尖子生”进行统计。深红代表正相关，深蓝代表负相关。如果参数A和B呈现深蓝，意味着在优秀器件中，A变大B就必须变小。这能在一定程度上指导后续管子的参数调节策略。
+                        的“尖子生”进行统计。深红代表正相关，深蓝代表负相关。如果参数A和B呈现深蓝，意味着在优秀器件中，A变大通常情况下B就必须变小。这能在一定程度上指导后续管子的参数调节策略。
                       </div>
                     </div>
                   </n-collapse-item>
@@ -585,7 +585,7 @@
                     >
                     <div class="faq-a-box">
                       <div class="faq-a-text">
-                        <b>功能：</b> 多维高维数据的轨迹追踪。<br /><b
+                        <b>功能：</b> 多维数据的轨迹追踪。<br /><b
                           >读法：</b
                         >
                         在目标轴（如效率）上框选高分区间，系统会高亮这些优秀个体经过所有输入参数轴时的轨迹。借此可以一眼看出高效率通常扎堆在哪些参数组合区间内。
@@ -606,6 +606,22 @@
                       </div>
                     </div>
                   </n-collapse-item>
+                  <n-collapse-item name="a6">
+                    <template #header
+                      ><span class="faq-q"
+                        >6. 在线学习监控台(Online Monitor)</span
+                      ></template
+                    >
+                    <div class="faq-a-box">
+                      <div class="faq-a-text">
+                        <b>功能：</b> 数据反向微调代理模型过程可视化。<br /><b
+                          >读法：</b
+                        >
+                        记录了每一代结果返回微调代理模型后，模型的损失函数以及预测误差。通常前半部分是二者都会有很大波动，在自适应变异策略离开了均匀变异或者演化进行到后半段时，曲线会
+                        逐渐趋于稳定。数据库中保留了一次较为标准的在线学习微调的曲线图，名称为“测试V2”。
+                      </div>
+                    </div>
+                  </n-collapse-item>
                 </n-collapse>
               </div>
             </n-scrollbar>
@@ -622,8 +638,8 @@
                 style="margin-bottom: 16px"
               >
                 平台已升级至
-                <b>V2.5 绝对连续双轨制引擎</b>。评价指标高度动态模块化，完美消除
-                BO 在死区边界的数学断崖，为代理模型提供绝对平滑的高斯超平面。
+                <b>V3.0双轨评分</b>。对GA\PSO与BO采取两种评分曲线的拟合，较好的满足了不同算法对于评分梯度的需求。
+                通过模块化的目标设置，以及对目标的物理意义高度解耦，实现了对更多微波器件的指标优化场景的覆盖。
               </n-alert>
 
               <n-h4>1. 基础适应度 (Base Fitness)</n-h4>
@@ -664,9 +680,33 @@
                 = [1.0 - (Diff - Tol) / Scale] &times; Weight
               </div>
 
-              <n-h4>2. 刚性拦截与惩罚融合 (Dead Zone)</n-h4>
+              <n-h4>2. 时频域软硬双重惩罚 (Soft/Hard Penalties)</n-h4>
               <p style="font-size: 13px; color: var(--n-text-color-3)">
-                计算越界深度 (Depth)，根据驱动算法分发不同的物理界限惩罚：
+                引入物理波形质量约束。在触碰绝对死区前，引擎会施加非线性缓坡惩罚过滤劣质波形：
+              </p>
+              <div
+                style="
+                  background: var(--n-code-color);
+                  padding: 12px;
+                  border-radius: 6px;
+                  font-family: monospace;
+                  margin-bottom: 16px;
+                  line-height: 1.8;
+                  font-size: 13px;
+                "
+              >
+                <span style="color: #f59e0b; font-weight: bold">时域波动率 (Fluctuation)：</span><br />
+                波动 > 阈值A：触发软惩罚，最高削减此项基础分的 95%。<br />
+                波动 > 阈值B (A的3倍)：波形崩溃，强制触发死区越界。<br /><br />
+                
+                <span style="color: #f59e0b; font-weight: bold">频域杂模抑制 (Side Ratio)：</span><br />
+                杂波 > 阈值A：触发缓坡惩罚，最高削减此项基础分的 50%。<br />
+                杂波 > 阈值B (A的3倍)：频域崩溃，强制触发死区越界。
+              </div>
+
+              <n-h4>3. 刚性拦截与惩罚融合 (Dead Zone)</n-h4>
+              <p style="font-size: 13px; color: var(--n-text-color-3)">
+                计算最终越界深度 (Depth)，根据驱动算法分发不同的物理界限惩罚：
               </p>
               <div
                 style="
@@ -682,8 +722,7 @@
                 <span style="color: #ef4444; font-weight: bold"
                   >[GA / PSO] 阶跃断崖淘汰：</span
                 ><br />
-                触发死区即刻一票否决，该项得分强制重置为
-                <span style="color: #ef4444">-10,000</span>。<br />
+                触发任何死区即刻执行一票否决，无视单项得分，总分直接抹杀。<br />
                 <br />
                 <span style="color: #8b5cf6; font-weight: bold"
                   >[BO] C0 绝对连续平滑衰减：</span
@@ -692,7 +731,7 @@
                 Final_Score = Base_Score - (500.0 &times; Depth)
               </div>
 
-              <n-h4>3. 综合结算与地形激活 (Terrain Activation)</n-h4>
+              <n-h4>4. 综合结算与地形激活 (Terrain Activation)</n-h4>
               <p style="font-size: 13px; color: var(--n-text-color-3)">
                 为激发贝叶斯优化中高斯过程 (GP)
                 核函数的寻优积极性，人为拉开方差，防止微小梯度淹没于浮点噪声：
@@ -712,7 +751,7 @@
                 <span
                   style="color: #ef4444; font-size: 12px; font-weight: normal"
                 >
-                  * 触发死区的 GA/PSO 个体，总分强制抹杀为 -1,000,000
+                  * 触发死区的 GA/PSO 个体，总分强制抹杀为 -10,000,000 (-1e7)
                 </span>
               </div>
             </n-scrollbar>

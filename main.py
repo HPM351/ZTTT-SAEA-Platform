@@ -380,13 +380,15 @@ async def health_check():
                 break
 
         if not cst_alive:
+            env_cst_path = os.getenv("CST_PYTHON_PATH", "")
             common_paths = [
+                env_cst_path,  # 👈 优先探测配置文件或终端引导填写的路径
                 r"C:\Program Files (x86)\CST Studio Suite 2024",
                 r"C:\Program Files (x86)\CST Studio Suite 2023",
                 r"C:\Program Files\CST Studio Suite 2024"
             ]
             for p in common_paths:
-                if os.path.exists(p):
+                if p and os.path.exists(p):
                     cst_alive = True
                     break
     except Exception:

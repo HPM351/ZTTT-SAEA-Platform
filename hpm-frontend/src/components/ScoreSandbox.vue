@@ -223,7 +223,7 @@
                 </span>
                 <span v-else-if="evaluationResults.anyDead">
                   <b>GA策略：</b>触发刚性死区，得分强制锁定为
-                  -1,000,000，执行一票否决淘汰。
+                  -10,000,000，执行一票否决淘汰。
                 </span>
                 <span v-else>
                   <b>状态完美：</b
@@ -356,7 +356,7 @@ const evaluationResults = computed(() => {
 
   // ✨ 最终结算：统一放大 100 倍，拉开方差，激活 GP
   let finalTotal = totalScore * 100.0;
-  if (selectedAlgo.value === "GA" && anyDead) finalTotal = -1000000.0; // GA 一票否决
+  if (selectedAlgo.value === "GA" && anyDead) finalTotal = -10000000.0; // GA 一票否决
 
   return { totalScore: finalTotal, details, anyDead };
 });

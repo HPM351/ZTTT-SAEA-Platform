@@ -4,8 +4,10 @@ import sys
 import os
 import json
 
-# === 恢复你原有的 CST 环境变量配置 ===
-cst_lib_path = r"D:\CST Studio Suite 2024\AMD64\python_cst_libraries"
+cst_lib_path = os.getenv(
+    "CST_PYTHON_PATH", 
+    r"D:\CST Studio Suite 2024\AMD64\python_cst_libraries"
+)
 if cst_lib_path not in sys.path:
     sys.path.append(cst_lib_path)
 

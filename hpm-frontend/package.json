@@ -1,7 +1,7 @@
 {
   "name": "hpm-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,16 +9,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "axios": "^1.14.0",
-    "echarts": "^6.0.0",
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.4",
+    "@vueuse/core": "^10.0.0",
+    "axios": "^1.6.0",
+    "echarts": "^5.4.3",
     "echarts-gl": "^2.0.9",
-    "element-plus": "^2.13.6",
-    "vue": "^3.5.30",
-    "vue-echarts": "^8.0.1",
-    "vue-router": "^4.6.4"
+    "lucide-vue-next": "^0.290.0",
+    "naive-ui": "^2.35.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.5",
-    "vite": "^8.0.1"
+    "@vitejs/plugin-vue": "^4.2.3",
+    "vite": "^4.4.5"
   }
 }

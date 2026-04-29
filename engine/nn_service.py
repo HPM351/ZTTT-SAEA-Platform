@@ -622,9 +622,11 @@ async def run_nn_evolution_background(task_id: str, config: dict):
                     real_Y_all = []
                     waves_dict_for_ui = {}
 
+                    stable_time = float(online_cfg.get("stableTime", 20.0))
+
                     for idx in top_k_indices:
                         p_dict = {param_names[j]: float(pop[idx][j]) for j in range(len(param_names))}
-                        env_cfg = {"useStableTime": True, "stableTime": 20.0}
+                        env_cfg = {"useStableTime": True, "stableTime": stable_time}
 
                         m = await loop.run_in_executor(
                             CST_EXECUTOR,
