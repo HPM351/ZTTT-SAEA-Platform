@@ -3,14 +3,14 @@ import os
 
 def run_setup():
     print("\n" + "=" * 60)
-    print("🚀 欢迎使用 HPM_OPT_WEB (高功率微波优化 Web 平台)")
+    print("欢迎使用 HPM_OPT_WEB (高功率微波优化 Web 平台)")
     print("=" * 60)
-    print("💡 检测到您是首次运行项目，或者尚未配置环境变量。")
+    print("检测到您是首次运行项目，或者尚未配置环境变量。")
     print("我们将通过几个简单的问题帮您完成初始化...\n")
 
     # 1. 引导 CST 路径配置 (默认指向你本地能跑通的 D 盘路径)
     default_cst = r"D:\CST Studio Suite 2024\AMD64\python_cst_libraries"
-    print("📌 [1/2] 配置 CST Python 运行库路径")
+    print("[1/2] 配置 CST Python 运行库路径")
     print(f"推荐的默认路径为: {default_cst}")
 
     while True:
@@ -25,18 +25,18 @@ def run_setup():
 
         # 简单验证路径是否存在
         if os.path.exists(cst_path):
-            print("✅ 验证通过：CST 路径有效！\n")
+            print("验证通过：CST 路径有效！\n")
             break
         else:
-            print("❌ 警告：未在您的电脑上找到该目录！")
+            print("警告：未在您的电脑上找到该目录！")
             retry = input("是否确认要强制使用该未知路径？(y/n) [默认: n]: ").strip().lower()
             if retry == 'y':
                 break
             print("-" * 40)
 
     # 2. 引导 LLM API 配置 (非强制)
-    print("📌 [2/2] 配置大语言模型 API Key (用于智能分析模块)")
-    llm_key = input("👉 请输入您的 API Key (可选，直接回车可跳过):\n> ").strip()
+    print("[2/2] 配置大语言模型 API Key (用于智能分析模块)")
+    llm_key = input("请输入您的 API Key (可选，直接回车可跳过):\n> ").strip()
 
     # 3. 写入 .env 文件
     env_content = f"""# ==========================================
@@ -60,8 +60,7 @@ PORT=8000
     with open(".env", "w", encoding="utf-8") as f:
         f.write(env_content)
 
-    print("\n🎉 配置大功告成！已成功为您生成 .env 环境变量文件。")
-    print("🚀 即将启动核心后台服务器...\n")
+    print("\n配置完成！已成功为您生成 .env 环境变量文件。")
     print("=" * 60 + "\n")
 
 

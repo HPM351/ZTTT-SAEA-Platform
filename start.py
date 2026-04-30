@@ -9,13 +9,13 @@ processes = []
 
 def cleanup():
     """退出时自动干掉所有子进程，绝不留幽灵进程"""
-    print("\n🛑 收到停止信号，正在安全关闭前后端服务...")
+    print("\n收到停止信号，正在安全关闭前后端服务...")
     for p in processes:
         try:
             p.terminate()
         except:
             pass
-    print("👋 所有服务已安全退出！")
+    print("所有服务已安全退出！")
 
 # 注册退出清理函数
 atexit.register(cleanup)
@@ -25,7 +25,7 @@ def main():
     frontend_dir = os.path.join(root_dir, "hpm-frontend")
 
     print("=" * 50)
-    print("🚀 正在为您启动 HPM_OPT_WEB 全栈环境...")
+    print("正在为您启动 HPM_OPT_WEB 全栈环境...")
     print("=" * 50)
 
     try:
