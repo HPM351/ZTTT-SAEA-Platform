@@ -38,7 +38,6 @@ def get_time_domain_metric(results_obj, result_path, stable_start):
             p_mean = np.mean(stable_y)
             res['mean'] = p_mean
 
-            # ✨ 架构师修复：改用“最大绝对偏差”完全对齐人类视觉！
             max_dev = np.max(np.abs(stable_y - p_mean))
             # 同时提取相对值与绝对值
             res['fluc_rel'] = max_dev / abs(p_mean) if abs(p_mean) > 1e-9 else 0.0
@@ -101,11 +100,10 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
     any_dead = False
 
     # 遍历所有目标，执行评估
-    # 遍历所有目标，执行评估
     for t_cfg in targets_list:
         mode = t_cfg.get('mode', 'maximize')
 
-        # ✨ 架构师补丁：遇到“仅展示模式”，直接放行，不产生任何分数和惩罚！
+        # 遇到“仅展示模式”，直接放行，不产生任何分数和惩罚
         if mode == 'display_only':
             continue
 
@@ -137,7 +135,7 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
                 base_score = (1.0 - (diff - tol) / (scale + 1e-9)) * weight
 
         # ==========================================
-        # ✨ Level 1.5: 时域波动率软/硬惩罚
+        # Level 1.5: 时域波动率软/硬惩罚
         # ==========================================
         if constraints.get('enable', False) and constraints.get('max_fluc') is not None:
             fluc_type = constraints.get('fluc_type', 'relative')
@@ -155,7 +153,7 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
 
             if actual_fluc > fluc_A:
                 if actual_fluc <= fluc_B:
-                    # ✨ 加重惩罚梯度！最高削减 95% 基础分，让震荡波形彻底失去竞争力
+                    # 加重惩罚梯度！最高削减 95% 基础分，让震荡波形彻底失去竞争力
                     penalty_ratio = 0.95 * ((actual_fluc - fluc_A) / (fluc_B - fluc_A))
                     base_score *= (1.0 - penalty_ratio)
                 else:
@@ -163,7 +161,7 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
                     depth += (actual_fluc - fluc_B) / (fluc_B + 1e-6)
 
         # ==========================================
-        # ✨ Level 1.6: 频域杂模抑制软/硬惩罚
+        # Level 1.6: 频域杂模抑制软/硬惩罚
         # ==========================================
         side_ratio_key = f"{t_name}_side_ratio"
         if side_ratio_key in metrics and constraints.get('enable', False):
@@ -178,7 +176,7 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
                     p_ratio = 0.5 * ((actual_ratio - ratio_A) / (ratio_B - ratio_A))
                     base_score *= (1.0 - p_ratio)
                 else:
-                    # 杂模超过 B：频域崩溃，触发死区！
+                    # 杂模超过 B：频域崩溃，触发死区
                     is_dead = True
                     depth += (actual_ratio - ratio_B) / (ratio_B + 1e-6)
 
@@ -207,7 +205,7 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
         if is_dead:
             any_dead = True
             if algo_type == "BO":
-                # ✨ 恢复 BO 的负梯度深渊设计
+                # 恢复 BO 的负梯度深渊设计
                 smooth_penalty = 500.0 * depth
                 total_score += (base_score - smooth_penalty)
         else:

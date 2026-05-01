@@ -13,7 +13,7 @@ def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg
              task_status_flags, algo_type="SAEA-GA", global_cache=None):
     """
     评估当前种群中所有个体 (增加了单步实时推送)
-    ✨ 终极去物理化版本：全量字典动态路由，不再做任何硬编码转换
+    去物理化版本：全量字典动态路由，不再做任何硬编码转换
     """
     if global_cache is None:
         global_cache = {}
@@ -31,7 +31,7 @@ def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg
             p = {**{k: float(v) for k, v in zip(opt_names, Phen[i, :])}, **fixed_dict}
 
             # ==========================================
-            # ✨ 算力白嫖外挂：参数哈希与缓存拦截
+            # 算力白嫖：参数哈希与缓存拦截
             # ==========================================
             param_key = tuple(round(p[k], 5) for k in sorted(p.keys()))
 
@@ -44,12 +44,12 @@ def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg
                 if 'error' not in m:
                     global_cache[param_key] = m
 
-            # ✨ 核心联动：将前端传来的算法类型，喂给底层打分网关
+            # 核心联动：将前端传来的算法类型，喂给底层打分网关
             scr = calc_score(m, targets_cfg, algo_type)
             Fit[i, 0] = scr
 
             # =======================================================
-            # 🌉 终极去物理化：数据智能分流
+            # 去物理化：数据智能分流
             # 将字典中的标量 (数值) 与矢量 (曲线) 自动剥离
             # =======================================================
             current_metrics = {k: v for k, v in m.items() if not k.endswith('_curve') and k != 'error'}
@@ -58,13 +58,13 @@ def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg
             rec = {
                 "No": i + 1,
                 "Score": float(scr),
-                "metrics": current_metrics,  # 👈 挂载全量数值字典
+                "metrics": current_metrics,
                 "params": p
             }
             current_batch_logs.append(rec)
 
             waves_dict[str(i + 1)] = {
-                **current_waves,  # 👈 展开挂载全量波形字典
+                **current_waves,
                 "params": p
             }
 
@@ -77,7 +77,7 @@ def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg
                     ind_index=i + 1,
                     params_json=p,
                     score=float(scr),
-                    metrics_json=current_metrics,  # 🌟 终极版：入库整个结果字典
+                    metrics_json=current_metrics,
                     is_valid=is_valid
                 )
                 db.add(new_individual)
@@ -88,7 +88,7 @@ def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg
                     task_id=task_id,
                     gen_index=gen_idx,
                     ind_index=i + 1,
-                    waves_json=current_waves  # 🌟 终极版：入库整个波形字典
+                    waves_json=current_waves
                 )
                 db.add(new_wave)
                 db.commit()
@@ -102,7 +102,7 @@ def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg
                 "type": "individual_progress",
                 "gen": gen_idx, "ind": i + 1, "total_ind": n,
                 "score": float(scr),
-                "metrics": current_metrics,  # 🌟 终极版：推给前端整个结果字典
+                "metrics": current_metrics,
                 "wave_data": waves_dict[str(i + 1)]
             }
             asyncio.run_coroutine_threadsafe(ws_manager.send_to_task(json.dumps(ind_msg), task_id), loop)
@@ -214,7 +214,7 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
                 return
 
         # ========================================================
-        # 🌟 4. 进化/迭代 主循环 (策略模式)
+        # 4. 进化/迭代 主循环 (策略模式)
         # ========================================================
         for gen in range(1, n_gen + 1):
             if task_status_flags.get(task_id) == "stopped":
@@ -322,7 +322,7 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
                         task_id=task_id,
                         gen_index=gen,
                         best_score=float(best_ind['Score']),
-                        best_metrics_json=best_ind['metrics']  # 🌟 终极版：Generation 表也只存 JSON
+                        best_metrics_json=best_ind['metrics']
                     )
                     if gen == 1:
                         db.query(Task).filter(Task.id == task_id).update(
@@ -384,7 +384,7 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
                     "best_metrics": best_ind['metrics'],
                     "message": f"第 {gen} 批次计算完成！{algo_type} 本轮最高得分: {best_ind['Score']:.2e}",
                     "batch_logs": batch_logs, "waves_dict": waves_dict,
-                    "telemetry": telemetry_data  # 🌟 终极版：挂载遥测数据推给前端
+                    "telemetry": telemetry_data
                 }
                 asyncio.run_coroutine_threadsafe(ws_manager.send_to_task(json.dumps(progress_data), task_id), loop)
 

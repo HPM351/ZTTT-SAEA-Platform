@@ -47,7 +47,7 @@ def get_individual_waveform(individual_id: int, db: Session = Depends(get_db)):
 
     return {
         "status": "success",
-        "waveforms": wave.waves_json  # ✨ 直接将组装好的字典全量透传
+        "waveforms": wave.waves_json
     }
 
 
@@ -80,11 +80,9 @@ def export_to_excel(task_id: str, db: Session = Depends(get_db)):
             "代数(Gen)": ind.gen_index, "个体编号(No.)": ind.ind_index,
             "综合得分": ind.score, "是否有效(起振)": ind.is_valid
         }
-        # ✨ 动态展开结构参数
         if ind.params_json:
             for k, v in ind.params_json.items():
                 row[f"参数_{k}"] = v
-        # ✨ 动态展开物理指标
         if ind.metrics_json:
             for k, v in ind.metrics_json.items():
                 row[f"指标_{k}"] = v

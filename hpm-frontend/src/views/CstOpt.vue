@@ -21,6 +21,7 @@
 
       <n-scrollbar style="max-height: calc(100vh - 180px); padding-right: 16px">
         <n-form label-placement="top" :show-feedback="false">
+<!-- ================= 模块 1: 项目与任务配置 (历史记录/路径解析) ================= -->
           <n-card class="modern-card" size="small">
             <template #header
               ><span class="card-title">📂 项目与任务</span></template
@@ -75,7 +76,7 @@
               </div>
             </n-form-item>
           </n-card>
-
+<!-- ================= 模块 2: 变量空间管理 (参数提取/极值设定/固定调节) ================= -->
           <n-card class="modern-card" size="small">
             <template #header>
               <div
@@ -200,6 +201,7 @@
               </div>
             </transition-group>
           </n-card>
+<!-- ================= 模块 3: 全局环境配置与多目标函数设定 ================= -->
           <n-collapse :default-expanded-names="['env', 'targets', 'algo']">
             <n-collapse-item title="全局变量设置" name="env">
               <div class="inner-panel">
@@ -568,7 +570,7 @@
                 </div>
               </transition-group>
             </n-collapse-item>
-
+<!-- ================= 模块 4: 算法引擎超参数与控制中枢 (GA/PSO/BO) ================= -->
             <n-collapse-item title="核心优化引擎设置" name="algo">
               <div class="inner-panel">
                 <n-form-item label="驱动算法 (Optimizer)">
@@ -968,7 +970,7 @@
         </n-form>
         <div style="height: 40px"></div>
       </n-scrollbar>
-
+<!-- ================= 模块 5: 核心引擎动作触发区 (启动/急停) ================= -->
       <div class="action-area" style="display: flex; gap: 16px">
         <n-button
           v-if="!isRunning"
@@ -994,6 +996,7 @@
     </div>
 
     <div class="main-content">
+<!-- ================= 模块 6: 顶部状态指示 (演化进度/全局最优解) ================= -->
       <n-grid
         :x-gap="16"
         :cols="1 + config.targetsList.length"
@@ -1060,6 +1063,7 @@
         </n-gi>
       </n-grid>
       <div class="middle-row">
+<!-- ================= 模块 7: 结构预览面板 (.dib 图像提取) ================= -->
         <n-card
           class="chart-card model-card"
           style="flex: 25"
@@ -1092,7 +1096,7 @@
             <img v-else :src="modelImageUrl" class="model-image" />
           </div>
         </n-card>
-
+<!-- ================= 模块 9: 算法运行终端与状态回传 (WebSocket) ================= -->
         <n-card
           class="chart-card wave-card"
           style="flex: 50"
@@ -1284,6 +1288,7 @@
       </div>
 
       <div class="bottom-row">
+<!-- ================= 模块 10: 演化收敛趋势图 (多 Y 轴折线) ================= -->
         <n-card
           class="chart-card trend-card"
           style="flex: 55"
@@ -1332,7 +1337,7 @@
             ></div>
           </div>
         </n-card>
-
+<!-- ================= 模块 11: 帕累托高维散点云图 (过滤/降维) ================= -->
         <n-card
           class="chart-card scatter-card"
           style="flex: 45"
@@ -1490,7 +1495,6 @@ const getGridColor = () =>
   isDarkMode.value ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.08)";
 
 const getTooltipStyle = () => ({
-  // ✨ 移除了 trigger 和 show，让它变成纯粹的“样式提供者”，绝不干涉原有图表的触发逻辑
   backgroundColor: isDarkMode.value
     ? "rgba(15, 23, 42, 0.45)"
     : "rgba(255, 255, 255, 0.60)",
@@ -1500,13 +1504,11 @@ const getTooltipStyle = () => ({
   borderWidth: 1,
   padding: 12,
   textStyle: { color: isDarkMode.value ? "#e2e8f0" : "#333333", fontSize: 13 },
-  // ✨ 核心修复：为滤镜加上 !important，强行击穿浏览器在全屏 #top-layer 的渲染降级限制；去掉了冲突的 border
   extraCssText:
     "backdrop-filter: blur(14px) !important; -webkit-backdrop-filter: blur(14px) !important; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important; border-radius: 10px !important;",
 });
 
 const API_BASE = "/api"; // HTTP 走 Vite 代理
-// ✨ 原生 WebSocket 必须用动态地址。这里修复了原先 WS_BASE 未定义的 Bug！
 const WS_BASE = `ws://${window.location.host}/ws`;
 const message = useMessage();
 const dialog = useDialog();
@@ -1520,7 +1522,6 @@ const stopOptimization = async () => {
     );
     scrollToBottom();
 
-    // 🌟 修复：替换为真实的后端硬编码地址
     const res = await axios.post(
       `${API_BASE}/stop_optimization/${currentTaskId.value}`,
     );
@@ -1589,8 +1590,8 @@ const config = reactive({
       name: "效率",
       path: "Tables\\1D Results\\EFF",
       mode: "maximize",
-      extractMethod: "time_mean", // 👈 补上提取规则
-      multiplier: 100.0, // 👈 补上量纲乘数
+      extractMethod: "time_mean", 
+      multiplier: 100.0, 
       reference_scale: 100.0,
       weight: 5.0,
       target_val: 0.0,
@@ -1600,8 +1601,8 @@ const config = reactive({
         min: 15.0,
         max: null,
         max_diff: null,
-        max_fluc: 5.0, // ✨ 新增：时域稳态波动容差 (%)
-        max_side_ratio: null, // ✨ 新增：频域杂模比 (%)
+        max_fluc: 5.0,
+        max_side_ratio: null,
       },
     },
     {
@@ -1609,8 +1610,8 @@ const config = reactive({
       name: "频率",
       path: "Tables\\1D Results\\FFT",
       mode: "target",
-      extractMethod: "freq_peak", // 👈 补上提取规则
-      multiplier: 1.0, // 👈 补上量纲乘数
+      extractMethod: "freq_peak",
+      multiplier: 1.0,
       reference_scale: 2.45,
       weight: 10.0,
       target_val: 2.45,
@@ -1629,10 +1630,10 @@ const config = reactive({
     stableTime: 20.0,
   },
   algo: {
-    type: "SAEA-GA", // 新增：默认选中的核心算法
-    nPop: 10, // 公共：种群规模 / BO的伪批次大小
-    nGen: 50, // 公共：进化代数 / BO的伪迭代数
-    injectJson: "", // 公共：基因注入
+    type: "SAEA-GA", 
+    nPop: 10, 
+    nGen: 50,
+    injectJson: "",
 
     // GA 专属参数
     ga: {
@@ -1654,7 +1655,7 @@ const config = reactive({
     // BO 专属参数
     bo: {
       acqFunc: "EI", // 采集函数
-      useAutoAcq: true, // ✨ 新增：默认开启你的天才双段式策略
+      useAutoAcq: true, 
       kappa: 2.5, // 探索系数 (LCB)
       xi: 0.01, // 期望提升阈值 (EI)
     },
@@ -1694,7 +1695,6 @@ const removeTarget = (id) => {
 
 const generateInjectTemplate = () => {
   const template = {};
-  // 提取当前勾选了 Opt 的变量
   config.paramsList.forEach((p) => {
     if (p.opt) {
       template[p.name] = Number(p.val.toFixed(2));
@@ -1712,11 +1712,9 @@ const tryLoadConfig = async (path) => {
     if (res.data.status === "success") {
       const saved = res.data.config;
 
-      // ⚠️ 修复点：使用对象展开语法进行浅层或深层合并，防止抹杀前端新增的默认字段
       if (saved.taskName) config.taskName = saved.taskName;
       if (saved.paramsList) config.paramsList = saved.paramsList;
 
-      // 合并全局环境设置
       if (saved.env) {
         config.env = {
           ...config.env,
@@ -1725,7 +1723,6 @@ const tryLoadConfig = async (path) => {
       }
 
       if (saved.targetsList && Array.isArray(saved.targetsList)) {
-        // 覆盖目标，并为旧版本数据主动补全可能缺失的 constraints 等深层字段
         config.targetsList = saved.targetsList.map((t) => ({
           ...t,
           constraints: t.constraints || {
@@ -1739,14 +1736,12 @@ const tryLoadConfig = async (path) => {
         }));
       }
 
-      // ✨ 最关键的修复点：合并算法配置
       if (saved.algo) {
-        // 如果旧配置中没有 useAutoMut 等字段，就会原封不动保留前端 config.algo 中的默认值 [30, 70]
         config.algo = { ...config.algo, ...saved.algo };
       }
 
       message.success(`📂 已自动加载专属配置`);
-      sortVariables(); // 重新把优化变量排在前面
+      sortVariables();
     }
   } catch (err) {
     console.error("加载配置请求失败", err);
@@ -1757,7 +1752,7 @@ const tryLoadConfig = async (path) => {
 const syncPath = (val) => {
   if (val) {
     config.cstPath = val;
-    tryLoadConfig(val); // ✨ 新增了这行
+    tryLoadConfig(val); 
     fetchModelPreview();
   }
 };
@@ -1835,7 +1830,6 @@ const saveConfig = async () => {
   }
 };
 
-// ✅ 粘贴这段全新的联动逻辑
 const triggerFileInput = async () => {
   message.loading("正在唤起系统资源管理器，请在弹窗中选择...");
   try {
@@ -1843,7 +1837,6 @@ const triggerFileInput = async () => {
     const res = await axios.get(`${API_BASE}/browse_cst`);
 
     if (res.data.status === "success") {
-      // 完美拿到包含盘符的绝对路径！
       config.cstPath = res.data.path;
 
       // 触发后续联动（尝试加载该路径的历史配置，并刷新模型图）
@@ -1866,16 +1859,11 @@ const currentGen = ref(0);
 const bestMetrics = reactive({});
 const logs = ref(["[SYSTEM] WAITING FOR SAEA TASKS."]);
 const logWindowRef = ref(null);
-
-// ✨ 新增：用于存储后端传来的算法遥测特征数据
 const telemetryData = reactive({});
-
 const modelImageUrl = ref("");
 const isFetchingImage = ref(false);
-
 const allDataPool = reactive({});
 let scatterDataArrayRaw = reactive([]);
-
 const autoTrackLatest = ref(true);
 const inspectGen = ref(1);
 const inspectInd = ref(1);
@@ -1919,10 +1907,8 @@ let inspectorResizeObserver = null;
 let scatterResizeObserver = null;
 let trendResizeObserver = null;
 const initCharts = () => {
-  // ✨ 直接使用响应式的主题颜色函数
   const textColor = getThemeColor();
   const gridLineColor = getGridColor();
-
   const echartsGridConfig = { top: 40, right: 40, bottom: 40, left: 60 };
   const axisLineStyle = { lineStyle: { color: gridLineColor, type: "dashed" } };
   const axisLabelStyle = { color: textColor, fontFamily: "monospace" };
@@ -1931,7 +1917,7 @@ const initCharts = () => {
   if (inspectorChartRef.value) {
     if (inspectorChart) {
       echarts.dispose(inspectorChartRef.value);
-    } // ✨ 销毁旧实例
+    } 
     inspectorChart = echarts.init(inspectorChartRef.value);
     if (!inspectorResizeObserver) {
       inspectorResizeObserver = new ResizeObserver(() => {
@@ -1944,7 +1930,7 @@ const initCharts = () => {
   if (scatterChartRef.value) {
     if (scatterChart) {
       echarts.dispose(scatterChartRef.value);
-    } // ✨ 销毁旧实例
+    } 
     scatterChart = echarts.init(scatterChartRef.value);
     if (!scatterResizeObserver) {
       scatterResizeObserver = new ResizeObserver(() => {
@@ -1967,7 +1953,6 @@ const initCharts = () => {
               yAxisIndex: "none",
               title: { zoom: "区域缩放", back: "取消缩放" }, // ✨ 改个更明确的名字
             },
-            // ✨ 彻底删除了坑人的 restore 功能
           },
           right: 15,
           top: 10,
@@ -1996,7 +1981,6 @@ const initCharts = () => {
           formatter: function (params) {
             const d = params.data; // [xVal, yVal, score, gen, ind, metricsDict, paramDict]
 
-            // 动态拼装 metrics HTML
             let metricsHtml = "";
             for (let k in d[5]) {
               metricsHtml += `${k}: <span style="color:#10b981; font-weight:bold">${Number(d[5][k]).toFixed(3)}</span><br/>`;
@@ -2043,7 +2027,7 @@ const initCharts = () => {
           scale: true,
         },
         visualMap: {
-          dimension: 2, // 依然映射到 Score
+          dimension: 2, 
           orient: "vertical",
           right: 15,
           top: 60,
@@ -2094,7 +2078,7 @@ const initCharts = () => {
   if (trendChartRef.value) {
     if (trendChart) {
       echarts.dispose(trendChartRef.value);
-    } // ✨ 销毁旧实例
+    } 
     trendChart = echarts.init(trendChartRef.value);
     if (!trendResizeObserver) {
       trendResizeObserver = new ResizeObserver(() => {
@@ -2164,9 +2148,6 @@ const initCharts = () => {
   }
   selectedTrendLines.value = config.targetsList.map((t) => t.name);
 };
-// ✨ 散点图过滤器 (从一维数据变为了 ECharts 专用的二维数组格式)
-// ✨ 散点图过滤器 (终极防线版)
-// ✨ 寻优版：散点图过滤器 (动态多维映射引擎)
 const refreshScatterFilter = () => {
   if (!scatterChart) return;
 
@@ -2204,7 +2185,7 @@ const refreshScatterFilter = () => {
       d.ind, // d[4]
       d.metrics, // d[5]
       d.params, // d[6]
-      d.score, // ✨ d[7]: 原始得分始终保留，专供 Tooltip 悬浮框使用
+      d.score, //  d[7]: 原始得分始终保留，专供 Tooltip 悬浮框使用
     ];
   });
 
@@ -2223,7 +2204,6 @@ const refreshScatterFilter = () => {
     series: [{ data: plotData }],
   });
 };
-// ✨ 趋势图显隐切换 (完全动态适配选中数组)
 const updateTrendVisibility = (valArray) => {
   if (!trendChart) return;
   const selectedDict = {};
@@ -2243,7 +2223,6 @@ const updateTrendVisibility = (valArray) => {
   });
 };
 
-// ✨ 趋势图指标动态切换逻辑：智能避免 Y 轴文字重叠
 
 const updateInspectorChart = () => {
   if (!inspectorChart) return;
@@ -2283,7 +2262,7 @@ const updateInspectorChart = () => {
     const currentTab = activeWaveTab.value;
 
     // ==========================================
-    // 处理系统级固有波形 (主模)
+    // 处理固有波形 (主模)
     // ==========================================
     const targetCfg = config.targetsList.find((t) => t.name === currentTab);
 
@@ -2393,13 +2372,13 @@ onMounted(async () => {
   document.addEventListener("fullscreenchange", handleFullscreenChange);
   window.addEventListener("resize", handleResize);
 
-  // ✨ 数据抢救逻辑：尝试找回后台运行的任务
+  //数据抢救逻辑：尝试找回后台运行的任务
   try {
     const resTask = await axios.get(`${API_BASE}/get_running_task`);
     if (resTask.data.status === "success") {
       const activeTaskId = resTask.data.task_id; // 先保存查到的活跃任务 ID
 
-      // 🛑 核心改变：不再强行接管，而是弹窗询问用户
+      // 核心改变：不再强行接管，而是弹窗询问用户
       if (activeTaskId.startsWith("sim_")) {
         dialog.warning({
           title: "发现运行中的后台任务",
@@ -2412,7 +2391,7 @@ onMounted(async () => {
             isRunning.value = true;
             connectWebSocket(activeTaskId);
 
-            // ✨ 核心修复：接管任务时，同步通知外层 App.vue 唤醒灵动岛
+            // 接管任务时，同步通知外层 App.vue 唤醒灵动岛
             if (islandState) {
               islandState.CstOpt.isRunning = true;
               islandState.CstOpt.taskName = activeTaskId; // 临时显示 ID，等下面拿到详细数据后可覆盖
@@ -2428,7 +2407,7 @@ onMounted(async () => {
             if (resData.data.status === "success") {
               const d = resData.data;
 
-              // ✨ 修复：优先全量恢复配置面板，如果没有老配置，再退化回只改总代数
+              // 优先全量恢复配置面板，如果没有老配置，再退化回只改总代数
               if (d.config_json) {
                 const saved = d.config_json;
                 if (saved.taskName) config.taskName = saved.taskName;
@@ -2514,7 +2493,7 @@ onMounted(async () => {
                   }
                 });
 
-                // ✨ 核心修复：接管任务时，同步唤醒灵动岛的进度，避免因全局状态落后而卡在 0%
+                // 接管任务时，同步唤醒灵动岛的进度，避免因全局状态落后而卡在 0%
                 if (islandState && islandState.CstOpt.isRunning) {
                   islandState.CstOpt.progress = Math.round(
                     (currentGen.value / (config.algo.nGen || 1)) * 100,
@@ -2524,7 +2503,6 @@ onMounted(async () => {
               message.success("✅ 历史数据已从数据库无损恢复！");
               updateInspectorChart();
             } else {
-              // 👈 新增这个 else，一旦后台查数据报错，立刻弹窗告诉你原因
               message.error(`数据恢复失败: ${resData.data.message}`);
             }
           },
@@ -2551,7 +2529,6 @@ onUnmounted(() => {
   window.removeEventListener("resize", handleResize);
   document.removeEventListener("fullscreenchange", handleFullscreenChange);
 
-  // ✨ 安全断开所有尺寸监听器，防止内存泄漏
   if (inspectorResizeObserver) inspectorResizeObserver.disconnect();
   if (scatterResizeObserver) scatterResizeObserver.disconnect();
   if (trendResizeObserver) trendResizeObserver.disconnect();
@@ -2561,25 +2538,21 @@ onUnmounted(() => {
   if (trendChart) trendChart.dispose();
 });
 
-// ========================================================
-// 模拟仿真循环
-// ========================================================
 const trendAxisData = reactive([]);
 const trendSeriesData = reactive({}); // 字典池，格式如: { "效率": [], "频率": [] }
 const selectedTrendLines = ref([]);
 const scatterFilterScore = ref(-500);
-// ✨ 新增：散点图滑块的动态边界
 const scatterSliderMin = ref(-50000);
 const scatterSliderMax = ref(500);
 
-// ✨ 寻优版新增：散点图的动态轴向配置 (默认全部看 Score，符合寻优直觉)
+// 散点图的动态轴向配置 (默认全部看 Score，符合寻优直觉)
 const scatterConfig = reactive({
   xAxis: "score",
   yAxis: "score",
   color: "score",
 });
 
-// ✨ 寻优版新增：动态汇聚“参数、指标、得分”作为可选项
+// 动态汇聚“参数、指标、得分”作为可选项
 const axisOptions = computed(() => {
   const options = [{ label: "综合得分 (Score)", value: "score" }];
   // 仅提取勾选了 opt 的优化变量，过滤掉无关紧要的固定参数
@@ -2593,7 +2566,7 @@ const axisOptions = computed(() => {
   return options;
 });
 
-// ✨ 新增：动态计算并更新滑块边界的函数
+// 动态计算并更新滑块边界的函数
 const updateScatterBounds = () => {
   if (scatterDataArrayRaw.length === 0) return;
   const scores = scatterDataArrayRaw
@@ -2621,7 +2594,6 @@ const fetchHistoryTasks = async () => {
     const res = await axios.get(`${API_BASE}/recent_tasks?task_type=opt`);
     if (res.data.status === "success") {
       historyTaskOptions.value = res.data.tasks.map((t) => ({
-        // 建议改成显示综合得分为参考，如果后端没传 best_score，就只显示名字
         label: t.best_score
           ? `${t.name} [得分: ${Number(t.best_score).toFixed(2)}]`
           : t.name,
@@ -2640,7 +2612,7 @@ const loadHistoricalTask = async (taskId) => {
     if (resData.data.status === "success") {
       const d = resData.data;
 
-      // ✨ 修复：与上面保持完全一致的配置恢复逻辑
+      // 与上面保持完全一致的配置恢复逻辑
       if (d.config_json) {
         const saved = d.config_json;
         if (saved.taskName) config.taskName = saved.taskName;
@@ -2724,7 +2696,7 @@ const loadHistoricalTask = async (taskId) => {
   }
 };
 
-// ✨ 新增：全屏与重绘管理函数
+// 全屏与重绘管理函数
 const toggleFullscreen = (e) => {
   const card = e.currentTarget.closest(".chart-card");
   if (!card) return;
@@ -2841,7 +2813,7 @@ const connectWebSocket = (taskId) => {
         updateInspectorChart();
       }
 
-      // ✨ 3. 散点图全量推入字典
+      // 3. 散点图全量推入字典
       scatterDataArrayRaw.push({
         gen: data.gen,
         ind: data.ind,
@@ -2851,7 +2823,7 @@ const connectWebSocket = (taskId) => {
       });
       refreshScatterFilter();
     } else if (data.type === "progress") {
-      // ⚡ 1. 更新顶部发光卡片
+      //1. 更新顶部发光卡片
       currentGen.value = data.gen;
       Object.assign(bestMetrics, data.best_metrics); // 字典无缝覆盖
 
@@ -2861,7 +2833,7 @@ const connectWebSocket = (taskId) => {
         );
       }
 
-      // ✨ 1.5 接收并解析算法专属遥测数据 (如果后端发了的话)
+      //1.5 接收并解析算法专属遥测数据 (如果后端发了的话)
       if (data.telemetry) {
         // 清空旧遥测数据，混入新数据
         for (const key in telemetryData) delete telemetryData[key];
@@ -2873,10 +2845,10 @@ const connectWebSocket = (taskId) => {
       );
       scrollToBottom();
 
-      // ⚡ 2. 覆盖波形数据
+      //2. 覆盖波形数据
       allDataPool[data.gen] = data.waves_dict;
 
-      // ✨ 3. 动态绘制趋势图折线
+      //3. 动态绘制趋势图折线
       trendAxisData.push(data.gen);
       config.targetsList.forEach((t) => {
         if (!trendSeriesData[t.name]) trendSeriesData[t.name] = [];
@@ -2894,7 +2866,7 @@ const connectWebSocket = (taskId) => {
         });
       }
 
-      // ⚡ 4. 补全详尽参数的散点
+      //4. 补全详尽参数的散点
       scatterDataArrayRaw = scatterDataArrayRaw.filter(
         (item) => item.gen !== data.gen,
       );
@@ -2958,7 +2930,7 @@ const startOptimization = async () => {
   Object.keys(trendSeriesData).forEach((k) => (trendSeriesData[k] = []));
   scatterDataArrayRaw.length = 0;
   for (const key in allDataPool) delete allDataPool[key]; // 清空波形池
-  for (const key in telemetryData) delete telemetryData[key]; // ✨ 清空旧遥测数据
+  for (const key in telemetryData) delete telemetryData[key]; //清空旧遥测数据
   logs.value = []; // 清空日志
 
   // 强制重置 Echarts 画面
@@ -2996,7 +2968,7 @@ const startOptimization = async () => {
       );
       scrollToBottom();
 
-      // 5. ✨ 最关键的一步：拿着刚发下来的 Task ID，接上专属数据线 ✨
+      // 5. 拿着刚发下来的 Task ID，接上专属数据线 ✨
       connectWebSocket(newTaskId);
     }
   } catch (error) {
@@ -3084,7 +3056,6 @@ watch(isDarkMode, () => {
   margin-bottom: 20px;
   border-radius: 8px;
   background-color: var(--n-card-color);
-  /* 👇 质感升级：半透明精细边框 + 悬浮外阴影 + 顶部高光厚度 */
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.15),
@@ -3094,8 +3065,8 @@ watch(isDarkMode, () => {
   font-weight: 600;
   font-size: 14px;
   color: var(--n-text-color);
-  white-space: nowrap; /* ✨ 新增：强制文字不换行 */
-  flex-shrink: 0; /* ✨ 新增：防止被右侧空间挤压变形 */
+  white-space: nowrap; 
+  flex-shrink: 0; 
 }
 .var-item {
   padding: 16px;
@@ -3154,13 +3125,12 @@ watch(isDarkMode, () => {
 
 /* 右侧大屏基础布局 */
 .main-content {
-  flex: 6; /* 注意：在 CstSweep.vue 中这里是 flex: 7，保持原样即可 */
+  flex: 6; 
   padding: 24px;
   display: flex;
   flex-direction: column;
   background-color: var(--n-body-color);
 
-  /* ✨ 核心修改：移除 hidden，允许内容高度溢出时出现优雅的滚动条 */
   overflow-y: auto;
 }
 
@@ -3180,7 +3150,6 @@ watch(isDarkMode, () => {
 .chart-card {
   background-color: var(--n-card-color);
   border-radius: 8px;
-  /* 👇 质感升级：统一光影风格 */
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.15),
@@ -3244,21 +3213,20 @@ watch(isDarkMode, () => {
   text-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
 }
 
-/* 🌟 全新 1/2/1 黄金分割 Flex 排版 🌟 */
 /* 中间排：模型 (25%) + 波形 (50%) + 日志 (25%) */
 .middle-row {
   display: flex;
   gap: 16px;
   margin-bottom: 16px;
   flex: 1;
-  /* ✨ 核心修改：无论屏幕多扁，波形审查台和日志区最低也要保持 400px，保证波形可读 */
+  /* 无论屏幕多扁，波形审查台和日志区最低也要保持 400px，保证波形可读 */
   min-height: 400px;
 }
 /* 底排：趋势 (50%) + 散点 (50%) */
 .bottom-row {
   display: flex;
   gap: 16px;
-  /* ✨ 核心修改：稍微增加底排的纵向 flex 权重，压缩顶部模块，给散点图和折线图更多空间 */
+  /* 稍微增加底排的纵向 flex 权重，压缩顶部模块，给散点图和折线图更多空间 */
   flex: 1.2;
   min-height: 420px;
 }
@@ -3367,7 +3335,6 @@ watch(isDarkMode, () => {
 }
 
 /* 新代码 */
-/* 🚀 修复全屏背景：引入通透的亚克力毛玻璃质感 */
 .chart-card:fullscreen {
   width: 100vw;
   height: 100vh !important;
@@ -3378,7 +3345,7 @@ watch(isDarkMode, () => {
   z-index: 9999;
   padding: 16px;
   overflow: hidden;
-  /* ✨ 核心：为全屏卡片添加全局模糊滤镜，并强制应用 */
+  /* 为全屏卡片添加全局模糊滤镜，并强制应用 */
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
 }
@@ -3404,17 +3371,17 @@ watch(isDarkMode, () => {
 }
 
 .chart-card.light-mode:fullscreen {
-  /* ✨ 将白色背景改为半透明，增加通透感 */
+  /* 将白色背景改为半透明，增加通透感 */
   background-color: rgba(255, 255, 255, 0.4) !important;
 }
 
 .chart-card.dark-mode:fullscreen {
-  /* ✨ 将黑色背景改为半透明，增加通透感 */
+  /* 将黑色背景改为半透明，增加通透感 */
   background-color: rgba(24, 24, 28, 0.4) !important;
 }
 
 .chart-card:fullscreen::backdrop {
-  /* ✨ 确保浏览器底层的 backdrop 是透明的 */
+  /* 确保浏览器底层的 backdrop 是透明的 */
   background-color: transparent !important;
 }
 

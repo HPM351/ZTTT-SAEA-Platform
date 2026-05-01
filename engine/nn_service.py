@@ -27,7 +27,7 @@ nn_router = APIRouter(prefix="/api/nn", tags=["Neural Network"])
 NN_STATE = {
     "model": None, "scaler_X": None, "scaler_y": None,
     "model_type": "single_head", "input_dim": 4,
-    "outputs_config": []  # ✨ 新增：用于在内存中缓存当前模型的输出头规则
+    "outputs_config": []
 }
 
 CST_EXECUTOR = ThreadPoolExecutor(max_workers=1)
@@ -101,7 +101,7 @@ class NNConnectionManager:
         self.active_connections[task_id] = websocket
 
     def disconnect(self, task_id: str, websocket: WebSocket):
-        # ✨ 终极防御：断开时必须核对 WebSocket 实例的内存地址！
+        # 断开时必须核对 WebSocket 实例的内存地址！
         # 防止旧连接的延迟断开把用户刚刚接管的新连接给误杀了
         if task_id in self.active_connections and self.active_connections[task_id] == websocket:
             del self.active_connections[task_id]
@@ -124,7 +124,7 @@ async def nn_monitor_ws(websocket: WebSocket, task_id: str):
             # 纯净监听挂起，维持心跳即可，不承担任何计算逻辑
             await websocket.receive_text()
     except WebSocketDisconnect:
-        nn_ws_manager.disconnect(task_id, websocket) # ✨ 传入自身实例进行比对
+        nn_ws_manager.disconnect(task_id, websocket)
     except Exception as e:
         nn_ws_manager.disconnect(task_id, websocket)
 # ==========================================
@@ -146,7 +146,7 @@ async def load_model(req: LoadModelRequest):
     # 按照规范，寻找“三剑客”文件
     model_path = os.path.join("models", f"{req.model_name}_traced.pt")
     meta_path = os.path.join("models", f"{req.model_name}_meta.pth")
-    json_path = os.path.join("models", f"{req.model_name}.json")  # ✨ 新增 JSON 路径查找
+    json_path = os.path.join("models", f"{req.model_name}.json")
 
     # 兼容根目录直接测试的情况
     if not os.path.exists(model_path):
@@ -159,7 +159,7 @@ async def load_model(req: LoadModelRequest):
         raise HTTPException(status_code=404, detail=f"找不到配套的模型(.pt)、元数据(.pth)或配置文件(.json)！")
 
     try:
-        # 0. 🌟 确立 JSON 主权：直接将 JSON 作为唯一配置源
+        # 0. 确立 JSON 主权：直接将 JSON 作为唯一配置源
         with open(json_path, 'r', encoding='utf-8') as f:
             model_config = json.load(f)
 
@@ -175,10 +175,10 @@ async def load_model(req: LoadModelRequest):
         NN_STATE["scaler_X"] = meta_data.get('scaler_X')
         NN_STATE["scaler_y"] = meta_data.get('pout_scaler', meta_data.get('scaler_y'))
 
-        # ✨ 抛弃从 pth 读取配置，全部由 JSON 接管
+        # 抛弃从 pth 读取配置，全部由 JSON 接管
         NN_STATE["model_type"] = model_config.get('meta', {}).get('topology', 'single_head')
         NN_STATE["input_dim"] = len(model_config.get('input_features', []))
-        NN_STATE["outputs_config"] = model_config.get('outputs', [])  # 👈 确保多头配置被 100% 正确加载！
+        NN_STATE["outputs_config"] = model_config.get('outputs', [])
 
         return {
             "status": "success",
@@ -217,7 +217,7 @@ async def predict_single(data: PredictRequest):
                     freq_real = float(model_out[2].numpy()[0][0])
                     raw_predictions = [cls_val, pout_real, freq_real]
                 else:
-                    # ✨ 全新动态解析逻辑：遍历模型所有的输出头
+                    #全新动态解析逻辑：遍历模型所有的输出头
                     for i, out_tensor in enumerate(model_out):
                         val_scaled = out_tensor.numpy()
                         # 查找当前 tensor 对应的配置字典 (通过 index 对齐)
@@ -243,7 +243,7 @@ async def predict_single(data: PredictRequest):
             with torch.enable_grad():
                 grad_out = NN_STATE["model"](input_tensor_grad)
 
-                # ✨ 核心修复 1：动态识别求导目标
+                #核心修复 1：动态识别求导目标
                 target_idx = 0
                 if isinstance(grad_out, tuple):
                     if data.target_index >= 0:
@@ -261,11 +261,10 @@ async def predict_single(data: PredictRequest):
 
                 target_obj.backward()
 
-                # ✨ 核心修复 2：放弃乘以 input_scaled，避开归零陷阱！
                 # 直接使用归一化空间的梯度，它完美代表了当前状态下参数的推移敏感度
                 grads = input_tensor_grad.grad[0].numpy()
 
-                # ✨ 将“按最大值固定放缩到20”改为“按绝对值总和计算相对贡献百分比 (%)”
+                # 将“按最大值固定放缩到20”改为“按绝对值总和计算相对贡献百分比 (%)”
                 sum_abs_grads = np.sum(np.abs(grads)) + 1e-6
 
                 # 这样所有参数的柱子绝对值加起来刚好是 100%，更加直观合理
@@ -274,7 +273,7 @@ async def predict_single(data: PredictRequest):
             return {
                 "status": "success",
                 "raw_predictions": raw_predictions,
-                "local_shap": local_shap  # 👈 新增：返回局部参数推移数组
+                "local_shap": local_shap
             }
     except Exception as e:
         traceback.print_exc()
@@ -345,14 +344,14 @@ async def run_nn_evolution_background(task_id: str, config: dict):
         target_freq = config.get("target_freq", 6.0)
         weights = config.get("weights", {})
 
-        # ✨ 修复核心：补上自适应变异的参数提取
+        # 补上自适应变异的参数提取
         use_adaptive_mut = config.get("use_adaptive_mut", False)
         mut_phases = config.get("mut_phases", [0.3, 0.7])
 
         # 提取参数名映射，用于发给 CST
         param_names = config.get("param_names", [])
 
-        # 🌟 2. 提取在线学习配置
+        # 2. 提取在线学习配置
         online_cfg = config.get("online", {})
         is_online = online_cfg.get("enable", False)
         k_samples = online_cfg.get("kSamples", 5)  # 默认 Top-5
@@ -363,16 +362,16 @@ async def run_nn_evolution_background(task_id: str, config: dict):
         project = None
         # 注意：此处 task_id 由外部传入，故不再重新生成
 
-        # 🌟 3. 如果开启了在线微调，提前拉起 CST 引擎并发送通知
+        # 3. 如果开启了在线微调，提前拉起 CST 引擎并发送通知
         if is_online:
             if not os.path.exists(cst_path):
                 await nn_ws_manager.send_json(task_id, {"error": "在线验证失败: CST 项目路径不存在！"})
                 return
 
-            # ✨ 任务初始化入库
+            # 任务初始化入库
             db = SessionLocal()
             try:
-                # ✨ 优先使用用户输入的名称，若为空则自动生成
+                # 优先使用用户输入的名称，若为空则自动生成
                 custom_name = config.get('online', {}).get('taskName', '').strip()
                 display_name = custom_name if custom_name else f"在线微调_{datetime.now().strftime('%m%d_%H%M')}"
 
@@ -393,9 +392,9 @@ async def run_nn_evolution_background(task_id: str, config: dict):
 
             await nn_ws_manager.send_json(task_id, {"type": "info", "message": "⚙️ 正在后台唤醒 CST 引擎，请稍候..."})
             import cst.interface
-            loop = asyncio.get_running_loop()  # ✨ 获取当前事件循环
+            loop = asyncio.get_running_loop()  # 获取当前事件循环
 
-            # ✨ 改用 loop.run_in_executor 强绑定到单线程池
+            # 改用 loop.run_in_executor 强绑定到单线程池
             cst_env = await loop.run_in_executor(CST_EXECUTOR, cst.interface.DesignEnvironment)
             project = await loop.run_in_executor(CST_EXECUTOR, cst_env.open_project, cst_path)
             await nn_ws_manager.send_json(task_id,
@@ -407,7 +406,7 @@ async def run_nn_evolution_background(task_id: str, config: dict):
         pop = ea.crtpc('RI', pop_size, FieldD)
         FitnV, best_global_eff = None, 0.0
 
-        # ✨ 新增：用于严谨追踪全局最高综合得分个体的各项指标
+        # 新增：用于严谨追踪全局最高综合得分个体的各项指标
         global_best_score = -1e15
         global_best_metrics = {"power": None, "eff": None, "freq": None, "params": None}
 
@@ -452,7 +451,7 @@ async def run_nn_evolution_background(task_id: str, config: dict):
 
         for gen in range(n_gen):
 
-            # 🌟 核心引擎：自适应变异策略动态调度
+            # 核心引擎：自适应变异策略动态调度
             current_pm = pm
             mut_oper = 'mutuni'
 
@@ -487,7 +486,7 @@ async def run_nn_evolution_background(task_id: str, config: dict):
                 model_out = NN_STATE["model"](torch.FloatTensor(pop_scaled))
 
                 # ========================================================
-                # 🌟 第一步：动态解析多头模型输出
+                #第一步：动态解析多头模型输出
                 # ========================================================
                 outputs_cfg = NN_STATE.get("outputs_config", [])
                 head_cache = {}
@@ -531,7 +530,7 @@ async def run_nn_evolution_background(task_id: str, config: dict):
                     head_cache["Efficiency"] = np.clip(raw_pred[:, 0], 0, 1) * 100
 
                 # ========================================================
-                # 🌟 第二步：离线打分 (纯数值宽容引导)
+                # 第二步：离线打分 (纯数值宽容引导)
                 # ========================================================
                 targets_list = online_cfg.get("targetsList", [])
                 fitness_score = np.zeros(pop_size)
@@ -584,7 +583,7 @@ async def run_nn_evolution_background(task_id: str, config: dict):
                     head_cache[k][dead_mask] = 0.0
 
                 # ========================================================
-                # 🌟 第三步：在线物理验证与网络微调
+                # 第三步：在线物理验证与网络微调
                 # ========================================================
                 current_online_metrics = None
 
@@ -716,7 +715,7 @@ async def run_nn_evolution_background(task_id: str, config: dict):
                             await nn_ws_manager.send_json(task_id, {"type": "info",
                                                                     "message": f"   -> 校验失败: CST 引擎计算异常"})
 
-                    # ✨✨ 执行神经网络全头微调 ✨✨
+                    # 执行神经网络全头微调
                     if is_online and len(real_X) > 0:
                         total_online_collected_X.extend(real_X)
                         batch_X = list(real_X)
@@ -842,7 +841,7 @@ async def run_nn_evolution_background(task_id: str, config: dict):
                         })
 
             # ========================================================
-            # 🌟 第四步：图表数据下发整理
+            # 第四步：图表数据下发整理
             # ========================================================
             if is_online:
                 valid_indices = [idx for idx in top_k_indices if fitness_score[idx] > -10000.0]
@@ -997,7 +996,7 @@ async def run_nn_evolution_background(task_id: str, config: dict):
 
 @nn_router.get("/global_importance")
 async def get_global_importance():
-    """✨ 使用 PyTorch Autograd 计算全局参数敏感度 (Global Sensitivity)"""
+    """使用 PyTorch Autograd 计算全局参数敏感度 (Global Sensitivity)"""
     if NN_STATE["model"] is None:
         raise HTTPException(status_code=400, detail="请先加载模型")
 

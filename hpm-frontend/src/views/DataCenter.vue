@@ -1,6 +1,6 @@
 <template>
   <div class="data-center-container">
-    
+<!-- ================= 模块 1: 左侧任务档案列表与分类过滤 (Sidebar) ================= -->
     <div class="sidebar">
       <div class="sider-header" style="flex-direction: column; align-items: stretch; gap: 12px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -50,6 +50,7 @@
 
     <div class="main-content">
       <div v-if="selectedTask" class="detail-container">
+<!-- ================= 模块 2: 任务明细头部与核心统计卡片 (Header & Stats) ================= -->
         <div class="detail-header">
           <div>
             <n-h1 style="margin: 0">{{ selectedTask.name }}</n-h1>
@@ -151,7 +152,7 @@
             </n-card>
           </n-gi>
         </n-grid>
-
+<!-- ================= 模块 3: 多维度数据视图切换 (数据表/JSON/微调监控) ================= -->
         <n-tabs
           v-model:value="activeMainTab"
           type="card"
@@ -182,7 +183,7 @@
             <div ref="nnLogChartRef" style="height: 400px; width: 100%; padding: 16px; box-sizing: border-box;"></div>
           </n-tab-pane>
         </n-tabs>
-
+<!-- ================= 模块 4: 个体物理波形深度审查抽屉 (Waveform Drawer) ================= -->
         <n-drawer
           v-model:show="showWaveformModal"
           :width="720"
@@ -258,7 +259,7 @@
           </n-drawer-content>
         </n-drawer>
       </div>
-
+<!-- ================= 模块 5: 空状态占位提示 (Empty Placeholder) ================= -->
       <div v-else class="empty-placeholder">
         <n-empty description="请在左侧选择一个任务以查阅历史数据">
           <template #icon
@@ -302,7 +303,7 @@ const individualData = ref([]);
 const selectedTaskStats = reactive({
   totalGens: 0,
   topScore: 0,
-  bestMetrics: {}, // ✨ 替代以前写死的 topEff 等
+  bestMetrics: {}, //替代以前写死的 topEff 等
   totalInds: 0,
   storage: 0,
 });
@@ -327,14 +328,12 @@ const handleMainTabChange = (val) => {
 };
 const isSweepTask = computed(() => selectedTask.value?.id?.startsWith("sweep_") || false);
 const isNnTask = computed(() => selectedTask.value?.id?.startsWith("nn_") || false);
-// ✨ 将 columns 改为响应式，实现动态表头
 const columns = ref([]);
 
 const filteredTasks = computed(() => {
   if (taskFilter.value === "all") return tasks.value;
   if (taskFilter.value === "sweep") return tasks.value.filter((t) => t.id.startsWith("sweep_"));
   if (taskFilter.value === "opt") return tasks.value.filter((t) => t.id.startsWith("sim_"));
-  // ✨ 2. 拦截并过滤以 nn_ 开头的任务ID
   if (taskFilter.value === "nn") return tasks.value.filter((t) => t.id.startsWith("nn_"));
   return tasks.value;
 });
@@ -373,7 +372,6 @@ const fetchAndRenderNnLogs = async (taskId) => {
     console.warn("暂无微调日志或后端未提供接口");
   }
 };
-// 判断当前选中的是不是扫参任务
 
 const fetchAndShowWaveform = async (individualId) => {
   try {
@@ -415,7 +413,6 @@ const renderSelectedWave = (type) => {
     valueData = data.y;
   }
 
-  // ✨ 核心修复 2：智能识别当前波形是不是频域 (包含 freq 或 fft)
   const isFreq =
     type.toLowerCase().includes("freq") || type.toLowerCase().includes("fft");
   const xName = isFreq ? "Frequency (GHz)" : "Time (ns)";
@@ -437,7 +434,6 @@ const renderSelectedWave = (type) => {
         containLabel: true,
       },
       dataZoom: [{ type: "inside" }],
-      // 👇 应用智能名称，去掉生硬的“自变量”
       xAxis: {
         type: "category",
         name: xName,
@@ -497,7 +493,7 @@ const selectTask = async (task) => {
       selectedTaskStats.storage = res.data.stats.storage;
     }
 
-    // ✨ 动态生成表格的列 (Base Columns + Dynamic Metrics)
+
     const baseCols = [
       { title: "代数", key: "gen_index", width: 80, sorter: "default" },
       { 
@@ -505,8 +501,6 @@ const selectTask = async (task) => {
         key: "id", 
         width: 110, 
         render: (row) => {
-          // ✨ 彻底弃用存在编码冲突隐患的 ind_index
-          // 直接提取底层 100% 安全的数据库 UUID 主键作为唯一标识
           const safeId = String(row.id || '--');
           const displayId = safeId.length > 8 ? safeId.substring(0, 8) : safeId;
           
@@ -697,7 +691,6 @@ onMounted(() => {
   border-radius: 8px;
   text-align: center;
   background-color: var(--n-card-color);
-  /* 👇 质感升级 */
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.15),

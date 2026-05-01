@@ -1,5 +1,6 @@
 <template>
   <div class="home-container">
+<!-- ================= 模块 1: 欢迎区与主题切换 ================= -->
     <div class="home-theme-toggle">
       <n-switch v-model:value="isDarkMode" size="large">
         <template #checked-icon>🌙</template>
@@ -11,7 +12,7 @@
         <h1 class="glow-text">ZTTT SAEA Platform</h1>
         <p class="sub-title">基于代理模型辅助进化算法的微波器件智能优化平台</p>
       </div>
-
+<!-- ================= 模块 2: 核心功能导航卡片 (扫参/优化/神经网络/数据库) ================= -->
       <n-grid :x-gap="24" :y-gap="24" :cols="2">
         <n-gi>
           <n-card
@@ -107,6 +108,7 @@
       </n-grid>
 
       <n-grid :x-gap="24" :y-gap="24" :cols="3">
+<!-- ================= 模块 3: 系统探针面板 (API/CST/硬件负载) ================= -->
         <n-gi :span="1">
           <n-card size="small" class="module-card" segmented>
             <template #header>
@@ -193,7 +195,7 @@
             </n-space>
           </n-card>
         </n-gi>
-
+<!-- ================= 模块 4: 最近任务面板 ================= -->
         <n-gi :span="2">
           <n-card size="small" class="module-card" segmented>
             <template #header>
@@ -294,6 +296,7 @@
       </n-grid>
       <ScoreSandbox />
     </n-space>
+<!-- ================= 模块 5: 平台使用手册与打分机制 (抽屉视图) ================= -->
     <n-drawer
       v-model:show="showDocs"
       :width="550"
@@ -797,7 +800,6 @@ const restoreTaskDisplay = () => {
   message.success("已恢复所有历史任务显示！");
 };
 const API_BASE = "/api";
-// 路由跳转
 const goToPage = (routeName) => {
   router.push({ name: routeName });
 };
@@ -817,7 +819,7 @@ const sysEnv = reactive({
   cst: "检测中...",
 });
 
-// ✨ 2. 定义拉取接口的函数
+//2. 定义拉取接口的函数
 const fetchEnvInfo = async () => {
   try {
     const res = await axios.get(`${API_BASE}/env_info`);
@@ -861,7 +863,6 @@ const refreshSystemStatus = async () => {
     if (res.data.agents_alive !== undefined) {
       agentsStatus.value = res.data.agents_alive ? "running" : "error";
     } else {
-      // 如果后端还没传这个字段，坚决不“假绿”，先标红或者标灰
       agentsStatus.value = "error"; 
     }
 
@@ -893,7 +894,6 @@ const taskColumns = [
     key: "name", 
     width: 170,
     render(row) {
-      // ✨ 动态渲染任务类型的彩色标签
       const typeMap = { 
         opt: { type: 'success', label: '联合优化' }, 
         sweep: { type: 'info', label: '网格扫参' }, 
@@ -966,7 +966,6 @@ const recentTasks = ref([]);
 
 const fetchRecentTasks = async () => {
   try {
-    // ✨ 新增参数：请求获取所有类型任务
     const res = await axios.get(`${API_BASE}/recent_tasks?task_type=all`);
     if (res.data.status === "success") {
       const hiddenTaskIds = JSON.parse(
@@ -1060,7 +1059,6 @@ const currentStep = ref(1);
   transition: all 0.3s ease;
   cursor: pointer;
   background-color: var(--n-card-color);
-  /* 👇 质感升级 */
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.15),
@@ -1093,14 +1091,13 @@ const currentStep = ref(1);
   padding: 10px;
 }
 
-/* ✨ 替换原来的 emoji nav-icon 样式，使用自定义图片框样式 */
 .custom-icon-box {
   display: flex;
   justify-content: center;
   align-items: center;
   width: 72px;
   height: 72px;
-  background: var(--n-action-color); /* ✅ 替换为 NaiveUI 自适应次级背景色 */
+  background: var(--n-action-color); 
   border-radius: 12px;
   padding: 10px;
   flex-shrink: 0;
@@ -1161,7 +1158,6 @@ const currentStep = ref(1);
   transition: color 0.3s ease;
 }
 
-/* 1. 扫参卡片：科技蓝 (搭配 CST Logo) */
 .nav-card.sweep-card:hover {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.3) !important;
@@ -1171,7 +1167,7 @@ const currentStep = ref(1);
   color: #3b82f6;
 }
 
-/* 2. 优化卡片：翡翠绿 (搭配 CST Logo) */
+
 .nav-card.cst-card:hover {
   border-color: #10b981 !important;
   box-shadow: 0 0 20px rgba(16, 185, 129, 0.3) !important;
@@ -1181,7 +1177,7 @@ const currentStep = ref(1);
   color: #10b981;
 }
 
-/* 3. 神经网络卡片：霓虹紫 (搭配 PyCharm Logo 的深色调) */
+
 .nav-card.nn-card:hover {
   border-color: #8b5cf6 !important;
   box-shadow: 0 0 20px rgba(139, 92, 246, 0.3) !important;
@@ -1191,7 +1187,6 @@ const currentStep = ref(1);
   color: #8b5cf6;
 }
 
-/* 4. 数据库卡片：活力橙 (完美契合 DataGrip Logo) */
 .nav-card.db-card:hover {
   border-color: #f59e0b !important;
   box-shadow: 0 0 20px rgba(245, 158, 11, 0.3) !important;
@@ -1216,7 +1211,7 @@ const currentStep = ref(1);
   color: #10b981;
 }
 /* ==========================================
-   FAQ 使用手册专属现代样式
+   FAQ 使用手册样式
    ========================================== */
 .faq-module {
   margin-bottom: 16px;
@@ -1278,7 +1273,6 @@ const currentStep = ref(1);
   letter-spacing: 0.5px;
 }
 
-/* 优雅的回答气泡区 */
 .faq-a-box {
   display: flex;
   gap: 14px;
@@ -1316,14 +1310,12 @@ const currentStep = ref(1);
 </style>
 
 <style>
-/* 深色模式亚克力抽屉 */
 .acrylic-drawer-dark {
   background-color: rgba(24, 24, 28, 0.6) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
-/* 浅色模式亚克力抽屉 */
 .acrylic-drawer-light {
   background-color: rgba(255, 255, 255, 0.6) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
@@ -1331,7 +1323,6 @@ const currentStep = ref(1);
   border-right: 1px solid rgba(0, 0, 0, 0.05) !important;
 }
 
-/* 强制抽屉的 Header 和 Body 背景变透明，让毛玻璃透出来 */
 .acrylic-drawer-dark .n-drawer-content,
 .acrylic-drawer-light .n-drawer-content,
 .acrylic-drawer-dark .n-drawer-header,
@@ -1349,7 +1340,6 @@ const currentStep = ref(1);
   box-shadow: none !important;
 }
 
-/* 顺便优化一下未选中时的字体透明度，让高亮更加聚焦 */
 .acrylic-drawer-dark .n-tabs-tab,
 .acrylic-drawer-light .n-tabs-tab {
   background-color: transparent !important;

@@ -99,7 +99,7 @@ def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path):
         res = cst.results.ProjectFile(cst_path, allow_interactive=True)
 
 
-        # 5. 🌟 核心：遍历前端传来的动态目标列表进行数据抓取
+        # 5.核心：遍历前端传来的动态目标列表进行数据抓取
         for t_cfg in targets_list:
             t_name = t_cfg.get('name', 'Unknown')
             t_path = t_cfg.get('path', '')
@@ -110,7 +110,6 @@ def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path):
             if not t_path:
                 continue
 
-            # 👇 新增：在循环内部为【单个指标】套上 try-except 防弹衣
             try:
                 # 规则 A：频域找主峰
                 if extract_method == 'freq_peak':
@@ -137,12 +136,12 @@ def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path):
                     val = data.get('mean', 0.0)
                     metrics[t_name] = val * multiplier
                     metrics[f'{t_name}_curve'] = data.get('curve')
-                    # ✨ 提取双轨波动率，且绝对波动必须同频乘以用户的量纲！
+                    # 提取双轨波动率，且绝对波动必须同频乘以用户的量纲！
                     metrics[f'{t_name}_fluc_rel'] = data.get('fluc_rel', 0.0)
                     metrics[f'{t_name}_fluc_abs'] = data.get('fluc_abs', 0.0) * multiplier
 
             except Exception as inner_e:
-                # 🛡️ 容错拦截：如果这个特定的指标没提出来（比如路径错了，或者 CST 没出这个图）
+                # 容错拦截：如果这个特定的指标没提出来（比如路径错了，或者 CST 没出这个图）
                 # 记录警告，并给予默认的死区数值，但绝不中断整个个体的打分！
                 print(f"⚠️ 指标 [{t_name}] 提取失败，已设为兜底值 0.0。原因: {inner_e}")
 
@@ -154,7 +153,7 @@ def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path):
                     metrics[f'{t_name}_curve'] = {'x': [], 'y': []}
 
     except Exception as e:
-        # 🚨 外层的 try-except 现在只负责捕捉“致命错误”
+        # 外层的 try-except 现在只负责捕捉“致命错误”
         # 例如：CST 软件卡死、求解器彻底报错没跑完、文件读写权限被拒等
         metrics['error'] = str(e)
         print(f"❌ CST 致命仿真失败: {e}")

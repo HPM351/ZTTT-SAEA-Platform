@@ -10,6 +10,7 @@
           @contextmenu.prevent="handleContextMenu"
         >
           <transition name="nav-fade">
+<!-- ================= 模块 1: 全局顶部导航栏 (Logo/路由标签/主题切换) ================= -->
             <n-layout-header
               v-if="!isHome"
               bordered
@@ -69,7 +70,7 @@
               </div>
             </n-layout-header>
           </transition>
-
+<!-- ================= 模块 2: 动态灵动岛 (全局任务悬浮监控) ================= -->
           <div class="island-wrapper">
             <transition name="island-drop">
               <div
@@ -166,7 +167,7 @@
                 <component :is="Component" />
               </transition>
             </router-view>
-
+<!-- ================= 模块 3: 鼠标右键径向菜单 (Radial Menu) ================= -->
             <Teleport to="body">
               <transition name="radial-fade">
                 <div
@@ -260,7 +261,7 @@ import FloatingChat from "./components/FloatingChat.vue";
 const route = useRoute();
 const router = useRouter();
 
-// ✨ 修复 1：将主题控制状态提升到顶部优先初始化
+// ================= 模块 1: 主题配置与 UI 引擎 (Naive UI Provider) =================
 const isDarkMode = ref(true);
 provide("globalTheme", isDarkMode);
 const theme = computed(() => (isDarkMode.value ? darkTheme : null));
@@ -279,7 +280,6 @@ watch(
 );
 
 const themeOverrides = computed(() => {
-  // 定义统一的高级亚克力半透明背景色
   const acrylicBg = isDarkMode.value
     ? "rgba(30, 30, 34, 0.65)"
     : "rgba(255, 255, 255, 0.75)";
@@ -307,22 +307,23 @@ const themeOverrides = computed(() => {
   };
 });
 
-// ✨ 修复 2：将当前的主题和覆盖样式包装为 ProviderProps
+
 const configProviderPropsRef = computed(() => ({
   theme: theme.value,
   themeOverrides: themeOverrides.value,
 }));
 
-// ✨ 修复 3：将响应式配置传给脱离文档流的 DiscreteApi
+
 const { message } = createDiscreteApi(["message"], {
   configProviderProps: configProviderPropsRef,
 });
 
-// 全局状态控制 (沿用之前的修复)
+
 const isChatVisible = ref(false);
 const isDocsVisible = ref(false);
 provide("isChatVisible", isChatVisible);
 provide("globalDocsVisible", isDocsVisible);
+// ================= 模块 2: 全局状态注入与灵动岛数据核心 =================
 const islandState = reactive({
   CstSweep: {
     isRunning: false,
@@ -355,6 +356,7 @@ const isGlobalRunning = computed(() => {
 });
 provide("isGlobalRunning", isGlobalRunning);
 const isIslandExpanded = ref(false); // 控制岛屿是否展开
+// ================= 模块 3: 鼠标右键轮盘交互算法与事件拦截 =================
 const radialMenu = reactive({
   show: false,
   x: 0,
@@ -432,27 +434,25 @@ const closeRadialMenu = () => {
 
 onMounted(() => {
   window.addEventListener("click", closeRadialMenu);
-  // ✨ 新增：在全局 Window 级别死死拦截原生的右键菜单
+  // 在全局 Window 级别拦截原生的右键菜单
   window.addEventListener("contextmenu", handleContextMenu);
 });
 
 onUnmounted(() => {
   window.removeEventListener("click", closeRadialMenu);
-  // ✨ 新增：组件卸载时移除拦截
+  // 组件卸载时移除拦截
   window.removeEventListener("contextmenu", handleContextMenu);
 });
 // 轮盘按钮具体的点击动作
 const triggerRadialAction = (action) => {
   switch (action) {
     case "ai":
-      // ✨ 唤醒/休眠 AI
       isChatVisible.value = !isChatVisible.value;
       message.success(
         isChatVisible.value ? "已唤醒 Agents 智能体" : "Agents 智能体已休眠",
       );
       break;
     case "docs":
-      // ✨ 自动跳转主页并打开手册 Drawer
       isDocsVisible.value = true;
       if (!isHome.value) {
         router.push({ name: "Home" });
@@ -468,10 +468,8 @@ const triggerRadialAction = (action) => {
       break;
   }
 };
-// 实际开发中，你可以通过 inject 获取这两个状态，这里先做逻辑占位
-const isCstTaskRunning = computed(() => isGlobalRunning.value); // 示例逻辑
-const isNnTaskRunning = ref(false); // 示例逻辑
-// ✨ 新增：高光随动 (Spotlight) 核心计算逻辑
+
+// ================= 模块 4: 导航指示器光效随动与路由状态同步 =================
 const navContainerRef = ref(null);
 const mouseX = ref(-100);
 const mouseY = ref(-100);
@@ -493,7 +491,7 @@ const spotlightStyle = computed(() => ({
   "--opacity": isOutside.value ? 0 : 1,
 }));
 
-// 🌟 动态判断当前是否为首页（通过路径或路由名称）
+
 const isHome = computed(() => {
   return (
     route.path === "/" ||
@@ -568,18 +566,17 @@ watch(
   padding-bottom: 10px;
 }
 
-/* ✨ 核心魔法：选中除了最后一个之外的所有任务行，加上底部分割线 */
 .dynamic-task-row:not(:last-child) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 10px;
 }
 
-/* 最后一个任务行不需要底部内边距，防止撑破灵动岛 */
+
 .dynamic-task-row:last-child {
   padding-bottom: 0;
 }
 
-/* ✨ 1. Logo 渐变科技字体 */
+
 .logo {
   font-size: 20px;
   font-weight: 900;
@@ -599,7 +596,7 @@ watch(
   -webkit-text-fill-color: transparent;
 }
 
-/* ✨ 2. 导航绝对居中与自适应宽度 */
+
 .nav-center-wrapper {
   position: absolute;
   left: 50%;
@@ -608,13 +605,13 @@ watch(
 
 .nav-tabs {
   width: auto;
-  min-width: 560px; /* 保证胶囊不被压扁 */
+  min-width: 560px; 
 }
 
-/* ✨ 3. 轨道背景与内边距 (解决拥挤) */
+
 .nav-tabs :deep(.n-tabs-rail) {
   border-radius: 14px;
-  padding: 6px !important; /* 强制撑开上下左右，留出呼吸感 */
+  padding: 6px !important; 
   transition: all 0.3s;
   overflow: visible !important;
 }
@@ -629,7 +626,7 @@ watch(
   box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* ✨ 4. 滑块 (Active Pill) 弹簧物理效果 */
+
 .nav-tabs :deep(.n-tabs-capsule) {
   border-radius: 10px !important;
   transition: all 0.5s cubic-bezier(0.32, 1.15, 0.38, 1) !important;
@@ -638,8 +635,7 @@ watch(
   border: none !important;
 }
 
-/* ✨ 5. 灵动岛呼吸灯效果 */
-/* ✨ 5. 模块独立呼吸灯效果 */
+
 .tab-label-wrapper {
   position: relative;
   display: flex;
@@ -676,7 +672,7 @@ watch(
   }
 }
 
-/* ✨ 6. 字体微调与层级保护 (解决文字挤压) */
+
 .nav-tabs :deep(.n-tabs-tab) {
   padding: 6px 20px !important; /* 强制拉开文字左右间距，解决文字连在一起的问题 */
   font-weight: bold;
@@ -743,7 +739,7 @@ watch(
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* 适配火狐 */
+
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
@@ -795,8 +791,8 @@ watch(
 /* 展开态的高宽变化 */
 .dynamic-island.is-expanded {
   min-width: 280px;
-  height: auto; /* ✨ 让内容自动撑开高度 */
-  min-height: 110px; /* ✨ 保持基础高度不变 */
+  height: auto; 
+  min-height: 110px; 
   padding: 16px;
   border-radius: 20px;
 }
@@ -884,7 +880,7 @@ watch(
   max-width: 200px;
 }
 
-/* ✨ 右键径向轮盘 (四等分甜甜圈版) */
+
 .radial-overlay {
   position: fixed;
   z-index: 99999;
@@ -903,7 +899,6 @@ watch(
   margin-top: -120px;
   border-radius: 50%;
   overflow: hidden;
-  /* ✨ 核心魔法：旋转 45 度，让内部的四个正方形变成上下左右的扇形 */
   transform: rotate(45deg);
 
   background: v-bind(
@@ -982,7 +977,6 @@ watch(
   opacity: 0.9;
 }
 
-/* 中心防误触死区 (甜甜圈的孔) */
 .radial-center-hole {
   position: absolute;
   top: 50%;
@@ -1012,7 +1006,7 @@ watch(
   box-shadow: 0 0 12px #10b981;
 }
 
-/* 🚀 物理弹簧缩放动画 */
+
 .radial-fade-enter-active,
 .radial-fade-leave-active {
   transition: opacity 0.2s ease;

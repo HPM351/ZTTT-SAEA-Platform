@@ -14,7 +14,7 @@ def run_setup():
     print(f"推荐的默认路径为: {default_cst}")
 
     while True:
-        cst_path = input("👉 请输入您的 CST 路径 (直接回车则使用默认路径):\n> ").strip()
+        cst_path = input("请输入您的 CST 路径 (直接回车则使用默认路径):\n> ").strip()
 
         # 处理直接回车的情况
         if not cst_path:

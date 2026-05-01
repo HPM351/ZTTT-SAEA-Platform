@@ -51,7 +51,7 @@ def main():
         )
         processes.append(frontend_process)
 
-        print("\n🎉 全栈服务已就绪！日志将统一打印在下方 (按 Ctrl+C 或点击 IDE 停止按钮可一键关闭)\n")
+        print("\n全栈服务已就绪！日志将统一打印在下方 (按 Ctrl+C 或点击 IDE 停止按钮可一键关闭)\n")
         print("-" * 50)
 
         # 保持主进程不死，监听子进程的日志

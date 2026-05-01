@@ -54,7 +54,7 @@ class TargetsConfig(BaseModel):
     mainMode: Optional[MainModeTarget] = None
 
 # ==========================================
-# 🌟 4. 各算法独立配置子模型 (完美适配前端嵌套结构)
+# 4. 各算法独立配置子模型 (完美适配前端嵌套结构)
 # ==========================================
 class GaConfig(BaseModel):
     recCode: str
@@ -81,7 +81,7 @@ class AlgoConfig(BaseModel):
     nGen: int
     injectJson: Optional[str] = ""
 
-    # ✨ 核心修复 2：以嵌套子模型的方式注册专属参数
+    # 核心修复 2：以嵌套子模型的方式注册专属参数
     # 使用 Optional 确保在旧数据加载时即使没有某些模块也不会崩溃
     ga: Optional[GaConfig] = None
     pso: Optional[PsoConfig] = None
@@ -95,8 +95,7 @@ class OptimizationConfig(BaseModel):
     taskName: str
     env: EnvConfig
     paramsList: List[ParamItem]
-    # 👇 删掉旧的 targets: TargetsConfig
-    targetsList: Optional[List[Dict[str, Any]]] = []  # ✨ 核心修复：允许接收任意结构的动态目标列表
+    targetsList: Optional[List[Dict[str, Any]]] = []  #允许接收任意结构的动态目标列表
     algo: AlgoConfig
 
     # 允许额外字段，防止前端传了意外参数导致报错

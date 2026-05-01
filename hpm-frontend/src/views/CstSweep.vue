@@ -21,6 +21,7 @@
 
       <n-scrollbar style="max-height: calc(100vh - 180px); padding-right: 16px">
         <n-form label-placement="top" :show-feedback="false">
+<!-- ================= 模块 1: 项目与任务配置 (扫参配置加载) ================= -->
           <n-card class="modern-card" size="small">
             <template #header
               ><span class="card-title">📂 项目与任务</span></template
@@ -61,7 +62,7 @@
               />
             </n-form-item>
           </n-card>
-
+<!-- ================= 模块 2: 变量遍历控制 (笛卡尔积/步长设置) ================= -->
           <n-card class="modern-card" size="small">
             <template #header>
               <div
@@ -212,7 +213,7 @@
               <span class="text-neon-blue">{{ totalCombinations }}</span>
             </div>
           </n-card>
-
+<!-- ================= 模块 3: 动态目标与指标路径注册 ================= -->
           <n-collapse :default-expanded-names="['paths']">
             <n-collapse-item title="📂 CST 动态监控目标配置" name="paths">
               <n-button dashed block @click="addTarget" style="margin-bottom: 12px;">+ 新增监控目标</n-button>
@@ -236,7 +237,7 @@
           </n-collapse>
         </n-form>
       </n-scrollbar>
-
+<!-- ================= 模块 4: 扫参引擎动作触发区 ================= -->
       <div class="action-area">
         <n-button
           v-if="!isRunning"
@@ -258,6 +259,7 @@
     </div>
 
     <div class="main-content">
+<!-- ================= 模块 5: 总体扫描进度面板 ================= -->
       <n-grid :x-gap="16" :cols="1" style="margin-bottom: 16px">
         <n-gi>
           <n-card class="metric-card" size="small">
@@ -294,7 +296,7 @@
           </n-card>
         </n-gi>
       </n-grid>
-
+<!-- ================= 模块 6: 结构预览面板 ================= -->
       <div class="middle-row">
         <n-card
           class="chart-card model-card"
@@ -321,7 +323,7 @@
             <div v-else class="hologram-scanner">AWAITING .dib ...</div>
           </div>
         </n-card>
-
+<!-- ================= 模块 7: 扫参波形动态审查 (按需加载) ================= -->
         <n-card
           class="chart-card wave-card"
           style="flex: 7"
@@ -441,6 +443,7 @@
       </div>
 
       <div class="bottom-row">
+<!-- ================= 模块 8: 多维遍历结果分布 (全量散点) ================= -->
         <n-card
           class="chart-card scatter-card"
           style="flex: 6.5"
@@ -491,7 +494,7 @@
             ></div>
           </div>
         </n-card>
-
+<!-- ================= 模块 9: 扫参运行终端 (WebSocket) ================= -->
         <n-card
           class="chart-card terminal-card"
           style="flex: 3.5"
@@ -543,7 +546,7 @@ const historyTaskOptions = ref([]);
 // 1. 读取历史任务列表
 const fetchHistoryTasks = async () => {
   try {
-    const res = await axios.get(`${API_BASE}/recent_tasks?task_type=sweep`); // 🌟 只要 sweep
+    const res = await axios.get(`${API_BASE}/recent_tasks?task_type=sweep`); 
     if (res.data.status === "success") {
       historyTaskOptions.value = res.data.tasks.map((t) => ({
         label: t.name,
@@ -585,9 +588,7 @@ const loadHistoricalTask = async (taskId) => {
 
     // 2. 数据入池
     Object.keys(allDataPool).forEach(k => delete allDataPool[k]);
-    
-    // ✨ 核心修复：严谨的特征侦测解包。
-    // 如果 pool["1"] 里面没有 params/metrics，说明它真的是个 gen 壳子；否则它就是真实的扫参点数据！
+
     const pool = d.all_data_pool || {};
     if (pool["1"] && !pool["1"].params && !pool["1"].metrics) {
        Object.assign(allDataPool, pool["1"]);
@@ -601,7 +602,6 @@ const loadHistoricalTask = async (taskId) => {
       const inds = indData.individuals || [];
       
       // 将真实数据库 ID 注入到内存池中，为后续按需加载波形做准备
-      // ✨ 修复：同时把数据库中完好的参数与指标字典注入到内存池，以供散点图提取坐标
       inds.forEach(ind => {
         if (!allDataPool[ind.ind_index]) {
           allDataPool[ind.ind_index] = {}; // 兜底，防止该节点丢失
@@ -641,13 +641,13 @@ const tryLoadConfig = async (path) => {
     if (res.data.status === "success") {
       const saved = res.data.config;
 
-      // 1. 恢复参数列表并触发排序 (✨ 已移入正确的作用域内，修复了旧 Bug)
+      // 1. 恢复参数列表并触发排序
       if (saved.paramsList) {
         config.paramsList = saved.paramsList;
         sortParamsList(); 
       }
 
-      // 2. 恢复动态目标列表 (✨ 全新逻辑，直接接管整个数组)
+      // 2. 恢复动态目标列表
       if (saved.targetsList && Array.isArray(saved.targetsList)) {
         config.targetsList = saved.targetsList;
       }
@@ -676,7 +676,7 @@ const saveConfig = async () => {
   }
 };
 
-// 5. ✨核心修复：从 CST 导入变量
+// 5. 从 CST 导入变量
 const readFromCST = async () => {
   if (!config.cstPath) return message.warning("请先填写 CST 项目路径！");
   message.loading("正在扫描 CST 变量...");
@@ -697,8 +697,8 @@ const readFromCST = async () => {
           min: Number(p_min.toFixed(2)),
           max: Number(p_max.toFixed(2)),
           val: p_val,
-          points: 5, // ✨ 扫参专属：必须携带 points
-          isSweep: false, // ✨ 核心修复：扫参页面的开关字段叫 isSweep，不能用 opt
+          points: 5, 
+          isSweep: false, 
         });
         count++;
       }
@@ -715,7 +715,6 @@ const config = reactive({
   cstPath: "",
   taskName: "Sweep_Task_001",
   paramsList: [],
-  // ✨ 终极重构：将写死的目标变成动态数组，默认提供几个常用的，用户可以随便增删
   targetsList: [
     { name: "Power", display: "功率(MW)", path: "Tables\\1D Results\\AVGpower", extractMethod: "time_mean", multiplier: 1e-6 },
     { name: "Efficiency", display: "效率(%)", path: "Tables\\1D Results\\EFF", extractMethod: "time_mean", multiplier: 100 },
@@ -788,8 +787,7 @@ const getGridColor = () =>
 const initCharts = () => {
   if (inspectorChartRef.value) {
     inspectorChart = echarts.init(inspectorChartRef.value);
-    
-    // 👇 新增：监听波形图容器自身尺寸变化，自动触发重绘
+  
     inspectorResizeObserver = new ResizeObserver(() => {
       if (inspectorChart) inspectorChart.resize();
     });
@@ -808,7 +806,6 @@ const initCharts = () => {
       }
     });
     
-    // 👇 新增：监听散点图容器自身尺寸变化，自动触发重绘
     scatterResizeObserver = new ResizeObserver(() => {
       if (scatterChart) scatterChart.resize();
     });
@@ -818,7 +815,6 @@ const initCharts = () => {
   }
 };
 
-// ✨ 修复 1：加上 async，使函数支持异步请求
 const updateInspectorChart = async () => {
   if (!inspectorChart) return;
 
@@ -831,7 +827,7 @@ const updateInspectorChart = async () => {
 
   const targetName = activeWaveTab.value;
 
-  // ✨ 核心修复：补全按需加载逻辑。如果内存里没有波形数据，但存在 db_id，就向后端 DataCenter 发起请求拉取波形
+  // 补全按需加载逻辑。如果内存里没有波形数据，但存在 db_id，就向后端 DataCenter 发起请求拉取波形
   if (!currentData.waves && !currentData[`${targetName}_curve`] && currentData.db_id) {
     try {
       const res = await axios.get(`${API_BASE}/individuals/${currentData.db_id}/waveform`);
@@ -869,11 +865,9 @@ const updateInspectorChart = async () => {
   const currentTargetConfig = config.targetsList.find(t => t.name === activeWaveTab.value);
   if (currentTargetConfig) {
       if (currentTargetConfig.extractMethod === 'freq_peak') {
-          // ✨ 频域专属逻辑：横轴定死为频率，纵轴强行修正为幅度，防止名字打架
           xName = "Frequency (GHz)";
           yName = "幅度 (Amplitude)"; 
       } else {
-          // ✨ 时域常规逻辑：横轴为时间，纵轴读取你设置的显示名（如：功率(MW)）
           xName = "Time (ns)";
           yName = currentTargetConfig.display || currentTargetConfig.name;
       }
@@ -932,7 +926,6 @@ const refreshScatterChart = () => {
 
   // 组装数据并提取当前颜色维度的极小值与极大值
   const seriesData = Object.entries(allDataPool).map(([idx, data]) => {
-    // ✨ 从 metrics 字典或 params 字典取值
     const getVal = (key) => {
       if (data.metrics && data.metrics[key] !== undefined) return data.metrics[key];
       if (data.params && data.params[key] !== undefined) return data.params[key];
@@ -950,7 +943,7 @@ const refreshScatterChart = () => {
     };
   });
 
-  // ✨ 极值保护机制：如果当前只有一个点，或者所有点的颜色映射值都一样，强行拉开极值，防止 ECharts 颜色条崩溃
+  // 如果当前只有一个点，或者所有点的颜色映射值都一样，强行拉开极值，防止 ECharts 颜色条崩溃
   if (minColorVal === Infinity || minColorVal === maxColorVal) {
     minColorVal = minColorVal === Infinity ? 0 : minColorVal - 1;
     maxColorVal = minColorVal + 2;
@@ -976,7 +969,7 @@ const refreshScatterChart = () => {
         if (!paramHtml)
           paramHtml = "<span style='color: gray;'>等待数据传入...</span>";
 
-        // 组装精美的悬浮框
+        // 组装悬浮框
         return `<div style="font-family: monospace;">
                   <b>Sweep ID: ${params.data.id}</b><br/>
                   <hr style="margin:6px 0; border:0; border-top:1px solid rgba(255,255,255,0.1)" />
@@ -1091,7 +1084,6 @@ const connectWebSocket = (taskId) => {
         updateInspectorChart();
       }
 
-      // ✨ 补全：驱动灵动岛进度条
       if (islandState && islandState.CstSweep.isRunning) {
         islandState.CstSweep.progress = totalCombinations.value
           ? Math.round((data.current / totalCombinations.value) * 100)
@@ -1102,14 +1094,14 @@ const connectWebSocket = (taskId) => {
       await nextTick();
       refreshScatterChart();
 
-      // ✨ 修复：这里必须加 .value，否则脚本会在此处崩溃导致后续不执行
+      //这里必须加 .value，否则脚本会在此处崩溃导致后续不执行
       logs.value.push(
         `[PROGRESS] 扫描组合 ${data.current}/${totalCombinations.value} 完成`,
       );
       scrollToBottom();
     } else if (data.type === "finish") {
       isRunning.value = false;
-      if (islandState) islandState.CstSweep.isRunning = false; // ✨ 补全
+      if (islandState) islandState.CstSweep.isRunning = false;
       message.success("网格扫参任务全部完成！");
     }
   };
@@ -1119,7 +1111,6 @@ const startSweep = async () => {
   if (!config.cstPath) return message.error("路径不能为空");
   isRunning.value = true;
 
-  // ✨ 补全：唤醒灵动岛
   if (islandState) {
     islandState.CstSweep.isRunning = true;
     islandState.CstSweep.taskName = config.taskName || "网格扫参任务";
@@ -1134,12 +1125,12 @@ const startSweep = async () => {
   try {
     const res = await axios.post(`${API_BASE}/start_sweep`, config);
     if (res.data.status === "success") {
-      currentTaskId.value = res.data.task_id; // ✨ 核心：必须把后端下发的 ID 存下来
+      currentTaskId.value = res.data.task_id; 
       connectWebSocket(res.data.task_id);
     }
   } catch (e) {
     isRunning.value = false;
-    if (islandState) islandState.CstSweep.isRunning = false; // ✨ 补全
+    if (islandState) islandState.CstSweep.isRunning = false;
     message.error("任务启动失败");
   }
 };
@@ -1157,7 +1148,6 @@ const stopOptimization = async () => {
         "<span style='color:#ef4444;'>[SYSTEM] 收到强制终止指令，引擎将在当前点算完后安全退出...</span>",
       );
       scrollToBottom();
-      // 注: 不要在这里把 isRunning 设为 false，等后台回传 finish 或 error 消息时会自动关闭
     } else {
       message.error(res.data.message);
     }
@@ -1252,13 +1242,12 @@ onMounted(async () => {
   window.addEventListener("resize", handleResize);
   document.addEventListener("fullscreenchange", handleFullscreenChange);
 
-  // ✨ 扫参专属的数据抢救逻辑
   try {
     const resTask = await axios.get(`${API_BASE}/get_running_task`);
     if (resTask.data.status === "success") {
       const activeTaskId = resTask.data.task_id;
 
-      // 🌟 核心防御：只认 sweep_ 开头的任务
+      //只认 sweep_ 开头的任务
       if (activeTaskId.startsWith("sweep_")) {
         dialog.warning({
           title: "发现运行中的扫描任务",
@@ -1270,7 +1259,7 @@ onMounted(async () => {
             isRunning.value = true;
             connectWebSocket(activeTaskId);
 
-            // ✨ 核心修复：接管任务时，同步通知外层 App.vue 唤醒灵动岛
+            // 接管任务时，同步通知外层 App.vue 唤醒灵动岛
             if (islandState) {
               islandState.CstSweep.isRunning = true;
               islandState.CstSweep.taskName = activeTaskId;
@@ -1332,7 +1321,6 @@ onUnmounted(() => {
   window.removeEventListener("resize", handleResize);
   document.removeEventListener("fullscreenchange", handleFullscreenChange);
   
-  // 👇 新增：断开尺寸监听器
   if (inspectorResizeObserver) inspectorResizeObserver.disconnect();
   if (scatterResizeObserver) scatterResizeObserver.disconnect();
   
@@ -1575,7 +1563,7 @@ onUnmounted(() => {
   margin-right: 8px;
 }
 
-/* ===== 全屏亚克力拟态 (极其重要) ===== */
+/* ===== 全屏亚克力拟态 ===== */
 .chart-card:fullscreen {
   width: 100vw;
   height: 100vh !important;

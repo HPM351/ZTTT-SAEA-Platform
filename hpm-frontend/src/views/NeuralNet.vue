@@ -31,6 +31,7 @@
 
       <n-scrollbar style="flex: 1; min-height: 0; padding-right: 16px">
         <n-form label-placement="top" :show-feedback="false">
+<!-- ================= 模块 1: 左侧面板 - 在线微调验证配置 (Online Learning) ================= -->
           <n-card class="modern-card" size="small">
             <template #header>
               <span
@@ -105,7 +106,7 @@
               纯离线预测模式 (高速探索)
             </div>
           </n-card>
-
+<!-- ================= 模块 2: 左侧面板 - 进化策略与遗传算子 (Evolution Strategy) ================= -->
           <n-card class="modern-card" size="small" style="margin-top: 16px">
             <template #header>
               <span
@@ -204,6 +205,7 @@
             </n-collapse>
           </n-card>
         </n-form>
+<!-- ================= 模块 3: 左侧面板 - 预训练模型拓扑与精度属性 (Model Meta) ================= -->
         <n-card
           v-if="isModelLoaded"
           class="modern-card"
@@ -355,7 +357,7 @@
             </n-descriptions-item>
           </n-descriptions>
         </n-card>
-
+<!-- ================= 模块 4: 左侧面板 - 全局参数敏感度图表 (Global SHAP) ================= -->
         <n-card
           v-if="isModelLoaded"
           class="modern-card"
@@ -397,7 +399,7 @@
             >
           </div>
         </n-card>
-
+<!-- ================= 模块 5: 左侧面板 - 动态寻优目标设定与权重分配 ================= -->
         <n-card
           v-if="optimizableTargets.length > 0"
           class="modern-card"
@@ -492,7 +494,7 @@
           </div>
         </n-card>
       </n-scrollbar>
-
+<!-- ================= 模块 6: 左侧面板 - 核心演化引擎控制 (启动/终止/清空) ================= -->
       <div class="action-area" style="display: flex; gap: 12px">
         <n-button
           v-if="!isRunning"
@@ -537,6 +539,7 @@
     </div>
 
     <div class="main-content">
+<!-- ================= 模块 7: 右侧大屏 - 模型加载与切换控制台 ================= -->
       <n-card
         class="modern-card"
         size="small"
@@ -575,6 +578,7 @@
         animated
         style="flex: 1; display: flex; flex-direction: column; min-height: 0"
       >
+<!-- ================= 模块 8: 视图 A - 代理反向演化监控台 (GA Inverse) ================= -->
         <n-tab-pane
           name="inverse"
           tab=" 反向演化 (GA Inverse)"
@@ -1067,7 +1071,7 @@
             </n-card>
           </div>
         </n-tab-pane>
-
+<!-- ================= 模块 9: 视图 B - 正向快速推演与地形扫描 (Forward Prediction) ================= -->
         <n-tab-pane
           name="forward"
           tab="正向预测 (Prediction)"
@@ -1338,6 +1342,7 @@
         </n-tab-pane>
       </n-tabs>
     </div>
+<!-- ================= 模块 10: 独立弹窗 - 物理验证与 CST 微调参数控制台 ================= -->
 <n-modal
       v-model:show="showOnlineConfigModal"
       preset="card"
@@ -1611,7 +1616,6 @@ const freqStatusClass = ref("text-neon-white");
 const freqDeltaText = ref("");
 // ================= 状态数据 =================
 const modelRegistry = ref({});
-// 当前选中模型的完整 JSON 配置
 const currentModelConfig = ref(null);
 
 const modelOptions = computed(() => {
@@ -1623,7 +1627,6 @@ const modelOptions = computed(() => {
 
 // 新代码
 const getTooltipStyle = () => ({
-  // ✨ 移除了 trigger 和 show，让它变成纯粹的“样式提供者”，绝不干涉原有图表的触发逻辑
   backgroundColor: isDarkMode.value
     ? "rgba(15, 23, 42, 0.45)"
     : "rgba(255, 255, 255, 0.60)",
@@ -1633,7 +1636,6 @@ const getTooltipStyle = () => ({
   borderWidth: 1,
   padding: 12,
   textStyle: { color: isDarkMode.value ? "#e2e8f0" : "#333333", fontSize: 13 },
-  // ✨ 核心修复：为滤镜加上 !important，强行击穿浏览器在全屏 #top-layer 的渲染降级限制；去掉了冲突的 border
   extraCssText:
     "backdrop-filter: blur(14px) !important; -webkit-backdrop-filter: blur(14px) !important; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important; border-radius: 10px !important;",
 });
@@ -1657,7 +1659,7 @@ const modalFrostedStyle = computed(() => ({
   borderRadius: '14px'
 }));
 
-// ✨ 新增：弹窗背后全屏遮罩的虚化样式
+
 const maskFrostedStyle = computed(() => ({
   backgroundColor: isDarkMode.value ? 'rgba(0, 0, 0, 0.45)' : 'rgba(0, 0, 0, 0.25)',
   backdropFilter: 'blur(6px)',
@@ -1716,8 +1718,6 @@ const updateScatterChart = () => {
   );
   const xName = xOption ? xOption.label : scatterX.value;
   const yName = yOption ? yOption.label : scatterY.value;
-
-  // ✨ 核心修复：获取 JSON 里的 scale_factor (例如 1e-6 把 W 转为 MW)
   const xConf = outputOptions.value.find((o) => o.value === scatterX.value);
   const yConf = outputOptions.value.find((o) => o.value === scatterY.value);
   const xScale = xConf?.scale_factor || 1;
@@ -1796,7 +1796,7 @@ const updateBoxplotChart = () => {
     series: [
       {
         data: seriesData,
-        markLine: markLineOpt, // 巧妙之处：如果是 null，ECharts会自动忽略，不画线
+        markLine: markLineOpt, 
       },
     ],
   });
@@ -1807,7 +1807,6 @@ const optimizableTargets = computed(() => {
   if (!currentModelConfig.value?.outputs) return [];
   return currentModelConfig.value.outputs.filter((out) => {
     const name = out.name.toLowerCase();
-    // 只要名字里带 logit 或 class 就不在 UI 上显示
     return !name.includes("logit") && !name.includes("class");
   });
 });
@@ -1826,7 +1825,6 @@ const outputOptions = computed(() => {
     .map(({ out, originalIndex }) => ({
       label: out.display,
       value: out.name,
-      // ✨ 核心修复：如果 JSON 里没写 model_index，使用它的原生数组索引，防止后端回退到默认 0
       model_index:
         out.model_index !== undefined ? out.model_index : originalIndex,
       needs_inverse: out.needs_inverse,
@@ -1918,15 +1916,13 @@ const updateParallelChartAxes = () => {
     });
   }
 
-  // 触发 ECharts 更新，使用 replaceMerge 彻底替换旧的轴配置
   const currentData = parallelChart.getOption()?.series?.[0]?.data || [];
 
-  // 触发 ECharts 更新，使用 replaceMerge 彻底替换旧的轴配置
   parallelChart.setOption(
     {
       backgroundColor: "transparent",
       tooltip: { ...getTooltipStyle() },
-      parallelAxis: parallelAxes, // 👈 核心修复：必须把拼装好的坐标轴数组传给 ECharts！
+      parallelAxis: parallelAxes, 
       parallel: {
         left: "5%",
         right: "8%",
@@ -1944,7 +1940,7 @@ const updateParallelChartAxes = () => {
           name: "个体",
           type: "parallel",
           lineStyle: { width: 1.5, opacity: 0.15 },
-          data: currentData, // 👈 替换原来的 []，保护演化状态
+          data: currentData,
           emphasis: {
             lineStyle: { width: 3, opacity: 1, color: "#10b981" },
           },
@@ -1968,7 +1964,6 @@ const localShapTarget = ref(null);
 watch(
   () => outputOptions.value,
   async (newVal) => {
-    // ✨ 救命绝招：把响应式赋值推迟到当前 DOM 动画和渲染周期结束之后
     await nextTick(); 
 
     if (newVal && newVal.length > 0) {
@@ -2049,13 +2044,11 @@ const getThemeColor = () =>
 const getGridColor = () =>
   isDarkMode.value ? "rgba(255, 255, 255, 0.04)" : "rgba(0, 0, 0, 0.08)";
 const renderGlobalShap = (realData) => {
-  // 👈 修复: 补上了缺失的 realData 参数
   if (!globalImportanceChartRef.value) return;
   if (!globalImportanceChart)
     globalImportanceChart = echarts.init(globalImportanceChartRef.value);
   const params = currentParams.value.map((p) => p.name).reverse();
 
-  // 👈 修复: 删除了 Math.random，换成真实的后端数组，并反转以匹配 Y 轴顺序
   const data = realData ? [...realData].reverse() : [];
 
   globalImportanceChart.setOption({
@@ -2065,8 +2058,8 @@ const renderGlobalShap = (realData) => {
       axisPointer: { type: "shadow" },
       valueFormatter: (val) => parseFloat(val).toFixed(2) + "%",
       ...getTooltipStyle(),
-    }, // 👈 替换
-    grid: { top: 10, right: 40, bottom: 20, left: 90 }, // 👈 调大 left 避免参数名被遮挡
+    },
+    grid: { top: 10, right: 40, bottom: 20, left: 90 }, 
     xAxis: {
       type: "value",
       max: 100,
@@ -2088,7 +2081,6 @@ const renderGlobalShap = (realData) => {
         name: "贡献度",
         type: "bar",
         data: data,
-        // 👈 修复 formatter，只显示2位小数，防止像图1那样爆炸
         label: {
           show: true,
           position: "right",
@@ -2110,7 +2102,6 @@ const renderGlobalShap = (realData) => {
 
 // 📉 2. 渲染局部参数贡献瀑布图 (Local SHAP)
 const renderLocalShap = (realShap) => {
-  // 👈 修复: 补上了缺失的 realShap 参数
   if (!shapWaterfallChartRef.value) return;
   if (!shapWaterfallChart)
     shapWaterfallChart = echarts.init(shapWaterfallChartRef.value);
@@ -2125,7 +2116,7 @@ const renderLocalShap = (realShap) => {
       trigger: "axis",
       axisPointer: { type: "shadow" },
       ...getTooltipStyle(),
-    }, // 👈 替换
+    }, 
     grid: { top: 20, right: 30, bottom: 20, left: 70 },
     xAxis: {
       type: "value",
@@ -2164,13 +2155,11 @@ const renderLocalShap = (realShap) => {
 
 // 🔲 3. 渲染相关性热力图 (Pearson)
 const renderCorrelationHeatmap = (realData) => {
-  // 👈 修复: 补上了缺失的 realData 参数
   if (!correlationHeatmapRef.value) return;
   if (!correlationHeatmapChart)
     correlationHeatmapChart = echarts.init(correlationHeatmapRef.value);
   const params = currentParams.value.map((p) => p.name);
 
-  // 👈 修复了引发崩溃的语法错误：你原代码里直接悬空写了个 "series: [{...}]"，会导致 Vue 编译彻底失败
   correlationHeatmapChart.setOption({
     backgroundColor: "transparent",
     tooltip: {
@@ -2178,7 +2167,7 @@ const renderCorrelationHeatmap = (realData) => {
       formatter: (p) =>
         `${params[p.data[0]]} & ${params[p.data[1]]}<br/>相关性: ${p.data[2]}`,
       ...getTooltipStyle(),
-    }, // 👈 替换
+    },
     grid: { top: 20, right: 30, bottom: 80, left: 80 },
     xAxis: {
       type: "category",
@@ -2206,7 +2195,7 @@ const renderCorrelationHeatmap = (realData) => {
     series: [
       {
         type: "heatmap",
-        data: realData || [], // 👈 把传入的数据直接放到这里
+        data: realData || [], 
         label: { show: true, fontSize: 11, color: "#000", fontWeight: "bold" },
         itemStyle: { borderColor: getGridColor(), borderWidth: 1 },
       },
@@ -2236,9 +2225,8 @@ const fetchModelsList = async () => {
 onMounted(async () => {
   window.addEventListener("resize", handleResize);
   fetchHistoryTasks();
-  await fetchModelsList(); // ✨ 必须先拉取模型清单，否则接管时找不到模型配置
+  await fetchModelsList();
 
-  // ✨ 新增：神经网络任务抢救逻辑
   try {
     const resTask = await fetch(`${API_BASE}/get_running_task`);
     const taskData = await resTask.json();
@@ -2305,7 +2293,6 @@ const loadModel = async () => {
     const data = await res.json();
 
     if (res.ok) {
-      // 🌟 核心修改：从获取到的注册表中读取
       const configObj = modelRegistry.value[currentModelKey.value];
       currentModelConfig.value = configObj; // 存入全局，供图表和预测使用
 
@@ -2328,8 +2315,7 @@ const loadModel = async () => {
           path: "",
           mode: isFreq ? "target" : "maximize",
           extractMethod: isFreq ? "freq_peak" : "time_mean",
-          weight: isLogit ? 0 : defaultWeight, // ✨ 独立权重初始化
-          // ... 其余 reference_scale 等保持不变
+          weight: isLogit ? 0 : defaultWeight, 
           constraints: {
             enable: true,
             fluc_type: 'relative',
@@ -2356,8 +2342,6 @@ const loadModel = async () => {
         });
       }
 
-      // 深拷贝 input_features
-      // 把后端 JSON 里的 default 映射给前端的 predValue
       currentParams.value = configObj.input_features.map((p) => ({
         ...p,
         cstName: p.cst_name,
@@ -2385,7 +2369,6 @@ const loadModel = async () => {
           nextTick(() => {
             initAllCharts();
             renderGlobalShap(res.importance);
-            // ✨ 核心修复：等待 Tabs 滑入动画彻底结束后，强制所有 ECharts 重新适配真实尺寸！
             setTimeout(handleResize, 350);
           });
         });
@@ -2405,7 +2388,6 @@ const formatPower = (val) => {
   return num.toFixed(2) + " W";
 };
 
-// 🌟 新增：ECharts 专用的坐标轴缩写格式化工具
 const axisFormatter = (value) => {
   if (Math.abs(value) >= 1e6) return (value / 1e6).toFixed(1) + "M";
   if (Math.abs(value) >= 1e3) return (value / 1e3).toFixed(1) + "k";
@@ -2414,7 +2396,6 @@ const axisFormatter = (value) => {
 
 const clearParallelBrush = () => {
   if (!parallelChart) return;
-  // ECharts 官方 API: 遍历所有可能的轴（0到5），将它们的刷选区间强制置空
   for (let i = 0; i <= 5; i++) {
     parallelChart.dispatchAction({
       type: "axisAreaSelect",
@@ -2427,14 +2408,12 @@ const clearParallelBrush = () => {
 
 // 2. 全局清空所有图表数据
 const clearAllData = () => {
-  // 清空 Vue 响应式数组
   currentGen.value = 0;
   bestGlobalMetrics.value = { power: null, eff: null, freq: null };
   parallelData.length = 0;
   paretoData.length = 0;
   boxplotData.length = 0;
 
-  // ✨ 核心修复：启动时彻底清空在线微调的残余数据，防止新老代数拼接到一起
   onlineLossData.gen = [];
   onlineLossData.loss = [];
   onlineLossData.error = [];
@@ -2459,7 +2438,6 @@ const clearAllData = () => {
 const connectWebSocket = (taskId) => {
   if (wsClient) wsClient.close();
   
-  // ✨ 核心替换：连接到全新的纯监听端口
   wsClient = new WebSocket(`ws://${window.location.host}/api/nn/ws/monitor/${taskId}`);
 
   wsClient.onopen = () => {
@@ -2558,7 +2536,6 @@ const startOptimization = () => {
   // 2. 提取配置与物理边界
   const bounds = currentParams.value.map((p) => [p.min, p.max]);
 
-  // ✨ [架构师修复]：打通前后端数据契约！
   // 强制同步左右面板的数据，确保后端 The Dreamer 引擎拿到的是用户真实调整的值
   if (!config.online.enable) {
     // 离线模式：以左侧简易面板的滑动条和靶心为准，强行注入到底层 targetsList
@@ -2593,7 +2570,6 @@ const startOptimization = () => {
     online: config.online,
   };
 
-  // ✨ 核心替换：先发送 POST 请求把配置交给后台独立线程
   onlineLogs.value.push("> [SYSTEM] 正在下发演化配置到独立后台引擎...");
   fetch(`${API_BASE}/nn/start_evolve`, {
       method: "POST",
@@ -2652,7 +2628,7 @@ const initAllCharts = () => {
     parallelChart = echarts.init(parallelChartRef.value);
 
     // 仅仅注入底层公共样式、全局边距和数据系列的占位符
-    // ⚠️ 注意：这里故意不写 visualMap 和 parallelAxis，把它们交给动态函数生成
+    //这里故意不写 visualMap 和 parallelAxis，把它们交给动态函数生成
     parallelChart.setOption(
       {
         backgroundColor: "transparent",
@@ -2682,7 +2658,7 @@ const initAllCharts = () => {
       true,
     );
 
-    // ✨ 核心：图表架子搭好后，立刻调用动态函数，根据当前的下拉框默认值去生成具体的轴
+    //图表架子搭好后，立刻调用动态函数，根据当前的下拉框默认值去生成具体的轴
     updateParallelChartAxes();
   }
 
@@ -2924,8 +2900,6 @@ const initOnlineLossChart = () => {
 };
 
 // 预测执行
-// 预测执行
-// 预测执行
 const predictSingle = async () => {
   message.loading("Neural Network Inference...");
   try {
@@ -2939,7 +2913,7 @@ const predictSingle = async () => {
       : -1;
     const payload = {
       features: currentParams.value.map((p) => p.predValue),
-      target_index: targetIdx, // ✨ 把索引发给后端
+      target_index: targetIdx, //把索引发给后端
     };
 
     const res = await fetch(`${API_BASE}/nn/predict`, {
@@ -2955,7 +2929,7 @@ const predictSingle = async () => {
         const newResults = {};
 
         currentModelConfig.value.outputs.forEach((out, loopIndex) => {
-          // 👉 核心修复：优先读取 JSON 里的 model_index，让数据绝对对齐！
+          // 优先读取 JSON 里的 model_index，让数据绝对对齐！
           const idx =
             out.model_index !== undefined ? out.model_index : loopIndex;
           let val = result.raw_predictions[idx];
@@ -2969,7 +2943,7 @@ const predictSingle = async () => {
 
           const backendKey = out.name.toLowerCase();
           if (val !== undefined && val !== null && !isNaN(val)) {
-            // ✨ 修复：如果是功率，直接使用自带的 formatPower 自动加上 MW / kW 单位
+            // 如果是功率，直接使用自带的 formatPower 自动加上 MW / kW 单位
             if (out.name === "Power") {
               newResults[backendKey] = formatPower(val);
             } else if (out.name === "Frequency") {
@@ -3000,7 +2974,7 @@ const predictSingle = async () => {
       message.success("推演完成");
       nextTick(() => {
         renderLocalShap(result.local_shap);
-      }); // 👈 触发局部特征瀑布图
+      }); //触发局部特征瀑布图
     } else {
       message.error(result.detail || "后端未返回有效的预测数据");
     }
@@ -3031,7 +3005,7 @@ const fetchHistoryTasks = async () => {
   }
 };
 
-// ✨ 核心功能：从数据库恢复数据并重新填充所有图表
+// 从数据库恢复数据并重新填充所有图表
 const restoreHistoryTask = async () => {
   if (!selectedHistoryTaskId.value) return message.warning("请先选择一个历史任务");
   const taskId = selectedHistoryTaskId.value;
@@ -3091,7 +3065,7 @@ const restoreHistoryTask = async () => {
         const pNode = { Gen: ind.gen_index, ...ind.metrics_json };
         paretoData.push(pNode);
 
-        // ✨ 修复 1：严格按模型要求的顺序组装平行坐标系数据
+        //严格按模型要求的顺序组装平行坐标系数据
         const pNames = currentParams.value.map(p => p.cstName);
         const parallelRow = pNames.map(name => ind.params_json[name] || 0);
         
@@ -3151,7 +3125,7 @@ const restoreHistoryTask = async () => {
       
       updateScatterChart();
       updateBoxplotChart();
-      // ✨ 修复 2：把组装好的平行坐标数据塞给图表进行重绘！
+      // 把组装好的平行坐标数据塞给图表进行重绘
       if (parallelChart) {
         parallelChart.setOption({ series: [{ data: parallelData }] });
       }
@@ -3183,7 +3157,7 @@ const generate3DScan = async () => {
       (o) => o.value === scanZ.value,
     );
 
-    // ✨✨ 核心修复：硬核对齐 PyTorch 后端顺序与反归一化标志 ✨✨
+    //对齐 PyTorch 后端顺序与反归一化标志
     let realIndex =
       selectedOutput.model_index !== undefined ? selectedOutput.model_index : 1;
     let needsInv = selectedOutput.needs_inverse === true;
@@ -3224,7 +3198,7 @@ const generate3DScan = async () => {
       let zScale = selectedOutput.scale_factor || 1;
       let axisName = selectedOutput.label || scanZ.value;
 
-      // ✨✨ 核心修复：自动转换地形图为 MW 显示 ✨✨
+      // 自动转换地形图为 MW 显示 
       if (lowerName.includes("power") && zScale === 1) {
         zScale = 1e-6; // 缩小 10^6 倍转为 MW
         axisName = axisName.replace("(W)", "(MW)");
@@ -3324,7 +3298,7 @@ const handleResize = () => {
   ].forEach((c) => c && c.resize());
 };
 
-// ✨ 新增：通用全屏切换函数
+// 通用全屏切换函数
 const toggleFullscreen = (e) => {
   const card = e.currentTarget.closest(".modern-card, .chart-card");
   if (!card) return;
@@ -3342,7 +3316,7 @@ const toggleFullscreen = (e) => {
   }
 };
 
-// ✨ 新增：全屏动画需要时间，延迟 100ms 重绘图表防错位
+// 全屏动画需要时间，延迟 100ms 重绘图表防错位
 const handleFullscreenChange = () => {
   handleResize(); // 立即触发
   setTimeout(handleResize, 100); // 动画早期
@@ -3352,7 +3326,7 @@ const handleFullscreenChange = () => {
 
 onMounted(() => {
   window.addEventListener("resize", handleResize);
-  document.addEventListener("fullscreenchange", handleFullscreenChange); // 👈 监听全屏动作
+  document.addEventListener("fullscreenchange", handleFullscreenChange); 
 });
 onUnmounted(() => {
   window.removeEventListener("resize", handleResize);
@@ -3458,9 +3432,9 @@ watch(isDarkMode, () => {
   position: sticky;
   /* 如果你的顶部导航栏是 fixed 固定悬浮的，这里需要写上顶栏的高度，比如 top: 64px;
      如果顶栏是随页面滚动的，保持 top: 0; 即可 */
-  top: 0;
+  top: 64;
 
-  /* 关键修改：减去顶部导航栏的高度（请根据你的实际情况微调 64px 这个数值）*/
+  /* 减去顶部导航栏的高度（请根据你的实际情况微调 64px 这个数值）*/
   height: calc(100vh - 64px);
 
   box-sizing: border-box;
@@ -3578,7 +3552,6 @@ watch(isDarkMode, () => {
   overflow: hidden;
 }
 
-/* 2. 🚀 终极防撑破大法：强制 ECharts 注入的真实画布容器绝对定位，彻底脱离文档流 */
 .chart-card,
 .modern-card {
   min-width: 0 !important;
@@ -3591,21 +3564,18 @@ watch(isDarkMode, () => {
   min-height: 0 !important;
 }
 
-/* 🚀 修复全屏黑底问题：强制指定明暗模式的物理颜色，杜绝变量失效 */
-/* 🚀 修复全屏背景：引入通透的亚克力毛玻璃质感，杜绝变量失效 */
+
 .modern-card.light-mode:fullscreen,
 .chart-card.light-mode:fullscreen {
-  /* ✨ 浅色模式：半透明背景 */
   background-color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .modern-card.dark-mode:fullscreen,
 .chart-card.dark-mode:fullscreen {
-  /* ✨ 深色模式：半透明背景 */
   background-color: rgba(24, 24, 28, 0.8) !important;
 }
 
-/* 🚀 干掉浏览器原生的全屏纯黑幕布 */
+/*干掉浏览器原生的全屏纯黑幕布 */
 .modern-card:fullscreen::backdrop,
 .chart-card:fullscreen::backdrop {
   background-color: transparent !important;
@@ -3623,7 +3593,6 @@ watch(isDarkMode, () => {
   z-index: 9999;
   padding: 16px;
   overflow: hidden;
-  /* ✨ 核心：为全屏卡片添加全局模糊滤镜 */
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
 }

@@ -20,7 +20,7 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
 
     try:
         cst_path = config_dict['cstPath']
-        # ✨ 1. 动态获取目标列表 (TargetsList)
+        # 1. 动态获取目标列表 (TargetsList)
         targets_list = config_dict.get('targetsList', [])
         env_cfg = config_dict.get('env', {'useStableTime': True, 'stableTime': 20.0})
         params_list = config_dict['paramsList']
@@ -64,10 +64,10 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
                 current_params = fixed_params.copy()
                 current_params.update(dict(zip(var_names, combo)))
 
-                # 🚀 2. 扔给动态 CST Wrapper 提取数据
+                # 2. 扔给动态 CST Wrapper 提取数据
                 m = run_single_simulation(project, current_params, targets_list, env_cfg, cst_path)
 
-                # ✨ 3. 全自动数据分流：标量入 metrics，波形入 waves
+                # 3. 全自动数据分流：标量入 metrics，波形入 waves
                 metrics_json = {}
                 waves_json = {}
                 for k, v in m.items():
@@ -85,13 +85,13 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
                     "is_valid": 'error' not in m
                 }
 
-                # ✨ 4. 🗄️ 极简落库：直接把字典存入 SQLite，彻底告别 power_val
+                # 4. 极简落库：直接把字典存入 SQLite
                 db = SessionLocal()
                 try:
                     new_individual = Individual(
                         task_id=task_id, gen_index=1, ind_index=current_step,
                         params_json=current_params, score=0.0,
-                        metrics_json=metrics_json, # ✨ 动态标量字段
+                        metrics_json=metrics_json,
                         is_valid='error' not in m
                     )
                     db.add(new_individual)
@@ -99,7 +99,7 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
 
                     new_wave = Waveform(
                         individual_id=new_individual.id, task_id=task_id, gen_index=1, ind_index=current_step,
-                        waves_json=waves_json      # ✨ 动态波形字段
+                        waves_json=waves_json
                     )
                     db.add(new_wave)
                     db.commit()
@@ -109,7 +109,7 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
                 finally:
                     db.close()
 
-                # --- 📡 WebSocket 推送给前端 ---
+                # --- WebSocket 推送给前端 ---
                 payload = {"type": "sweep_progress", "current": current_step, "total": total_steps, "data": result_data}
                 asyncio.run_coroutine_threadsafe(ws_manager.send_to_task(json.dumps(payload), task_id), loop)
 

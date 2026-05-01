@@ -45,7 +45,7 @@ async def chat_with_dual_track(req: ChatRequest):
             saea_soul = f.read()
 
     if use_vision_bypass:
-        # 🚀 路线 A：视觉直通车
+        #路线 A：视觉直通车
         target_url = SILICONFLOW_URL
         target_token = SILICONFLOW_KEY
         target_model = VISION_MODEL
@@ -61,7 +61,7 @@ async def chat_with_dual_track(req: ChatRequest):
         for m in req.history:
             formatted_history.append({"role": m['role'], "content": m['content']})
     else:
-        # 🐢 路线 B：OpenClaw 文本指令网关
+        #路线 B：OpenClaw 文本指令网关
         target_url = OPENCLAW_URL
         target_token = OPENCLAW_TOKEN
         target_model = f"openclaw:{req.agent_id}"
@@ -106,6 +106,6 @@ async def chat_with_dual_track(req: ChatRequest):
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"  # 专门用来破除 Nginx/反代 缓冲的终极指令
+            "X-Accel-Buffering": "no"
         }
     )

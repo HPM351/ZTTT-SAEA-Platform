@@ -76,7 +76,6 @@ async def get_system_env_info():
             if torch.cuda.is_available() and torch.version.cuda:
                 torch_info = f"{torch.__version__} (CUDA {torch.version.cuda})"
             else:
-                # 把后面的长尾巴截断，并明确标示 CPU
                 clean_version = torch.__version__.split('+')[0]
                 torch_info = f"{clean_version}+cpu (CPU Only)"
         except ImportError:
@@ -134,7 +133,7 @@ if IS_PRODUCTION_MODE:
 
 def get_config_filename(cst_path: str):
     """根据路径生成唯一且固定的配置文件名，并存入专属文件夹"""
-    # ✨ 如果 configs 文件夹不存在，系统自动帮你建一个
+    # 如果 configs 文件夹不存在，系统自动帮你建一个
     if not os.path.exists(CONFIG_DIR):
         os.makedirs(CONFIG_DIR)
 
@@ -148,7 +147,7 @@ def get_config_filename(cst_path: str):
     # 拼装文件名
     filename = f"conf_{pure_name}_{path_hash[:8]}.json"
 
-    # ✨ 返回带 configs 文件夹前缀的绝对路径
+    # 返回带 configs 文件夹前缀的绝对路径
     return os.path.join(CONFIG_DIR, filename)
 
 @app.post("/api/save_config")
@@ -176,7 +175,7 @@ async def get_task_data(task_id: str):
         if not task:
             return {"status": "error", "message": "任务不存在"}
 
-        # 🌟 1. 提取所有个体的散点数据 (修复核心：填补缺失的 scatter_data)
+        # 1. 提取所有个体的散点数据 (修复核心：填补缺失的 scatter_data)
         inds = db.query(Individual).filter(Individual.task_id == task_id).all()
         scatter_data = [{
             "gen": ind.gen_index,
@@ -186,7 +185,7 @@ async def get_task_data(task_id: str):
             "params": ind.params_json or {}
         } for ind in inds]
 
-        # 🌟 2. 提取波形池数据
+        #  2. 提取波形池数据
         waves = db.query(Waveform).filter(Waveform.task_id == task_id).all()
         all_data_pool = {}
         for w in waves:
@@ -202,7 +201,7 @@ async def get_task_data(task_id: str):
 
             all_data_pool[str(g)][str(i)] = wave_dict
 
-        # 🌟 3. 提取收敛趋势数据 (动态多目标自适应)
+        # 3. 提取收敛趋势数据 (动态多目标自适应)
         gens = db.query(Generation).filter(Generation.task_id == task_id).order_by(Generation.gen_index).all()
         trend_data = {"axis": [g.gen_index for g in gens]}
 
@@ -230,7 +229,7 @@ async def get_task_data(task_id: str):
             "status": "success",
             "config_json": task.config_json,
             "total_gen": getattr(task, "total_gen", total_gen),
-            "scatter_data": scatter_data,    # ✨ 救命字段！前端再也不会爆 undefined 了
+            "scatter_data": scatter_data,
             "trend_data": trend_data,
             "all_data_pool": all_data_pool
         }
@@ -294,7 +293,7 @@ class CstPathRequest(BaseModel):
 
 @app.get("/api/get_running_task")
 def get_running_task():
-    """✨新增：供前端刷新重连使用，检查是否有正在运行的后台任务"""
+    """新增：供前端刷新重连使用，检查是否有正在运行的后台任务"""
     for task_id, status in task_status_flags.items():
         if status == "running":
             return {"status": "success", "task_id": task_id}
@@ -308,7 +307,7 @@ async def stop_optimization(task_id: str):
         task_status_flags[task_id] = "stopped"
         return {"status": "success", "message": "已发送终止指令，引擎将在当前个体算完后安全退出"}
 
-    # ✨修复：防御性编程，就算前端传入的 ID 不对，也强制把内存里所有任务停掉
+    # 修复：防御性编程，就算前端传入的 ID 不对，也强制把内存里所有任务停掉
     for k in task_status_flags.keys():
         task_status_flags[k] = "stopped"
     return {"status": "success", "message": "已广播全局终止指令"}
@@ -330,7 +329,7 @@ def browse_cst_file():
     唤起 Windows 原生资源管理器，获取绝对路径
     """
     try:
-        # === 🌟 核心修复：强制开启 Windows 高 DPI 适配 ===
+        # === 核心修复：强制开启 Windows 高 DPI 适配 ===
         if platform.system() == 'Windows':
             import ctypes
             try:
@@ -382,7 +381,7 @@ async def health_check():
         if not cst_alive:
             env_cst_path = os.getenv("CST_PYTHON_PATH", "")
             common_paths = [
-                env_cst_path,  # 👈 优先探测配置文件或终端引导填写的路径
+                env_cst_path,  # 优先探测配置文件或终端引导填写的路径
                 r"C:\Program Files (x86)\CST Studio Suite 2024",
                 r"C:\Program Files (x86)\CST Studio Suite 2023",
                 r"C:\Program Files\CST Studio Suite 2024"
@@ -458,10 +457,10 @@ def get_recent_tasks(task_type: str = Query("all", description="任务类型: al
             is_sweep = t.id.startswith("sweep_")
             is_nn = t.id.startswith("nn_")
 
-            # ✨ 1. 动态界定当前任务属于哪条业务线
+            # 1. 动态界定当前任务属于哪条业务线
             task_category = "sweep" if is_sweep else ("nn" if is_nn else "opt")
 
-            # ✨ 2. 智能提取当前进度 (Current Progress)
+            # 2. 智能提取当前进度 (Current Progress)
             if is_sweep:
                 # 扫参任务没有 Generation，进度等于跑完的个体数 (ind_index)
                 current_progress = db.query(func.max(Individual.ind_index)).filter(
@@ -473,7 +472,7 @@ def get_recent_tasks(task_type: str = Query("all", description="任务类型: al
                     Generation.task_id == t.id).scalar() or 0
                 max_score = db.query(func.max(Generation.best_score)).filter(Generation.task_id == t.id).scalar()
 
-            # ✨ 3. 智能计算总任务量 (Total Progress)
+            # 3. 智能计算总任务量 (Total Progress)
             total_progress = 50
             if t.config_json:
                 if is_sweep:
@@ -537,7 +536,7 @@ async def start_sweep(config: Dict[str, Any], background_tasks: BackgroundTasks)
 
         # 更新全局状态字典
         task_status_flags[task_id] = "running"
-        print(f"🔥 收到扫参任务: {config.get('taskName')} | 分配 ID: {task_id}")
+        print(f"收到扫参任务: {config.get('taskName')} | 分配 ID: {task_id}")
 
         # 投递到后台异步执行，绝不阻塞当前 HTTP 响应
         background_tasks.add_task(run_sweep_task, task_id, config, manager, loop, task_status_flags)
@@ -564,7 +563,7 @@ async def start_optimization(config: OptimizationConfig, background_tasks: Backg
         # 生成唯一任务 ID
         task_id = f"sim_{int(asyncio.get_event_loop().time())}"
 
-        # ✨✨✨ 核心修复：必须在此处提前建立 Task 档案！ ✨✨✨
+        # 核心修复：必须在此处提前建立 Task 档案！
         db = SessionLocal()
         try:
             new_task = Task(
@@ -584,7 +583,7 @@ async def start_optimization(config: OptimizationConfig, background_tasks: Backg
             db.close()
 
         task_status_flags[task_id] = "running"
-        print(f"🔥 收到优化任务: {config.taskName} | 分配 ID: {task_id}")
+        print(f"收到优化任务: {config.taskName} | 分配 ID: {task_id}")
 
         # 将核心计算任务扔给后台执行
         background_tasks.add_task(run_optimization_task, task_id, config_dict, manager, loop, task_status_flags)

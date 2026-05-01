@@ -14,7 +14,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # ==========================================
-# 3. 定义数据表结构 (🌟 终极去物理化版本)
+# 3. 定义数据表结构 (去物理化版本)
 # ==========================================
 class Task(Base):
     __tablename__ = "tasks"
@@ -31,7 +31,7 @@ class Generation(Base):
     task_id = Column(String, ForeignKey("tasks.id"), index=True)
     gen_index = Column(Integer, index=True)
     best_score = Column(Float)
-    best_metrics_json = Column(JSON)  # ✨ 动态收纳当代最优个体的所有标量指标
+    best_metrics_json = Column(JSON)  # 动态收纳当代最优个体的所有标量指标
 
 class Individual(Base):
     __tablename__ = "individuals"
@@ -41,7 +41,7 @@ class Individual(Base):
     ind_index = Column(Integer)
     params_json = Column(JSON)
     score = Column(Float)
-    metrics_json = Column(JSON)       # ✨ 动态收纳该个体的所有标量指标 (替代原 power_val, eff_val 等)
+    metrics_json = Column(JSON)       # 动态收纳该个体的所有标量指标 (替代原 power_val, eff_val 等)
     is_valid = Column(Boolean, default=True)
 
 class Waveform(Base):
@@ -51,7 +51,7 @@ class Waveform(Base):
     task_id = Column(String, index=True)
     gen_index = Column(Integer)
     ind_index = Column(Integer)
-    waves_json = Column(JSON)         # ✨ 动态收纳所有的波形字典，前端按 Key 解析即可
+    waves_json = Column(JSON)         # 动态收纳所有的波形字典，前端按 Key 解析即可
 
 class NnOnlineLog(Base):
     __tablename__ = "nn_online_logs"
