@@ -137,7 +137,7 @@
       <!-- 顶部配置面板 (极简状态) -->
       <div class="main-header" style="justify-content: space-between">
         <div class="header-left">
-          <n-tag type="info" size="small" bordered>DeepSeek-V3.2</n-tag>
+          <n-tag type="info" size="small" bordered>DeepSeek V3.2 Pro</n-tag>
         </div>
 
         <!-- 新增：右侧用户头像与控制台 -->
@@ -567,7 +567,7 @@ const createNewChat = () => {
     title: "新文献研讨",
     timestamp: Date.now(),
     messages: [
-      { role: "ai", content: "我是教研室专属文献助手。\n目前已接入 DeepSeek 核心，你可以随时向我提问，或选择下方的快捷指令开始。" },
+      { role: "ai", content: "我是教研室专属文献助手。\n目前已接入 DeepSeek V3.2 Pro模型，你可以随时向我提问。" },
     ],
   };
   chatHistories.value.unshift(newChat);
