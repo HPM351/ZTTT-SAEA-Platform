@@ -1,0 +1,247 @@
+/* 针对所有新建功能路由的通用页面级样式，使用命名空间隔离 */
+.saea-feature-page {
+  display: flex;
+  height: calc(100vh - 60px); /* 完美适配顶部的胶囊导航栏 */
+  background: var(--n-color);
+  color: var(--n-text-color);
+  font-family: "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* ================= 侧边栏通用规范 ================= */
+.saea-feature-page .feature-sidebar {
+  width: 350px; /* 稍微调窄一点 */
+  flex-shrink: 0; /* 关键：锁定宽度，禁止被主工作区挤压或拉伸 */
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(156, 163, 175, 0.15);
+  background: var(--n-color);
+  z-index: 10;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.05);
+}
+
+.saea-feature-page .sidebar-header {
+  padding: 20px 16px;
+  border-bottom: 1px solid var(--n-border-color);
+}
+
+.saea-feature-page .sidebar-header .title {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--n-text-color);
+  display: block;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+/* 历史记录列表规范 */
+.saea-feature-page .history-list {
+  flex: 1;
+  padding: 12px;
+}
+
+.saea-feature-page .history-item {
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--n-text-color-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.saea-feature-page .history-item:hover {
+  background: var(--n-hover-color);
+}
+
+.saea-feature-page .history-item.is-active {
+  background: var(--n-action-color);
+  color: var(--n-text-color);
+  font-weight: bold;
+  border-color: transparent;
+  box-shadow: inset 3px 0 0 #3b82f6; 
+}
+
+/* ================= 主工作区通用规范 ================= */
+.saea-feature-page .feature-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--n-body-color);
+  /* 强行叠加一层极淡的暗层，确保主工作区有下沉的视觉差 */
+  background-image: linear-gradient(rgba(0,0,0,0.02), rgba(0,0,0,0.02)); 
+}
+
+/* 顶部操作面板 */
+.saea-feature-page .main-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid rgba(156, 163, 175, 0.15);
+  background: var(--n-color);
+  z-index: 5;
+}
+
+/* 聊天内容区 */
+.saea-feature-page .message-area {
+  flex: 1;
+  padding: 0; 
+}
+
+.saea-feature-page .message-item {
+  display: flex;
+  margin-bottom: 28px;
+  animation: fadeIn 0.3s ease;
+}
+
+.saea-feature-page .message-item.user {
+  justify-content: flex-end;
+}
+
+.saea-feature-page .message-item.ai {
+  justify-content: flex-start;
+}
+
+/* 气泡精美化 */
+.saea-feature-page .bubble {
+  padding: 14px 20px;
+  border-radius: 16px; /* 稍微加大圆角，更显现代化 */
+  max-width: 85%;
+  line-height: 1.7;
+  font-size: 14px;
+  white-space: pre-wrap;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* 核心：多层现代化大阴影，产生极其明显的立体漂浮感 */
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.25), 
+    0 4px 6px -2px rgba(0, 0, 0, 0.15);
+}
+
+/* 悬停时产生轻微上浮感，增强交互的“物理性” */
+.saea-feature-page .bubble:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.3), 
+    0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
+.saea-feature-page .user .bubble {
+  background: #2563eb; /* 沉稳的深科技蓝 */
+  color: white;
+  border-bottom-right-radius: 2px;
+}
+
+.saea-feature-page .ai .bubble {
+  background: var(--n-card-color);
+  /* 极其微弱的边框，几乎不可见，仅用于在极端低亮度下保底 */
+  border: 1px solid rgba(156, 163, 175, 0.05); 
+  color: var(--n-text-color);
+  border-bottom-left-radius: 4px; /* 稍微圆润一点点 */
+}
+
+/* 如果是深色主题，我们可以让 AI 气泡稍微亮起一点点点，进一步拉开阴影距离 */
+.saea-feature-page .ai .bubble {
+  filter: brightness(1.05); 
+}
+
+/* 输入控制台规范 */
+.saea-feature-page .input-console {
+  padding: 20px 0; 
+  display: flex;
+  justify-content: center;
+  background: var(--n-color);
+  border-top: 1px solid rgba(156, 163, 175, 0.15);
+  z-index: 5;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.03);
+}
+.saea-feature-page .input-wrapper {
+  width: 100%;
+  max-width: 900px; /* 锁定黄金阅读宽度 */
+  margin: 0 24px;   /* 两侧保留保底安全距离 */
+  background: var(--n-card-color);
+  border: 1px solid var(--n-border-color);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.3s;
+}
+
+.saea-feature-page .input-wrapper:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+}
+
+.saea-feature-page .input-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= 附件上传样式 ================= */
+.saea-feature-page .input-wrapper.is-dragging {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
+.saea-feature-page .attachments-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 4px 12px;
+  border-bottom: 1px dashed rgba(156, 163, 175, 0.2);
+  margin-bottom: 8px;
+}
+
+.saea-feature-page .attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--n-color);
+  border: 1px solid var(--n-border-color);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--n-text-color-2);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.saea-feature-page .attachment-name {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saea-feature-page .remove-btn {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.2s;
+}
+
+.saea-feature-page .remove-btn:hover {
+  opacity: 1;
+  color: #ef4444;
+}
+
+/* ================= 气泡宽度强制覆盖 ================= */
+.saea-feature-page .message-item.user .bubble {
+  max-width: 85% !important;
+}
+
+.saea-feature-page .message-item.ai .bubble {
+  max-width: 95% !important;
+}

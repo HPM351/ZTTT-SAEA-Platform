@@ -5,7 +5,6 @@ import hashlib
 import json
 import sys
 import re
-import httpx
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import psutil
@@ -20,6 +19,8 @@ from pydantic import BaseModel
 from engine.nn_service import nn_router
 from engine.llm_service import llm_router
 from engine.api_data_center import router as data_center_router
+from engine.api_auth import auth_router
+from engine.api_chat_history import history_router
 import tkinter as tk
 from tkinter import filedialog
 from database import SessionLocal, Task, Generation, Individual, Waveform
@@ -28,7 +29,6 @@ from engine.task_saea import run_optimization_task
 from typing import Dict, Any
 from engine.task_sweep import run_sweep_task
 from fastapi import Query
-from fastapi import APIRouter
 app = FastAPI(title="ZTTT SAEA Backend Engine")
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "configs")
 # ==========================================
@@ -53,8 +53,8 @@ app.add_middleware(
 app.include_router(nn_router)
 app.include_router(llm_router)
 app.include_router(data_center_router)
-
-
+app.include_router(auth_router)
+app.include_router(history_router)
 @app.on_event("startup")
 def on_startup():
     init_db()

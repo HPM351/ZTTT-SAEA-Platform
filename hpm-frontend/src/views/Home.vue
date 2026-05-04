@@ -105,6 +105,30 @@
             <div class="nav-action">管理库 ➡️</div>
           </n-card>
         </n-gi>
+
+        <!-- 第5个卡片：文献助手，占据第三行左侧形成 2-2-1 -->
+        <n-gi>
+          <n-card
+            class="nav-card lit-card"
+            hoverable
+            @click="goToPage('LiteratureAssistant')"
+          >
+            <div class="nav-content">
+              <div class="custom-icon-box">
+                <img
+                  src="/deepseek-logo.png"
+                  alt="DeepSeek Logo"
+                  class="custom-logo-img"
+                />
+              </div>
+              <div class="nav-text">
+                <h3>教研室文献助手</h3>
+                <p>基于本地知识库的高功率微波与计算机科学专属学术文献助手</p>
+              </div>
+            </div>
+            <div class="nav-action">开始对话 ➡️</div>
+          </n-card>
+        </n-gi>
       </n-grid>
 
       <n-grid :x-gap="24" :y-gap="24" :cols="3">
@@ -1194,6 +1218,16 @@ const currentStep = ref(1);
 }
 .nav-card.db-card:hover .nav-action {
   color: #f59e0b;
+}
+
+/* 文献助手专属卡片 hover 发光颜色 (粉红系) */
+.nav-card.lit-card:hover {
+  border-color: #ec4899 !important;
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.3) !important;
+  transform: translateY(-4px);
+}
+.nav-card.lit-card:hover .nav-action {
+  color: #ec4899;
 }
 .result-panel.error {
   background-color: rgba(244, 63, 94, 0.1);

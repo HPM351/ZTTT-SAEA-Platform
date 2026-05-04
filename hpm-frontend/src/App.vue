@@ -58,6 +58,7 @@
                         </div>
                       </template>
                     </n-tab-pane>
+                    <n-tab-pane name="LiteratureAssistant" tab="文献助手"></n-tab-pane>
                     <n-tab-pane name="DataCenter" tab="数据库管理"></n-tab-pane>
                   </n-tabs>
                 </div>
@@ -525,6 +526,10 @@ watch(
     // 匹配神经网络
     else if (pathLower.includes("nn") || pathLower.includes("neuralnet")) {
       activeKey.value = "NeuralNet";
+    }
+    // 匹配文献助手
+    else if (pathLower.includes("literature")) {
+      activeKey.value = "LiteratureAssistant";
     }
     // 匹配数据库管理
     else if (pathLower.includes("data")) {

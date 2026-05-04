@@ -15,11 +15,7 @@
         >
           <div ref="dragHandleRef" class="chat-header" @dblclick="toggleFullscreen">
             <div class="header-left">
-              <span class="title-text">Agents智能体对话</span>
-              <n-radio-group v-model:value="currentAgent" size="small" style="margin-left: 12px;">
-                <n-radio-button value="main">文本</n-radio-button>
-                <n-radio-button value="vision">视觉</n-radio-button>  
-              </n-radio-group>
+              <span class="title-text">视觉核心 (Vision)</span>
               <span 
                 class="action-btn" 
                 :class="{ 'active-btn': showHistoryPanel }" 
@@ -29,7 +25,7 @@
             </div>
 
             <div class="header-model-info">
-              {{ currentAgent === 'main' ? 'DeepSeek-V3.2' : 'Qwen3.5-397B-A17B' }}
+              Qwen3.5-397B-A17B
             </div>
 
             <div class="header-right">
@@ -119,7 +115,7 @@
                   v-model:value="inputText"
                   type="textarea"
                   :autosize="{ minRows: 1, maxRows: 4 }"
-                  :placeholder="currentAgent === 'vision' ? '上传图片并描述问题，支持剪切板或拖拽输入' : '输入问题（不建议在此模型对话下上传图片）'"
+                  placeholder="上传图表并描述问题，支持剪切板、拖拽或自动读取底层绘图"
                   @keyup.enter.exact="sendMessage"
                   style="background: transparent; flex: 1;"
                   :disabled="isLoading"
@@ -221,7 +217,7 @@ const previewChatImage = (url) => window.open(url, '_blank')
 
 
 // --- 🌟 多会话历史记录系统 ---
-const currentAgent = ref('main')
+const currentAgent = ref('vision')
 const inputText = ref('')
 const isLoading = ref(false)
 let abortController = null
@@ -230,10 +226,9 @@ const showHistoryPanel = ref(false)
 const toggleHistoryPanel = () => showHistoryPanel.value = !showHistoryPanel.value
 const closeHistoryOnBodyClick = () => { if (showHistoryPanel.value && window.innerWidth < 800) showHistoryPanel.value = false } // 移动端点击外侧收起
 
-const generateInitialSession = (agent) => [
-  { role: 'ai', content: agent === 'main' ? '系统在线。' : '视觉核心已就绪，请上传图片。' }
+const generateInitialSession = () => [
+  { role: 'ai', content: '视觉核心已就绪，请上传图片。' }
 ]
-
 // 读取本地缓存的整个对话列表
 const loadHistories = () => {
   const saved = localStorage.getItem('saea_chat_histories_v2')
@@ -275,9 +270,9 @@ const createNewChat = () => {
   const newId = Date.now().toString()
   const newChat = {
     id: newId,
-    title: '新对话', // 默认标题
+    title: '新视觉分析',
     timestamp: Date.now(),
-    sessions: { main: generateInitialSession('main'), vision: generateInitialSession('vision') }
+    sessions: { vision: generateInitialSession() }
   }
   chatHistories.value.unshift(newChat) // 插入到最前面
   currentChatId.value = newId
@@ -318,10 +313,10 @@ watch(chatHistories, (newVal) => {
 // 智能提取当前选中的对话记录
 const activeSessions = computed(() => {
   const chat = chatHistories.value.find(c => c.id === currentChatId.value)
-  return chat ? chat.sessions : { main: [], vision: [] }
+  return chat ? chat.sessions : { vision: [] }
 })
 
-const currentMessages = computed(() => activeSessions.value[currentAgent.value])
+const currentMessages = computed(() => activeSessions.value.vision)
 
 // --- 发送与生成逻辑 ---
 const stopGeneration = () => {

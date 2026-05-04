@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, JSON, DateTime, ForeignKey
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, JSON, DateTime, ForeignKey, Text
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 # 1. 数据库文件路径
 DB_PATH = os.path.join(os.path.dirname(__file__), "saea_data.db")
@@ -53,6 +53,7 @@ class Waveform(Base):
     ind_index = Column(Integer)
     waves_json = Column(JSON)         # 动态收纳所有的波形字典，前端按 Key 解析即可
 
+
 class NnOnlineLog(Base):
     __tablename__ = "nn_online_logs"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -60,7 +61,48 @@ class NnOnlineLog(Base):
     gen_index = Column(Integer, index=True)
     loss = Column(Float)
     error = Column(Float)
-    details_json = Column(JSON, nullable=True) # 预留字段：记录学习率等其他微调超参
+    details_json = Column(JSON, nullable=True)  # 预留字段：记录学习率等其他微调超参
+
+
+# ==========================================
+# 4. 身份认证与文献助手相关数据表
+# ==========================================
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+    # 一个用户可以有多个研讨会话
+    sessions = relationship("ChatSession", back_populates="owner", cascade="all, delete-orphan")
+
+
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+
+    id = Column(String(50), primary_key=True, index=True)  # 采用前端传来的时间戳字符串作为 ID
+    title = Column(String(100), default="新文献研讨")
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    owner = relationship("User", back_populates="sessions")
+    messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(50), ForeignKey("chat_sessions.id"), nullable=False)
+    role = Column(String(20), nullable=False)  # 'user' 或 'ai'
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+    session = relationship("ChatSession", back_populates="messages")
+
 
 def init_db():
     Base.metadata.create_all(bind=engine)
