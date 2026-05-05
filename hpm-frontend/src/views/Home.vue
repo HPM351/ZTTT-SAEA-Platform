@@ -662,27 +662,27 @@
               <n-alert
                 type="info"
                 :bordered="false"
-                style="margin-bottom: 16px"
+                style="margin-bottom: 16px; font-size: 15px; line-height: 1.6;"
               >
                 平台已升级至
                 <b>V3.0双轨评分</b>。对GA\PSO与BO采取两种评分曲线的拟合，较好的满足了不同算法对于评分梯度的需求。
                 通过模块化的目标设置，以及对目标的物理意义高度解耦，实现了对更多微波器件的指标优化场景的覆盖。
               </n-alert>
 
-              <n-h4>1. 基础适应度 (Base Fitness)</n-h4>
-              <p style="font-size: 13px; color: var(--n-text-color-3)">
+              <n-h3>1. 基础适应度 (Base Fitness)</n-h3>
+              <p style="font-size: 15px; color: var(--n-text-color-3)">
                 无论个体死活，引擎首先基于基准尺 (Scale)
                 计算无视死区的基础得分，作为保证边界连续性的锚点：
               </p>
               <div
                 style="
                   background: var(--n-code-color);
-                  padding: 12px;
-                  border-radius: 6px;
+                  padding: 16px;
+                  border-radius: 8px;
                   font-family: monospace;
-                  margin-bottom: 16px;
+                  margin-bottom: 20px;
                   line-height: 1.8;
-                  font-size: 13px;
+                  font-size: 15px;
                 "
               >
                 <span style="color: #10b981; font-weight: bold"
@@ -693,7 +693,7 @@
                 <span style="color: #3b82f6; font-weight: bold"
                   >Minimize (最小化):</span
                 >
-                <span style="color: var(--n-text-color-3); font-size: 12px"
+                <span style="color: var(--n-text-color-3); font-size: 14px"
                   >*翻转为正向奖励</span
                 ><br />
                 Score = [1.0 - (Val / Scale)] &times; Weight <br /><br />
@@ -707,19 +707,19 @@
                 = [1.0 - (Diff - Tol) / Scale] &times; Weight
               </div>
 
-              <n-h4>2. 时频域软硬双重惩罚 (Soft/Hard Penalties)</n-h4>
-              <p style="font-size: 13px; color: var(--n-text-color-3)">
+              <n-h3>2. 时频域软硬双重惩罚 (Soft/Hard Penalties)</n-h3>
+              <p style="font-size: 15px; color: var(--n-text-color-3)">
                 引入物理波形质量约束。在触碰绝对死区前，引擎会施加非线性缓坡惩罚过滤劣质波形：
               </p>
               <div
                 style="
                   background: var(--n-code-color);
-                  padding: 12px;
-                  border-radius: 6px;
+                  padding: 16px;
+                  border-radius: 8px;
                   font-family: monospace;
-                  margin-bottom: 16px;
+                  margin-bottom: 20px;
                   line-height: 1.8;
-                  font-size: 13px;
+                  font-size: 15px;
                 "
               >
                 <span style="color: #f59e0b; font-weight: bold">时域波动率 (Fluctuation)：</span><br />
@@ -731,19 +731,19 @@
                 杂波 > 阈值B (A的3倍)：频域崩溃，强制触发死区越界。
               </div>
 
-              <n-h4>3. 刚性拦截与惩罚融合 (Dead Zone)</n-h4>
-              <p style="font-size: 13px; color: var(--n-text-color-3)">
+              <n-h3>3. 刚性拦截与惩罚融合 (Dead Zone)</n-h3>
+              <p style="font-size: 15px; color: var(--n-text-color-3)">
                 计算最终越界深度 (Depth)，根据驱动算法分发不同的物理界限惩罚：
               </p>
               <div
                 style="
                   background: var(--n-code-color);
-                  padding: 12px;
-                  border-radius: 6px;
+                  padding: 16px;
+                  border-radius: 8px;
                   font-family: monospace;
-                  margin-bottom: 16px;
+                  margin-bottom: 20px;
                   line-height: 1.8;
-                  font-size: 13px;
+                  font-size: 15px;
                 "
               >
                 <span style="color: #ef4444; font-weight: bold"
@@ -758,25 +758,25 @@
                 Final_Score = Base_Score - (500.0 &times; Depth)
               </div>
 
-              <n-h4>4. 综合结算与地形激活 (Terrain Activation)</n-h4>
-              <p style="font-size: 13px; color: var(--n-text-color-3)">
+              <n-h3>4. 综合结算与地形激活 (Terrain Activation)</n-h3>
+              <p style="font-size: 15px; color: var(--n-text-color-3)">
                 为激发贝叶斯优化中高斯过程 (GP)
                 核函数的寻优积极性，人为拉开方差，防止微小梯度淹没于浮点噪声：
               </p>
               <div
                 style="
                   background: var(--n-code-color);
-                  padding: 14px;
-                  border-radius: 6px;
+                  padding: 20px;
+                  border-radius: 8px;
                   font-family: monospace;
                   text-align: center;
-                  font-size: 14px;
+                  font-size: 18px;
                   font-weight: bold;
                 "
               >
                 Total_Fitness = &sum;(Final_Scores) &times; 100.0 <br /><br />
                 <span
-                  style="color: #ef4444; font-size: 12px; font-weight: normal"
+                  style="color: #ef4444; font-size: 14px; font-weight: normal; display: inline-block; margin-top: 8px;"
                 >
                   * 触发死区的 GA/PSO 个体，总分强制抹杀为 -10,000,000 (-1e7)
                 </span>

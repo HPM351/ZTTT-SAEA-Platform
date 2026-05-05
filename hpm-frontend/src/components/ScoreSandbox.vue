@@ -323,7 +323,7 @@ const evaluationResults = computed(() => {
       const diff = Math.abs(m.val - m.target_val);
       if (m.max_diff && diff > m.max_diff) {
         isDead = true;
-        depth = diff - m.max_diff;
+        depth = (diff - m.max_diff) / (m.max_diff + 1e-6);
       }
     }
 

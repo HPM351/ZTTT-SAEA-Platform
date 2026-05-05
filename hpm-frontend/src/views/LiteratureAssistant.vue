@@ -85,47 +85,79 @@
     </div>
 
     <!-- ================= 身份认证弹窗 (JWT 登录屏障) ================= -->
-    <n-modal v-model:show="showLoginModal" :mask-closable="false" :closable="false">
-      <n-card 
-        style="width: 400px; border-radius: 12px; background: var(--n-card-color);" 
-        :title="isLoginMode ? '教研室身份认证 - 登录' : '教研室账号注册'" 
-        :bordered="false" 
-        size="huge" 
-        role="dialog" 
+    <n-modal
+      v-model:show="showLoginModal"
+      :mask-closable="false"
+      :closable="false"
+    >
+      <n-card
+        style="
+          width: 400px;
+          border-radius: 12px;
+          background: var(--n-card-color);
+        "
+        :title="isLoginMode ? '教研室身份认证 - 登录' : '教研室账号注册'"
+        :bordered="false"
+        size="huge"
+        role="dialog"
         aria-modal="true"
       >
-        <p style="color: var(--n-text-color-3); margin-bottom: 24px; margin-top: -12px; font-size: 13px;">
-          {{ isLoginMode ? '请输入您的专属通行证，您的历史研讨记录将被加密隔离保存。' : '请设置您的专属账号与通行密钥。' }}
+        <p
+          style="
+            color: var(--n-text-color-3);
+            margin-bottom: 24px;
+            margin-top: -12px;
+            font-size: 13px;
+          "
+        >
+          {{
+            isLoginMode
+              ? "请输入您的专属通行证，您的历史研讨记录将被加密隔离保存。"
+              : "请设置您的专属账号与通行密钥。"
+          }}
         </p>
         <n-form>
-          <n-form-item label="研究员账号 (学号/姓名)">
-            <n-input v-model:value="authForm.username" placeholder="例如: 2024001" />
-          </n-form-item>
-          <n-form-item label="通行密钥 (Password)">
-            <n-input 
-              v-model:value="authForm.password" 
-              type="password" 
-              show-password-on="click" 
-              placeholder="请输入密码" 
-              @keyup.enter="handleAuth" 
+          <n-form-item label="研究员账号 (字母数字均可)">
+            <n-input
+              v-model:value="authForm.username"
+              placeholder="例如: 2024001"
             />
           </n-form-item>
-          
-          <n-button 
-            type="primary" 
-            block 
-            size="large" 
-            :loading="isAuthenticating" 
-            @click="handleAuth" 
-            style="margin-top: 12px; border-radius: 8px;"
+          <n-form-item label="通行密钥 (Password)">
+            <n-input
+              v-model:value="authForm.password"
+              type="password"
+              show-password-on="click"
+              placeholder="请输入密码"
+              @keyup.enter="handleAuth"
+            />
+          </n-form-item>
+
+          <n-button
+            type="primary"
+            block
+            size="large"
+            :loading="isAuthenticating"
+            @click="handleAuth"
+            style="margin-top: 12px; border-radius: 8px"
           >
-            {{ isLoginMode ? '登录并进入系统' : '注册并进入系统' }}
+            {{ isLoginMode ? "登录并进入系统" : "注册并进入系统" }}
           </n-button>
-          
+
           <!-- 模式切换按钮 -->
-          <div style="text-align: center; margin-top: 16px;">
-            <n-button quaternary type="info" size="small" @click="toggleAuthMode" :disabled="isAuthenticating">
-              {{ isLoginMode ? '没有账号？点击注册新账号' : '已有账号？点击返回登录' }}
+          <div style="text-align: center; margin-top: 16px">
+            <n-button
+              quaternary
+              type="info"
+              size="small"
+              @click="toggleAuthMode"
+              :disabled="isAuthenticating"
+            >
+              {{
+                isLoginMode
+                  ? "没有账号？点击注册新账号"
+                  : "已有账号？点击返回登录"
+              }}
             </n-button>
           </div>
         </n-form>
@@ -194,51 +226,57 @@
             :class="['message-item', msg.role]"
             style="width: 100%"
           >
-          <div class="message-content-wrapper">
-            <!-- Gemini 风格的身份标识头 -->
-            <div
-              style="
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                margin-bottom: 6px;
-                font-size: 13px;
-                color: var(--n-text-color-3);
-              "
-            >
-              <n-icon v-if="msg.role === 'ai'" size="16" color="#3b82f6"
-                ><Sparkles
-              /></n-icon>
-              <n-icon v-else size="16"><User /></n-icon>
-              <span>{{ msg.role === "ai" ? "DeepSeek" : currentUser }}</span>
-            </div>
+            <div class="message-content-wrapper">
+              <!-- Gemini 风格的身份标识头 -->
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  margin-bottom: 6px;
+                  font-size: 13px;
+                  color: var(--n-text-color-3);
+                "
+              >
+                <n-icon v-if="msg.role === 'ai'" size="16" color="#3b82f6"
+                  ><Sparkles
+                /></n-icon>
+                <n-icon v-else size="16"><User /></n-icon>
+                <span>{{ msg.role === "ai" ? "DeepSeek" : currentUser }}</span>
+              </div>
 
-            <!-- 流式输出时，如果内容为空且处于 loading 状态，显示闪烁光标 -->
-            <div class="bubble">
-              <span v-if="msg.content === '' && isLoading" class="typing-cursor"
-                >█</span
-              >
-              <!-- 🔴 修改：换成 div 并加上 md-render-box 类名 -->
-              <div v-else class="md-render-box" v-html="formatMessage(msg.content)"></div>
-            </div>
+              <!-- 流式输出时，如果内容为空且处于 loading 状态，显示闪烁光标 -->
+              <div class="bubble">
+                <span
+                  v-if="msg.content === '' && isLoading"
+                  class="typing-cursor"
+                  >█</span
+                >
+                <!-- 🔴 修改：换成 div 并加上 md-render-box 类名 -->
+                <div
+                  v-else
+                  class="md-render-box"
+                  v-html="formatMessage(msg.content)"
+                ></div>
+              </div>
 
-            <!-- 带图标的操作栏 -->
-            <div class="msg-actions" v-if="msg.content">
-              <span
-                @click="copyMessage(msg.content)"
-                style="display: inline-flex; align-items: center; gap: 4px"
-              >
-                <n-icon><Copy /></n-icon> 复制
-              </span>
-              <span
-                @click="deleteSingleMessage(index)"
-                style="display: inline-flex; align-items: center; gap: 4px"
-              >
-                <n-icon><Trash2 /></n-icon> 删除
-              </span>
+              <!-- 带图标的操作栏 -->
+              <div class="msg-actions" v-if="msg.content">
+                <span
+                  @click="copyMessage(msg.content)"
+                  style="display: inline-flex; align-items: center; gap: 4px"
+                >
+                  <n-icon><Copy /></n-icon> 复制
+                </span>
+                <span
+                  @click="deleteSingleMessage(index)"
+                  style="display: inline-flex; align-items: center; gap: 4px"
+                >
+                  <n-icon><Trash2 /></n-icon> 删除
+                </span>
+              </div>
             </div>
           </div>
-        </div>
         </div>
       </n-scrollbar>
 
@@ -343,9 +381,9 @@ import {
 import axios from "axios";
 
 // ================= 新增：引入 Markdown 与代码高亮 =================
-import MarkdownIt from 'markdown-it';
-import hljs from 'highlight.js';
-import 'highlight.js/styles/atom-one-dark.css'; 
+import MarkdownIt from "markdown-it";
+import hljs from "highlight.js";
+import "highlight.js/styles/atom-one-dark.css";
 
 // 初始化解析器
 const md = new MarkdownIt({
@@ -359,7 +397,7 @@ const md = new MarkdownIt({
       } catch (__) {}
     }
     return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`;
-  }
+  },
 });
 // =============================================================
 
@@ -373,17 +411,16 @@ const isLoading = ref(false);
 let abortController = null;
 
 // ================= JWT 登录与权限控制 =================
-const showLoginModal = ref(false)
-const isAuthenticating = ref(false)
-const isLoginMode = ref(true) // 控制当前是登录还是注册模式
-const authForm = ref({ username: '', password: '' })
-const currentUser = ref('研究员')
-
+const showLoginModal = ref(false);
+const isAuthenticating = ref(false);
+const isLoginMode = ref(true); // 控制当前是登录还是注册模式
+const authForm = ref({ username: "", password: "" });
+const currentUser = ref("研究员");
 
 const userMenuOptions = [
-  { type: 'divider', key: 'd1' },
-  { label: '退出登录', key: 'logout' }
-]
+  { type: "divider", key: "d1" },
+  { label: "退出登录", key: "logout" },
+];
 
 const handleUserMenu = (key) => {
   if (key === "logout") {
@@ -391,7 +428,7 @@ const handleUserMenu = (key) => {
     localStorage.removeItem("saea_user");
     delete axios.defaults.headers.common["Authorization"];
     currentUser.value = "";
-    authForm.value = { username: '', password: '' };
+    authForm.value = { username: "", password: "" };
     isLoginMode.value = true;
     showLoginModal.value = true;
     chatHistories.value = []; // 退出时清空当前聊天列表
@@ -411,43 +448,43 @@ onMounted(() => {
 });
 
 const toggleAuthMode = () => {
-  isLoginMode.value = !isLoginMode.value
-  authForm.value.password = '' // 切换模式时清空密码以防误操作
-}
+  isLoginMode.value = !isLoginMode.value;
+  authForm.value.password = ""; // 切换模式时清空密码以防误操作
+};
 
 const handleAuth = async () => {
   if (!authForm.value.username || !authForm.value.password) {
-    messageUI.warning("请输入完整的账号和密码")
-    return
+    messageUI.warning("请输入完整的账号和密码");
+    return;
   }
-  isAuthenticating.value = true
-  
+  isAuthenticating.value = true;
+
   // 根据当前模式决定请求的接口路径
-  const apiEndpoint = isLoginMode.value ? '/api/login' : '/api/register'
-  
+  const apiEndpoint = isLoginMode.value ? "/api/login" : "/api/register";
+
   try {
-    const res = await axios.post(apiEndpoint, authForm.value)
-    
-    if (res.data.status === 'success') {
+    const res = await axios.post(apiEndpoint, authForm.value);
+
+    if (res.data.status === "success") {
       // 登录或注册成功，保存凭证
-      localStorage.setItem('saea_token', res.data.token)
-      localStorage.setItem('saea_user', authForm.value.username)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`
-      
-      currentUser.value = authForm.value.username
-      showLoginModal.value = false
-      messageUI.success(res.data.message)
+      localStorage.setItem("saea_token", res.data.token);
+      localStorage.setItem("saea_user", authForm.value.username);
+      axios.defaults.headers.common["Authorization"] =
+        `Bearer ${res.data.token}`;
+
+      currentUser.value = authForm.value.username;
+      showLoginModal.value = false;
+      messageUI.success(res.data.message);
     } else {
       // 后端返回业务错误（例如：密码错误、账号不存在等）
-      messageUI.error(res.data.message)
+      messageUI.error(res.data.message);
     }
   } catch (error) {
-    messageUI.error("网络异常，无法连接到身份验证服务器")
+    messageUI.error("网络异常，无法连接到身份验证服务器");
   } finally {
-    isAuthenticating.value = false
+    isAuthenticating.value = false;
   }
-}
-
+};
 
 // --- 新增附件相关状态 ---
 const pendingFiles = ref([]);
@@ -507,7 +544,6 @@ const removeFile = (index) => {
   pendingFiles.value.splice(index, 1);
 };
 
-
 // ================= 侧边栏重命名逻辑 =================
 const editingChatId = ref(null);
 const editingTitle = ref("");
@@ -532,8 +568,8 @@ const currentChatId = ref(null);
 // 1. 拉取云端历史
 const fetchCloudHistories = async () => {
   try {
-    const res = await axios.get('/api/chat/history');
-    if (res.data.status === 'success') {
+    const res = await axios.get("/api/chat/history");
+    if (res.data.status === "success") {
       chatHistories.value = res.data.data;
       if (chatHistories.value.length === 0) {
         createNewChat(); // 如果是新账号，自动建一个新会话
@@ -550,10 +586,10 @@ const fetchCloudHistories = async () => {
 const syncChatToCloud = async (chat) => {
   if (!chat) return;
   try {
-    await axios.post('/api/chat/sync', {
+    await axios.post("/api/chat/sync", {
       id: chat.id,
       title: chat.title,
-      messages: chat.messages
+      messages: chat.messages,
     });
   } catch (e) {
     console.error("云端同步失败", e);
@@ -567,7 +603,11 @@ const createNewChat = () => {
     title: "新文献研讨",
     timestamp: Date.now(),
     messages: [
-      { role: "ai", content: "我是教研室专属文献助手。\n目前已接入 DeepSeek V3.2 Pro模型，你可以随时向我提问。" },
+      {
+        role: "ai",
+        content:
+          "我是教研室专属文献助手。\n目前已接入 DeepSeek V3.2 Pro模型，你可以随时向我提问。",
+      },
     ],
   };
   chatHistories.value.unshift(newChat);
@@ -617,7 +657,9 @@ const copyMessage = async (text) => {
 
 // 删除单条消息功能
 const deleteSingleMessage = (index) => {
-  const activeChat = chatHistories.value.find((c) => c.id === currentChatId.value);
+  const activeChat = chatHistories.value.find(
+    (c) => c.id === currentChatId.value,
+  );
   if (activeChat && activeChat.messages) {
     activeChat.messages.splice(index, 1);
     syncChatToCloud(activeChat); // <--- 新增：删除后同步
@@ -631,25 +673,32 @@ const formatMessage = (text) => {
 
 const sendMessage = async () => {
   // 1. 修改拦截逻辑：只要有文字 OR 有附件，都可以发送
-  if ((!inputText.value.trim() && pendingFiles.value.length === 0) || isLoading.value) return;
+  if (
+    (!inputText.value.trim() && pendingFiles.value.length === 0) ||
+    isLoading.value
+  )
+    return;
 
   const userText = inputText.value;
-  const activeChat = chatHistories.value.find((c) => c.id === currentChatId.value);
+  const activeChat = chatHistories.value.find(
+    (c) => c.id === currentChatId.value,
+  );
 
   if (activeChat.title === "新文献研讨") {
     const titleText = userText || pendingFiles.value[0].name;
-    activeChat.title = titleText.substring(0, 15) + (titleText.length > 15 ? "..." : "");
+    activeChat.title =
+      titleText.substring(0, 15) + (titleText.length > 15 ? "..." : "");
   }
 
   // 2. 将文件转换为 Base64 格式，准备发给后端
-  const filePromises = pendingFiles.value.map(file => {
+  const filePromises = pendingFiles.value.map((file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         resolve({
           name: file.name,
           type: file.type,
-          content: e.target.result // 包含 base64 数据的编码字符串
+          content: e.target.result, // 包含 base64 数据的编码字符串
         });
       };
       reader.onerror = (e) => reject(e);
@@ -660,15 +709,20 @@ const sendMessage = async () => {
   const filesData = await Promise.all(filePromises);
 
   // 【关键修复】当用户只传附件没写文字时，提供默认的 Prompt 避免后端 LLM 接收到空消息报错
-  const finalMessageText = userText.trim() === "" && filesData.length > 0 
-    ? "请帮我分析一下上传的附件内容。" 
-    : userText;
+  const finalMessageText =
+    userText.trim() === "" && filesData.length > 0
+      ? "请帮我分析一下上传的附件内容。"
+      : userText;
 
   // 3. 在前端聊天气泡里展示你发出的文件名称
   let displayContent = userText;
   if (pendingFiles.value.length > 0) {
-    const fileTags = pendingFiles.value.map(f => `📄 <b>${f.name}</b>`).join('<br/>');
-    displayContent = displayContent ? `${displayContent}<br/><br/>${fileTags}` : fileTags;
+    const fileTags = pendingFiles.value
+      .map((f) => `📄 <b>${f.name}</b>`)
+      .join("<br/>");
+    displayContent = displayContent
+      ? `${displayContent}<br/><br/>${fileTags}`
+      : fileTags;
   }
 
   // 4. 清空输入框和底部的附件待发送区
@@ -680,34 +734,32 @@ const sendMessage = async () => {
   isLoading.value = true;
   scrollToBottom();
   syncChatToCloud(activeChat);
-  
+
   abortController = new AbortController();
   activeChat.messages.push({ role: "ai", content: "" });
   const targetMsg = activeChat.messages[activeChat.messages.length - 1];
 
   try {
-    const history = activeChat.messages
-      .slice(1, -2)
-      .map((m) => ({
-        role: m.role === "ai" ? "assistant" : "user",
-        content: m.content, // 注意：传给后端的历史记录里会带有 📄 <b>xxx.pdf</b> 这种标记
-      }));
-      
+    const history = activeChat.messages.slice(1, -2).map((m) => ({
+      role: m.role === "ai" ? "assistant" : "user",
+      content: m.content, // 注意：传给后端的历史记录里会带有 📄 <b>xxx.pdf</b> 这种标记
+    }));
+
     // 5. 构建新 Payload，把文件数组一起带上！
     const payload = {
       message: finalMessageText, // 给后端的原始提问（修复空字符问题）
       history: history,
       session_id: activeChat.id,
-      files: filesData   // 🔴 带有 Base64 的附件数组
+      files: filesData, // 🔴 带有 Base64 的附件数组
     };
 
-    const token = localStorage.getItem('saea_token');
+    const token = localStorage.getItem("saea_token");
 
     const response = await fetch("/api/llm/chat/text", {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}` 
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
       signal: abortController.signal,
@@ -828,59 +880,64 @@ const sendMessage = async () => {
 }
 /* 用户气泡：最宽占 900px 容器的 85% */
 .message-item.user .bubble {
-  max-width: 100% !important; 
+  max-width: 100% !important;
 }
 
 /* AI 气泡：包含代码和长文本，可以允许占满 900px 容器 */
 .message-item.ai .bubble {
-  max-width: 100% !important; 
+  max-width: 100% !important;
 }
 
 /* ================= Markdown 元素美化 ================= */
 /* 1. 强制清除最后一个元素的底部空白，解决气泡底部变“胖”的问题 */
 .md-render-box {
-  white-space: normal; 
+  white-space: normal;
   word-break: break-word;
   font-size: 15px;
 }
 
 /* 1. 强制清除最后一个元素的底部空白，解决气泡底部变“胖”的问题 */
-.md-render-box :deep(*:last-child) { 
-  margin-bottom: 0 !important; 
+.md-render-box :deep(*:last-child) {
+  margin-bottom: 0 !important;
 }
 
 /* 2. 确保首行不会顶开气泡顶部 */
-.md-render-box :deep(*:first-child) { 
-  margin-top: 0 !important; 
+.md-render-box :deep(*:first-child) {
+  margin-top: 0 !important;
 }
 
 /* 3. 收紧普通段落的行高和段间距 */
-.md-render-box :deep(p) { 
-  margin: 0 0 6px 0; 
-  line-height: 1.5; 
+.md-render-box :deep(p) {
+  margin: 0 0 6px 0;
+  line-height: 1.5;
 }
 
 /* 4. 收紧各级标题的上下间距 */
-.md-render-box :deep(h1), .md-render-box :deep(h2), .md-render-box :deep(h3), 
-.md-render-box :deep(h4), .md-render-box :deep(h5), .md-render-box :deep(h6) { 
-  margin: 10px 0 6px 0; 
+.md-render-box :deep(h1),
+.md-render-box :deep(h2),
+.md-render-box :deep(h3),
+.md-render-box :deep(h4),
+.md-render-box :deep(h5),
+.md-render-box :deep(h6) {
+  margin: 10px 0 6px 0;
   line-height: 1.25;
 }
 
 /* 5. 收紧分割线间距 */
-.md-render-box :deep(hr) { 
-  margin: 10px 0; 
-  border: 0; 
-  border-top: 1px solid rgba(156, 163, 175, 0.2); 
+.md-render-box :deep(hr) {
+  margin: 10px 0;
+  border: 0;
+  border-top: 1px solid rgba(156, 163, 175, 0.2);
 }
 
 /* 6. 收紧列表间距 */
-.md-render-box :deep(ul), .md-render-box :deep(ol) { 
-  margin: 4px 0 8px 20px; 
-  padding-left: 0; 
+.md-render-box :deep(ul),
+.md-render-box :deep(ol) {
+  margin: 4px 0 8px 20px;
+  padding-left: 0;
 }
-.md-render-box :deep(li) { 
-  margin-bottom: 2px; 
+.md-render-box :deep(li) {
+  margin-bottom: 2px;
 }
 
 /* 优雅的表格 */
@@ -892,7 +949,8 @@ const sendMessage = async () => {
   overflow: hidden;
   box-shadow: 0 0 0 1px rgba(156, 163, 175, 0.2);
 }
-.md-render-box :deep(th), .md-render-box :deep(td) {
+.md-render-box :deep(th),
+.md-render-box :deep(td) {
   border: 1px solid rgba(156, 163, 175, 0.15);
   padding: 8px 12px;
   text-align: left;
@@ -911,7 +969,10 @@ const sendMessage = async () => {
   background-color: #1e1e20;
   border: 1px solid rgba(156, 163, 175, 0.1);
 }
-.md-render-box :deep(code) { font-family: Consolas, Monaco, monospace; font-size: 14px; } 
+.md-render-box :deep(code) {
+  font-family: Consolas, Monaco, monospace;
+  font-size: 14px;
+}
 .md-render-box :deep(:not(pre) > code) {
   background-color: rgba(156, 163, 175, 0.15);
   padding: 2px 4px;
