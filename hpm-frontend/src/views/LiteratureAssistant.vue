@@ -1,6 +1,6 @@
 <template>
   <div class="saea-feature-page">
-    <!-- 左侧：功能侧边栏 -->
+    <!-- 左侧:功能侧边栏 -->
     <div class="feature-sidebar">
       <div class="sidebar-header">
         <span class="title">教研室文献助手</span>
@@ -112,7 +112,7 @@
         >
           {{
             isLoginMode
-              ? "请输入您的专属通行证，您的历史研讨记录将被加密隔离保存。"
+              ? "请输入您的专属通行证,您的历史研讨记录将被加密隔离保存。"
               : "请设置您的专属账号与通行密钥。"
           }}
         </p>
@@ -155,8 +155,8 @@
             >
               {{
                 isLoginMode
-                  ? "没有账号？点击注册新账号"
-                  : "已有账号？点击返回登录"
+                  ? "没有账号?点击注册新账号"
+                  : "已有账号?点击返回登录"
               }}
             </n-button>
           </div>
@@ -164,15 +164,15 @@
       </n-card>
     </n-modal>
 
-    <!-- 右侧：主工作区 -->
+    <!-- 右侧:主工作区 -->
     <div class="feature-main">
       <!-- 顶部配置面板 (极简状态) -->
       <div class="main-header" style="justify-content: space-between">
         <div class="header-left">
-          <n-tag type="info" size="small" bordered>DeepSeek V3.2 Pro</n-tag>
+          <n-tag type="info" size="small" bordered>DeepSeek V4.0 Flash</n-tag>
         </div>
 
-        <!-- 新增：右侧用户头像与控制台 -->
+        <!-- 新增:右侧用户头像与控制台 -->
         <div
           class="header-right"
           style="display: flex; align-items: center; gap: 12px"
@@ -201,6 +201,26 @@
               {{ currentUser ? currentUser.charAt(0).toUpperCase() : "U" }}
             </n-avatar>
           </n-dropdown>
+
+          <!-- 附件管理面板开关 -->
+          <n-badge
+            :value="currentChatFiles.length"
+            :max="99"
+            :show="currentChatFiles.length > 0"
+            style="cursor: pointer"
+          >
+            <n-button
+              quaternary
+              circle
+              size="small"
+              @click="showFilePanel = !showFilePanel"
+              :type="showFilePanel ? 'info' : 'default'"
+            >
+              <template #icon>
+                <n-icon size="18"><Paperclip /></n-icon>
+              </template>
+            </n-button>
+          </n-badge>
         </div>
       </div>
 
@@ -210,7 +230,7 @@
         ref="scrollbarRef"
         content-style="padding: 24px 0; box-sizing: border-box; overflow-x: hidden;"
       >
-        <!-- 将 v-for 循环生成的对话框，严格包裹在这个 900px 的中央容器内 -->
+        <!-- 将 v-for 循环生成的对话框,严格包裹在这个 900px 的中央容器内 -->
         <div
           style="
             width: 100%;
@@ -245,14 +265,14 @@
                 <span>{{ msg.role === "ai" ? "DeepSeek" : currentUser }}</span>
               </div>
 
-              <!-- 流式输出时，如果内容为空且处于 loading 状态，显示闪烁光标 -->
+              <!-- 流式输出时,如果内容为空且处于 loading 状态,显示闪烁光标 -->
               <div class="bubble">
                 <span
                   v-if="msg.content === '' && isLoading"
                   class="typing-cursor"
                   >█</span
                 >
-                <!-- 🔴 修改：换成 div 并加上 md-render-box 类名 -->
+                <!-- 🔴 修改:换成 div 并加上 md-render-box 类名 -->
                 <div
                   v-else
                   class="md-render-box"
@@ -308,7 +328,7 @@
             v-model:value="inputText"
             type="textarea"
             :autosize="{ minRows: 2, maxRows: 6 }"
-            placeholder="输入您的问题... (支持拖拽或粘贴文件，如 PDF、TXT 等)"
+            placeholder="输入您的问题... (支持拖拽或粘贴文件,如 PDF、TXT 等)"
             :bordered="false"
             @keyup.enter.exact="sendMessage"
             @paste="handlePaste"
@@ -320,7 +340,7 @@
             class="input-tools"
             style="justify-content: space-between; align-items: center"
           >
-            <!-- 左侧工具栏：附件上传 -->
+            <!-- 左侧工具栏:附件上传 -->
             <div class="left-tools">
               <n-button
                 quaternary
@@ -342,7 +362,7 @@
               />
             </div>
 
-            <!-- 右侧工具栏：发送按钮 -->
+            <!-- 右侧工具栏:发送按钮 -->
             <div class="right-tools">
               <n-button
                 color="#3b82f6"
@@ -360,11 +380,71 @@
         </div>
       </div>
     </div>
+
+    <!-- ================= 右侧:附件管理面板(可收起) ================= -->
+    <transition name="file-panel-slide">
+      <div v-if="showFilePanel" class="feature-filesidebar">
+        <div class="filesidebar-header">
+          <span class="filesidebar-title">📎 附件管理</span>
+          <div class="filesidebar-actions">
+            <n-button
+              quaternary
+              size="tiny"
+              type="warning"
+              @click="clearSessionFiles"
+              v-if="currentChatFiles.length > 0"
+            >
+              清空
+            </n-button>
+            <n-button
+              quaternary
+              circle
+              size="tiny"
+              @click="showFilePanel = false"
+            >
+              <template #icon>
+                <n-icon size="16"><X /></n-icon>
+              </template>
+            </n-button>
+          </div>
+        </div>
+        <n-scrollbar class="filesidebar-body">
+          <div
+            v-for="f in currentChatFiles"
+            :key="f.id"
+            class="filesidebar-item"
+          >
+            <n-checkbox v-model:checked="f.selected" size="small" />
+            <span class="file-name" :title="f.name">{{ f.name }}</span>
+            <span class="file-size">{{
+              f.size > 1024 * 1024
+                ? (f.size / 1024 / 1024).toFixed(1) + "MB"
+                : (f.size / 1024).toFixed(0) + "KB"
+            }}</span>
+            <n-icon
+              size="14"
+              class="file-remove"
+              @click="removeSessionFile(f.id)"
+            >
+              <X />
+            </n-icon>
+          </div>
+          <div v-if="currentChatFiles.length === 0" class="file-empty-hint">
+            暂无附件,拖拽或粘贴文件到输入框即可添加。
+          </div>
+        </n-scrollbar>
+        <div class="filesidebar-footer">
+          <span class="filesidebar-tip" v-if="currentChatFiles.length > 0">
+            勾选的文件将在下一轮发送时一并解析
+          </span>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, toRaw } from "vue";
+import { ref, computed, nextTick, onMounted } from "vue";
 import { useMessage, NIcon } from "naive-ui";
 import {
   Plus,
@@ -380,7 +460,7 @@ import {
 } from "lucide-vue-next";
 import axios from "axios";
 
-// ================= 新增：引入 Markdown 与代码高亮 =================
+// ================= 新增:引入 Markdown 与代码高亮 =================
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import "highlight.js/styles/atom-one-dark.css";
@@ -443,7 +523,7 @@ onMounted(() => {
   } else {
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     currentUser.value = localStorage.getItem("saea_user") || "研究员";
-    fetchCloudHistories(); // 重点：带着 Token 去拉取云端记录
+    fetchCloudHistories(); // 重点:带着 Token 去拉取云端记录
   }
 });
 
@@ -466,7 +546,7 @@ const handleAuth = async () => {
     const res = await axios.post(apiEndpoint, authForm.value);
 
     if (res.data.status === "success") {
-      // 登录或注册成功，保存凭证
+      // 登录或注册成功,保存凭证
       localStorage.setItem("saea_token", res.data.token);
       localStorage.setItem("saea_user", authForm.value.username);
       axios.defaults.headers.common["Authorization"] =
@@ -476,20 +556,29 @@ const handleAuth = async () => {
       showLoginModal.value = false;
       messageUI.success(res.data.message);
     } else {
-      // 后端返回业务错误（例如：密码错误、账号不存在等）
+      // 后端返回业务错误(例如:密码错误、账号不存在等)
       messageUI.error(res.data.message);
     }
   } catch (error) {
-    messageUI.error("网络异常，无法连接到身份验证服务器");
+    messageUI.error("网络异常,无法连接到身份验证服务器");
   } finally {
     isAuthenticating.value = false;
   }
 };
 
 // --- 新增附件相关状态 ---
+const showFilePanel = ref(false);
 const pendingFiles = ref([]);
 const fileInputRef = ref(null);
 const isDragging = ref(false);
+
+// 所有会话的文件库:{ [chatId]: [{ id, name, size, file: File, selected }] }
+const sessionFilesMap = ref({});
+
+// 当前会话的文件列表
+const currentChatFiles = computed(() => {
+  return sessionFilesMap.value[currentChatId.value] || [];
+});
 
 // 1. 点击触发资源管理器
 const triggerFileInput = () => {
@@ -528,20 +617,62 @@ const handlePaste = (e) => {
   }
 
   if (files.length > 0) {
-    e.preventDefault(); // 拦截默认行为，防止浏览器尝试将图片等塞入输入框
+    e.preventDefault(); // 拦截默认行为,防止浏览器尝试将图片等塞入输入框
     addFiles(files);
   }
 };
 
 // 统一加入待发送队列
 const addFiles = (files) => {
-  pendingFiles.value.push(...files);
-  messageUI.success(`已添加 ${files.length} 个附件`);
+  const MAX_FILES = 10;
+  const currentCount = pendingFiles.value.length;
+  const remaining = MAX_FILES - currentCount;
+
+  if (remaining <= 0) {
+    messageUI.warning(`附件已达上限 ${MAX_FILES} 个,请先移除已有附件`);
+    return;
+  }
+
+  const accepted = files.length > remaining ? files.slice(0, remaining) : files;
+  pendingFiles.value.push(...accepted);
+
+  // 同步记录到当前会话的文件库(侧边栏附件管理)
+  if (!sessionFilesMap.value[currentChatId.value]) {
+    sessionFilesMap.value[currentChatId.value] = [];
+  }
+  const existingNames = new Set(sessionFilesMap.value[currentChatId.value].map((x) => x.name));
+  for (const f of accepted) {
+    if (!existingNames.has(f.name)) {
+      sessionFilesMap.value[currentChatId.value].push({
+        id: Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+        name: f.name,
+        size: f.size,
+        file: f,
+        selected: true,
+      });
+      existingNames.add(f.name);
+    }
+  }
+
+  messageUI.success(`已添加附件 (${pendingFiles.value.length}/${MAX_FILES})`);
 };
 
 // 移除附件
 const removeFile = (index) => {
   pendingFiles.value.splice(index, 1);
+};
+
+// 从侧边栏附件管理中移除
+const removeSessionFile = (fileId) => {
+  const list = sessionFilesMap.value[currentChatId.value];
+  if (!list) return;
+  const idx = list.findIndex((f) => f.id === fileId);
+  if (idx !== -1) list.splice(idx, 1);
+};
+
+// 清空当前会话的所有附件记录
+const clearSessionFiles = () => {
+  sessionFilesMap.value[currentChatId.value] = [];
 };
 
 // ================= 侧边栏重命名逻辑 =================
@@ -572,13 +703,13 @@ const fetchCloudHistories = async () => {
     if (res.data.status === "success") {
       chatHistories.value = res.data.data;
       if (chatHistories.value.length === 0) {
-        createNewChat(); // 如果是新账号，自动建一个新会话
+        createNewChat(); // 如果是新账号,自动建一个新会话
       } else {
         currentChatId.value = chatHistories.value[0].id;
       }
     }
   } catch (e) {
-    messageUI.error("无法拉取云端历史记录，请检查网络");
+    messageUI.error("无法拉取云端历史记录,请检查网络");
   }
 };
 
@@ -606,7 +737,7 @@ const createNewChat = () => {
       {
         role: "ai",
         content:
-          "我是教研室专属文献助手。\n目前已接入 DeepSeek V3.2 Pro模型，你可以随时向我提问。",
+          "我是教研室专属文献助手。\n目前已接入 DeepSeek V4.0 Flash模型,你可以随时向我提问。",
       },
     ],
   };
@@ -651,7 +782,7 @@ const copyMessage = async (text) => {
     await navigator.clipboard.writeText(text);
     messageUI.success("已复制到剪贴板");
   } catch (err) {
-    messageUI.error("复制失败，请手动复制");
+    messageUI.error("复制失败,请手动复制");
   }
 };
 
@@ -662,17 +793,17 @@ const deleteSingleMessage = (index) => {
   );
   if (activeChat && activeChat.messages) {
     activeChat.messages.splice(index, 1);
-    syncChatToCloud(activeChat); // <--- 新增：删除后同步
+    syncChatToCloud(activeChat); // <--- 新增:删除后同步
   }
 };
 
 const formatMessage = (text) => {
   if (!text) return "";
-  return md.render(text).trim(); // 🔴 增加 .trim()：暴力砍掉 markdown 自动生成的末尾多余换行符
+  return md.render(text).trim(); // 🔴 增加 .trim():暴力砍掉 markdown 自动生成的末尾多余换行符
 };
 
 const sendMessage = async () => {
-  // 1. 修改拦截逻辑：只要有文字 OR 有附件，都可以发送
+  // 1. 修改拦截逻辑:只要有文字 OR 有附件,都可以发送
   if (
     (!inputText.value.trim() && pendingFiles.value.length === 0) ||
     isLoading.value
@@ -690,27 +821,9 @@ const sendMessage = async () => {
       titleText.substring(0, 15) + (titleText.length > 15 ? "..." : "");
   }
 
-  // 2. 将文件转换为 Base64 格式，准备发给后端
-  const filePromises = pendingFiles.value.map((file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        resolve({
-          name: file.name,
-          type: file.type,
-          content: e.target.result, // 包含 base64 数据的编码字符串
-        });
-      };
-      reader.onerror = (e) => reject(e);
-      // 【关键修复】使用 toRaw 解除 Vue3 的 Proxy 包装，否则 FileReader 会抛出 TypeError
-      reader.readAsDataURL(toRaw(file));
-    });
-  });
-  const filesData = await Promise.all(filePromises);
-
-  // 【关键修复】当用户只传附件没写文字时，提供默认的 Prompt 避免后端 LLM 接收到空消息报错
+  // 【关键修复】当用户只传附件没写文字时,提供默认的 Prompt 避免后端 LLM 接收到空消息报错
   const finalMessageText =
-    userText.trim() === "" && filesData.length > 0
+    userText.trim() === "" && pendingFiles.value.length > 0
       ? "请帮我分析一下上传的附件内容。"
       : userText;
 
@@ -725,7 +838,18 @@ const sendMessage = async () => {
       : fileTags;
   }
 
-  // 4. 清空输入框和底部的附件待发送区
+  // 4. 在清空前,先把文件对象存到局部变量
+  //    包括:本次新拖拽/粘贴的(pendingFiles)+ 侧边栏历史文件中被勾选的
+  const filesToSend = [...pendingFiles.value];
+  const pendingNames = new Set(pendingFiles.value.map((f) => f.name));
+  for (const sf of currentChatFiles.value) {
+    if (sf.selected && !pendingNames.has(sf.name)) {
+      filesToSend.push(sf.file);
+      pendingNames.add(sf.name);
+    }
+  }
+
+  // 5. 清空输入框和底部的附件待发送区
   inputText.value = "";
   pendingFiles.value = [];
 
@@ -733,37 +857,45 @@ const sendMessage = async () => {
   activeChat.messages.push({ role: "user", content: displayContent });
   isLoading.value = true;
   scrollToBottom();
-  syncChatToCloud(activeChat);
+  // 不同步到 DB--等 API 完成后一并同步,避免后端重复读取当前消息
 
   abortController = new AbortController();
   activeChat.messages.push({ role: "ai", content: "" });
   const targetMsg = activeChat.messages[activeChat.messages.length - 1];
 
   try {
-    const history = activeChat.messages.slice(1, -2).map((m) => ({
-      role: m.role === "ai" ? "assistant" : "user",
-      content: m.content, // 注意：传给后端的历史记录里会带有 📄 <b>xxx.pdf</b> 这种标记
-    }));
-
-    // 5. 构建新 Payload，把文件数组一起带上！
-    const payload = {
-      message: finalMessageText, // 给后端的原始提问（修复空字符问题）
-      history: history,
-      session_id: activeChat.id,
-      files: filesData, // 🔴 带有 Base64 的附件数组
-    };
-
+    // 6. 构建 FormData - 二进制文件直传,零 Base64 膨胀
+    //     不再传 history,由后端从数据库读取并截断
     const token = localStorage.getItem("saea_token");
+    const formData = new FormData();
+    formData.append("message", finalMessageText);
+    formData.append("session_id", activeChat.id);
+
+    // 前端文件尺寸门控
+    for (const file of filesToSend) {
+      if (file.size > 20 * 1024 * 1024) {
+        targetMsg.content += `\n\n⚠️ 文件 "${file.name}" 超过 20MB 限制,已跳过。`;
+      }
+      formData.append("files", file);
+    }
 
     const response = await fetch("/api/llm/chat/text", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        // 不设 Content-Type,浏览器自动配 multipart boundary
       },
-      body: JSON.stringify(payload),
+      body: formData,
       signal: abortController.signal,
     });
+
+    // 【修复】HTTP 错误码处理 - 避免 401/422 静默失败
+    if (!response.ok) {
+      const errText = await response.text();
+      targetMsg.content += `\n\n[错误 ${response.status}] ${errText.slice(0, 200)}`;
+      scrollToBottom();
+      return;
+    }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
@@ -829,7 +961,7 @@ const sendMessage = async () => {
   padding: 0 4px;
 }
 
-/* 鼠标悬浮在这一条消息上时，显示操作栏 */
+/* 鼠标悬浮在这一条消息上时,显示操作栏 */
 .message-item:hover .msg-actions {
   opacity: 1;
 }
@@ -878,25 +1010,25 @@ const sendMessage = async () => {
   user-select: text !important;
   -webkit-user-select: text !important;
 }
-/* 用户气泡：最宽占 900px 容器的 85% */
+/* 用户气泡:最宽占 900px 容器的 85% */
 .message-item.user .bubble {
   max-width: 100% !important;
 }
 
-/* AI 气泡：包含代码和长文本，可以允许占满 900px 容器 */
+/* AI 气泡:包含代码和长文本,可以允许占满 900px 容器 */
 .message-item.ai .bubble {
   max-width: 100% !important;
 }
 
 /* ================= Markdown 元素美化 ================= */
-/* 1. 强制清除最后一个元素的底部空白，解决气泡底部变“胖”的问题 */
+/* 强制清除最后一个元素的底部空白，解决气泡底部变"胖"的问题 */
 .md-render-box {
   white-space: normal;
   word-break: break-word;
   font-size: 15px;
 }
 
-/* 1. 强制清除最后一个元素的底部空白，解决气泡底部变“胖”的问题 */
+/* 清除最后一个子元素的 margin-bottom */
 .md-render-box :deep(*:last-child) {
   margin-bottom: 0 !important;
 }
@@ -978,5 +1110,123 @@ const sendMessage = async () => {
   padding: 2px 4px;
   border-radius: 4px;
   color: #3b82f6;
+}
+
+/* ================= 右侧附件管理面板样式 ================= */
+.saea-feature-page {
+  display: flex;
+}
+
+.feature-filesidebar {
+  width: 350px;
+  min-width: 350px;
+  border-left: 1px solid rgba(156, 163, 175, 0.15);
+  background: var(--n-card-color);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.filesidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 8px;
+  border-bottom: 1px solid rgba(156, 163, 175, 0.1);
+}
+
+.filesidebar-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--n-text-color-2);
+}
+
+.filesidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filesidebar-body {
+  flex: 1;
+  padding: 8px 10px;
+  overflow-y: auto;
+}
+
+.filesidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  transition: background 0.15s;
+  margin-bottom: 2px;
+}
+
+.filesidebar-item:hover {
+  background: rgba(156, 163, 175, 0.08);
+}
+
+.filesidebar-item .file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--n-text-color-1);
+}
+
+.filesidebar-item .file-size {
+  font-size: 11px;
+  color: var(--n-text-color-4);
+  flex-shrink: 0;
+}
+
+.filesidebar-item .file-remove {
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.filesidebar-item .file-remove:hover {
+  opacity: 1;
+  color: #e74c3c;
+}
+
+.filesidebar-footer {
+  padding: 8px 14px 12px;
+  border-top: 1px solid rgba(156, 163, 175, 0.1);
+}
+
+.filesidebar-tip {
+  font-size: 11px;
+  color: var(--n-text-color-4);
+  display: block;
+  text-align: center;
+}
+
+.file-empty-hint {
+  font-size: 13px;
+  color: var(--n-text-color-4);
+  text-align: center;
+  padding: 24px 12px;
+  line-height: 1.6;
+}
+
+/* 右面板滑入动画 */
+.file-panel-slide-enter-active,
+.file-panel-slide-leave-active {
+  transition: all 0.25s ease;
+}
+.file-panel-slide-enter-from,
+.file-panel-slide-leave-to {
+  opacity: 0;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  overflow: hidden;
 }
 </style>

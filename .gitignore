@@ -1,4 +1,4 @@
-# Python 与 环境
+﻿# Python
 __pycache__/
 *.py[cod]
 .venv/
@@ -8,13 +8,22 @@ venv/
 node_modules/
 dist/
 
-# IDE 配置
+# IDE
 .idea/
 .vscode/
+
+# 数据库
 *.db
-# CST 仿真垃圾文件与结果
+
+# CST 仿真垃圾文件
 Result/
 Model/3D/
 *.sup
 *.sd1
 *.s[0-9]*
+
+# Claude Code 本地配置
+.claude/
+
+# 依赖生成脚本（仅本地使用）
+auto_gen_deps.py

@@ -256,7 +256,6 @@
               :bordered="false"
               striped
               size="small"
-              :max-height="250"
             />
           </n-card>
         </n-gi>
@@ -800,14 +799,12 @@ import {
   inject,
 } from "vue";
 import { useRouter } from "vue-router";
-import { NTag, NProgress, NButton, useMessage, NIcon } from "naive-ui"; // ✨ 新增引入 NIcon
+import { NTag, NProgress, NButton, useMessage } from "naive-ui";
 import {
   Monitor,
   RefreshCw,
   ClipboardList,
   BookOpen,
-  HelpCircle,
-  Database,
   BrainCircuit,
   Cpu,
   Network,
