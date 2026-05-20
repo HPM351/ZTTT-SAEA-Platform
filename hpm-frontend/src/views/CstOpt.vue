@@ -370,10 +370,10 @@
                   <div
                     v-if="target.mode !== 'display_only'"
                     style="
-                      background: rgba(16, 185, 129, 0.05);
+                      background: rgba(34, 168, 122, 0.05);
                       padding: 14px;
                       border-radius: 8px;
-                      border: 1px dashed rgba(16, 185, 129, 0.3);
+                      border: 1px dashed rgba(34, 168, 122, 0.3);
                       margin-bottom: 16px;
                     "
                   >
@@ -381,7 +381,7 @@
                       style="
                         font-size: 13px;
                         font-weight: bold;
-                        color: #10b981;
+                        color: #22a87a;
                         margin-bottom: 12px;
                       "
                     >
@@ -644,7 +644,7 @@
                 <div
                   style="
                     font-size: 12px;
-                    color: #10b981;
+                    color: #22a87a;
                     margin-top: -8px;
                     margin-bottom: 12px;
                     text-align: right;
@@ -747,7 +747,7 @@
                                     {{ config.algo.ga.autoMutRange[0] }}%)
                                   </div>
                                   <div
-                                    style="color: #10b981; font-weight: bold"
+                                    style="color: #22a87a; font-weight: bold"
                                   >
                                     高斯变异 (收敛)
                                   </div>
@@ -863,9 +863,9 @@
                                 v-if="config.algo.bo.useAutoAcq"
                                 style="
                                   padding: 10px 12px;
-                                  background: rgba(16, 185, 129, 0.1);
+                                  background: rgba(34, 168, 122, 0.1);
                                   border-radius: 8px;
-                                  border: 1px dashed #10b981;
+                                  border: 1px dashed #22a87a;
                                   font-size: 12px;
                                   color: var(--n-text-color-3);
                                 "
@@ -2838,7 +2838,7 @@ const connectWebSocket = (taskId) => {
       }
 
       logs.value.push(
-        `<span style='color:#10b981;'>[SYSTEM]</span> ${data.message}`,
+        `<span style='color:#22a87a;'>[SYSTEM]</span> ${data.message}`,
       );
       scrollToBottom();
 
@@ -2944,7 +2944,7 @@ const startOptimization = async () => {
     islandState.CstOpt.abortFn = stopOptimization;
   }
   logs.value.push(
-    "<span style='color:#10b981;'>[INFO]</span> 正在将配置发送至后台引擎...",
+    "<span style='color:#22a87a;'>[INFO]</span> 正在将配置发送至后台引擎...",
   );
   scrollToBottom();
 
@@ -2961,7 +2961,7 @@ const startOptimization = async () => {
         `<span style='color:#3b82f6;'>[SYSTEM]</span> 任务 ID: ${newTaskId}`,
       );
       logs.value.push(
-        `<span style='color:#10b981;'>[SYSTEM]</span> ${response.data.message}`,
+        `<span style='color:#22a87a;'>[SYSTEM]</span> ${response.data.message}`,
       );
       scrollToBottom();
 
@@ -3147,18 +3147,27 @@ watch(isDarkMode, () => {
 .chart-card {
   background-color: var(--n-card-color);
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
   box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.15),
-    inset 0 1px 1px rgba(255, 255, 255, 0.06) !important;
+    0 2px 10px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+.modern-card {
+  margin-bottom: 20px;
+  border-radius: 8px;
+  background-color: var(--n-card-color);
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
 }
 .card-header {
   padding: 12px 16px;
-  border-bottom: 1px solid var(--n-border-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--n-action-color);
+  background: rgba(255, 255, 255, 0.02);
   border-radius: 8px 8px 0 0;
 }
 .echarts-container {
@@ -3188,7 +3197,7 @@ watch(isDarkMode, () => {
   color: var(--n-text-color);
 }
 .text-neon-green {
-  color: #10b981;
+  color: #22a87a;
 }
 .text-neon-orange {
   color: #f59e0b;
@@ -3201,7 +3210,7 @@ watch(isDarkMode, () => {
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 .n-config-provider:not([theme="light"]) .text-neon-green {
-  text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  text-shadow: 0 0 10px rgba(34, 168, 122, 0.4);
 }
 .n-config-provider:not([theme="light"]) .text-neon-orange {
   text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);

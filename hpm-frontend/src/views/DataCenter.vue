@@ -667,8 +667,9 @@ onMounted(() => {
   background: transparent;
 }
 .active-task {
-  background-color: var(--n-action-color) !important;
-  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  box-shadow: inset 3px 0 0 #3b82f6 !important;
+  border-radius: 0 6px 6px 0 !important;
 }
 .task-meta {
   margin-top: 6px;
@@ -729,6 +730,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* 修复 n-tabs 底部圆角截断分页条 */
+.detail-container :deep(.n-tabs-pane-wrapper) {
+  overflow: visible !important;
+}
+.detail-container :deep(.n-tab-pane) {
+  padding-bottom: 12px;
 }
 .text-neon-white {
   color: var(--n-text-color);

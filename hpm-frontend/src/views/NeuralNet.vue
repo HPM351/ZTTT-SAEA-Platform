@@ -13,7 +13,7 @@
               gap: 8px;
             "
           >
-            <n-icon color="#10b981"><BrainCircuit /></n-icon>
+            <n-icon color="#22a87a"><BrainCircuit /></n-icon>
             代理辅助平台
           </h2>
         </n-space>
@@ -3457,10 +3457,10 @@ watch(isDarkMode, () => {
   border-radius: 8px;
   background-color: var(--n-card-color);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
   box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.15),
-    inset 0 1px 1px rgba(255, 255, 255, 0.06) !important;
+    0 2px 10px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
 }
 .card-title {
   font-weight: 600;
@@ -3534,11 +3534,11 @@ watch(isDarkMode, () => {
 
 .card-header {
   padding: 10px 14px;
-  border-bottom: 1px solid var(--n-border-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--n-action-color);
+  background: rgba(255, 255, 255, 0.02);
   border-radius: 8px 8px 0 0;
 }
 .echarts-container {
@@ -3623,7 +3623,7 @@ watch(isDarkMode, () => {
   color: var(--n-text-color);
 }
 .text-neon-green {
-  color: #10b981;
+  color: #22a87a;
 }
 .text-neon-orange {
   color: #f59e0b;

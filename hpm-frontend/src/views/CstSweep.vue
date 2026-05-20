@@ -1119,7 +1119,7 @@ const startSweep = async () => {
   }
 
   logs.value.push(
-    "<span style='color:#10b981;'>[INFO]</span> 扫参任务已提交至后台...",
+    "<span style='color:#22a87a;'>[INFO]</span> 扫参任务已提交至后台...",
   );
   try {
     const res = await axios.post(`${API_BASE}/start_sweep`, config);
@@ -1384,17 +1384,16 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-/* ===== 现代卡片质感 (发光/玻璃拟态) ===== */
+/* ===== 现代卡片质感 (轻量玻璃) ===== */
 .modern-card,
 .metric-card,
 .chart-card {
   border-radius: 8px;
   background-color: var(--n-card-color);
-  /* 统一的光影风格 */
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
   box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.15),
-    inset 0 1px 1px rgba(255, 255, 255, 0.06) !important;
+    0 2px 10px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
 }
 .modern-card {
   margin-bottom: 20px;
@@ -1402,11 +1401,11 @@ onUnmounted(() => {
 
 .card-header {
   padding: 12px 16px;
-  border-bottom: 1px solid var(--n-border-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--n-action-color);
+  background: rgba(255, 255, 255, 0.02);
   border-radius: 8px 8px 0 0;
 }
 .card-title {
@@ -1510,8 +1509,16 @@ onUnmounted(() => {
 }
 .hologram-scanner {
   text-align: center;
-  font-family: monospace;
-  color: var(--n-text-color-3);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(34, 168, 122, 0.5);
+  text-shadow: 0 0 12px rgba(34, 168, 122, 0.25);
+  animation: hologram-flicker 3s ease-in-out infinite;
+}
+@keyframes hologram-flicker {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
 }
 
 /* 波形参数标签区 */
@@ -1530,7 +1537,7 @@ onUnmounted(() => {
 
 /* 日志终端区 */
 .terminal-card {
-  border-color: rgba(16, 185, 129, 0.3) !important;
+  border-color: rgba(34, 168, 122, 0.3) !important;
 }
 .log-window {
   position: absolute;

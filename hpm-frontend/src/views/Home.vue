@@ -33,7 +33,7 @@
                 <p>多维参数笛卡尔积遍历，快速构建物理样本空间</p>
               </div>
             </div>
-            <div class="nav-action">进入工作台 ➡️</div>
+            <div class="nav-action">进入工作台  <n-icon :size="16"><ArrowRight /></n-icon></div>
           </n-card>
         </n-gi>
 
@@ -56,7 +56,7 @@
                 <p>调用 CST Studio Suite 进行电磁仿真与 GA 演化</p>
               </div>
             </div>
-            <div class="nav-action">进入工作台 ➡️</div>
+            <div class="nav-action">进入工作台  <n-icon :size="16"><ArrowRight /></n-icon></div>
           </n-card>
         </n-gi>
 
@@ -79,7 +79,7 @@
                 <p>基于深度学习模型秒级预测器件性能，支持在线微调</p>
               </div>
             </div>
-            <div class="nav-action">进入工作台 ➡️</div>
+            <div class="nav-action">进入工作台  <n-icon :size="16"><ArrowRight /></n-icon></div>
           </n-card>
         </n-gi>
 
@@ -102,7 +102,7 @@
                 <p>查阅历史仿真数据与波形，支持 Excel 导出与离线归档</p>
               </div>
             </div>
-            <div class="nav-action">管理库 ➡️</div>
+            <div class="nav-action">管理库  <n-icon :size="16"><ArrowRight /></n-icon></div>
           </n-card>
         </n-gi>
 
@@ -126,7 +126,7 @@
                 <p>基于本地知识库的高功率微波与计算机科学专属学术文献助手</p>
               </div>
             </div>
-            <div class="nav-action">开始对话 ➡️</div>
+            <div class="nav-action">开始对话  <n-icon :size="16"><ArrowRight /></n-icon></div>
           </n-card>
         </n-gi>
       </n-grid>
@@ -684,7 +684,7 @@
                   font-size: 15px;
                 "
               >
-                <span style="color: #10b981; font-weight: bold"
+                <span style="color: #22a87a; font-weight: bold"
                   >Maximize (最大化):</span
                 ><br />
                 Score = (Val / Scale) &times; Weight <br /><br />
@@ -808,6 +808,7 @@ import {
   BrainCircuit,
   Cpu,
   Network,
+  ArrowRight,
 } from "lucide-vue-next";
 import axios from "axios";
 import ScoreSandbox from "@/components/ScoreSandbox.vue";
@@ -1052,6 +1053,10 @@ const currentStep = ref(1);
   max-width: 1400px;
   margin: 0 auto;
   min-height: 100vh;
+  /* 极微弱的暖色偏移, 缓解长时间注视暗色界面的冷感 */
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(180, 140, 100, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse at 80% 100%, rgba(160, 130, 90, 0.03) 0%, transparent 50%);
 }
 
 /* 欢迎区样式 */
@@ -1063,7 +1068,7 @@ const currentStep = ref(1);
   font-size: 36px;
   font-weight: 800;
   margin: 0;
-  background: linear-gradient(90deg, #3b82f6, #10b981);
+  background: linear-gradient(90deg, #3b82f6, #22a87a);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 2px;
@@ -1077,34 +1082,37 @@ const currentStep = ref(1);
 /* 导航大卡片 */
 .nav-card {
   border-radius: 12px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   background-color: var(--n-card-color);
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  /* 静止态降低阴影，让卡片“退后半步”，减少同时抢夺注意力 */
   box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.15),
-    inset 0 1px 1px rgba(255, 255, 255, 0.06) !important;
+    0 2px 8px rgba(0, 0, 0, 0.10),
+    inset 0 1px 1px rgba(255, 255, 255, 0.04) !important;
 }
 .nav-card:hover {
   transform: translateY(-5px);
-  /* 👇 hover 时阴影扩散，高光变亮 */
   box-shadow:
     0 12px 28px rgba(0, 0, 0, 0.3),
     inset 0 1px 2px rgba(255, 255, 255, 0.15) !important;
 }
-.cst-card:hover {
-  border-color: #3b82f6;
-}
-.nn-card:hover {
-  border-color: #10b981;
-}
-.db-card:hover {
-  border-color: #3b82f6;
-}
-.db-card:hover .nav-action {
-  color: #3b82f6;
-}
 
+/* 左侧色条: 静止态即传达颜色归属，hover 后加粗 */
+.nav-card.sweep-card { border-left: 3px solid #3b82f6 !important; }
+.nav-card.sweep-card:hover { border-left-width: 5px !important; }
+
+.nav-card.cst-card { border-left: 3px solid #22a87a !important; }
+.nav-card.cst-card:hover { border-left-width: 5px !important; }
+
+.nav-card.nn-card { border-left: 3px solid #8b5cf6 !important; }
+.nav-card.nn-card:hover { border-left-width: 5px !important; }
+
+.nav-card.db-card { border-left: 3px solid #f59e0b !important; }
+.nav-card.db-card:hover { border-left-width: 5px !important; }
+
+.nav-card.lit-card { border-left: 3px solid #ec4899 !important; }
+.nav-card.lit-card:hover { border-left-width: 5px !important; }
 .nav-content {
   display: flex;
   align-items: center;
@@ -1139,7 +1147,7 @@ const currentStep = ref(1);
   margin: 0;
   color: var(--n-text-color-2);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 .nav-action {
   margin-top: 20px;
@@ -1147,13 +1155,6 @@ const currentStep = ref(1);
   font-weight: bold;
   color: var(--n-text-color-3);
 }
-.cst-card:hover .nav-action {
-  color: #3b82f6;
-}
-.nn-card:hover .nav-action {
-  color: #10b981;
-}
-
 /* 模块卡片 */
 .module-card {
   border-radius: 12px;
@@ -1165,11 +1166,24 @@ const currentStep = ref(1);
   align-items: center;
   font-size: 14px;
   color: var(--n-text-color-2);
+  line-height: 1.6;
 }
-.probe-label {
-  font-size: 12px;
-  color: var(--n-text-color-3);
-  margin-top: -10px;
+/* 系统探针进度环: 加深轨道让填充弧线更突出 */
+.home-container :deep(.n-progress-graph-line .n-progress-graph-line__rail) {
+  opacity: 0.12;
+}
+.home-container :deep(.n-progress-graph-line .n-progress-graph-line__fill) {
+  filter: brightness(1.1);
+}
+
+/* 所有数值展示统一等宽数字, 便于纵向对比 */
+.home-container :deep(.n-progress-text) {
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.home-container :deep(.n-descriptions td) {
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-size: 13px;
 }
 
 .nav-card {
@@ -1179,29 +1193,25 @@ const currentStep = ref(1);
   transition: color 0.3s ease;
 }
 
+/* hover: 色条保持 + 仅添加同色光晕, 不再覆盖边框 */
 .nav-card.sweep-card:hover {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3) !important;
-  transform: translateY(-4px); /* 悬浮时轻微上浮 */
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.25) !important;
+  transform: translateY(-4px);
 }
 .nav-card.sweep-card:hover .nav-action {
   color: #3b82f6;
 }
 
-
 .nav-card.cst-card:hover {
-  border-color: #10b981 !important;
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3) !important;
+  box-shadow: 0 0 20px rgba(34, 168, 122, 0.25) !important;
   transform: translateY(-4px);
 }
 .nav-card.cst-card:hover .nav-action {
-  color: #10b981;
+  color: #22a87a;
 }
 
-
 .nav-card.nn-card:hover {
-  border-color: #8b5cf6 !important;
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3) !important;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.25) !important;
   transform: translateY(-4px);
 }
 .nav-card.nn-card:hover .nav-action {
@@ -1209,18 +1219,15 @@ const currentStep = ref(1);
 }
 
 .nav-card.db-card:hover {
-  border-color: #f59e0b !important;
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3) !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25) !important;
   transform: translateY(-4px);
 }
 .nav-card.db-card:hover .nav-action {
   color: #f59e0b;
 }
 
-/* 文献助手专属卡片 hover 发光颜色 (粉红系) */
 .nav-card.lit-card:hover {
-  border-color: #ec4899 !important;
-  box-shadow: 0 0 20px rgba(236, 72, 153, 0.3) !important;
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.25) !important;
   transform: translateY(-4px);
 }
 .nav-card.lit-card:hover .nav-action {
@@ -1237,9 +1244,9 @@ const currentStep = ref(1);
   color: #f59e0b;
 }
 .result-panel.success {
-  background-color: rgba(16, 185, 129, 0.1);
-  border-color: #10b981;
-  color: #10b981;
+  background-color: rgba(34, 168, 122, 0.1);
+  border-color: #22a87a;
+  color: #22a87a;
 }
 /* ==========================================
    FAQ 使用手册样式
@@ -1261,7 +1268,7 @@ const currentStep = ref(1);
   color: #3b82f6;
 }
 .nn-title {
-  color: #10b981;
+  color: #22a87a;
 }
 
 .faq-group-title {
@@ -1327,7 +1334,7 @@ const currentStep = ref(1);
 }
 .faq-a-text {
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--n-text-color-2);
   margin-top: 2px;
 }

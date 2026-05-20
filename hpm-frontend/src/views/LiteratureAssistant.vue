@@ -168,8 +168,11 @@
     <div class="feature-main">
       <!-- 顶部配置面板 (极简状态) -->
       <div class="main-header" style="justify-content: space-between">
-        <div class="header-left">
-          <n-tag type="info" size="small" bordered>DeepSeek V4.0 Flash</n-tag>
+        <div class="header-left" style="display: flex; align-items: center; gap: 12px;">
+          <n-tag type="info" size="medium" bordered>DeepSeek V4.0 Flash</n-tag>
+        </div>
+        <div class="header-center">
+          <span class="header-chat-title">{{ currentChatTitle }}</span>
         </div>
 
         <!-- 新增:右侧用户头像与控制台 -->
@@ -201,26 +204,6 @@
               {{ currentUser ? currentUser.charAt(0).toUpperCase() : "U" }}
             </n-avatar>
           </n-dropdown>
-
-          <!-- 附件管理面板开关 -->
-          <n-badge
-            :value="currentChatFiles.length"
-            :max="99"
-            :show="currentChatFiles.length > 0"
-            style="cursor: pointer"
-          >
-            <n-button
-              quaternary
-              circle
-              size="small"
-              @click="showFilePanel = !showFilePanel"
-              :type="showFilePanel ? 'info' : 'default'"
-            >
-              <template #icon>
-                <n-icon size="18"><Paperclip /></n-icon>
-              </template>
-            </n-button>
-          </n-badge>
         </div>
       </div>
 
@@ -328,12 +311,12 @@
             v-model:value="inputText"
             type="textarea"
             :autosize="{ minRows: 2, maxRows: 6 }"
-            placeholder="输入您的问题... (支持拖拽或粘贴文件,如 PDF、TXT 等)"
+            placeholder="输入您的问题..."
             :bordered="false"
             @keyup.enter.exact="sendMessage"
             @paste="handlePaste"
             :disabled="isLoading"
-            style="background: transparent"
+            style="background: transparent; font-size: 15px; line-height: 1.7;"
           />
 
           <div
@@ -380,66 +363,6 @@
         </div>
       </div>
     </div>
-
-    <!-- ================= 右侧:附件管理面板(可收起) ================= -->
-    <transition name="file-panel-slide">
-      <div v-if="showFilePanel" class="feature-filesidebar">
-        <div class="filesidebar-header">
-          <span class="filesidebar-title">📎 附件管理</span>
-          <div class="filesidebar-actions">
-            <n-button
-              quaternary
-              size="tiny"
-              type="warning"
-              @click="clearSessionFiles"
-              v-if="currentChatFiles.length > 0"
-            >
-              清空
-            </n-button>
-            <n-button
-              quaternary
-              circle
-              size="tiny"
-              @click="showFilePanel = false"
-            >
-              <template #icon>
-                <n-icon size="16"><X /></n-icon>
-              </template>
-            </n-button>
-          </div>
-        </div>
-        <n-scrollbar class="filesidebar-body">
-          <div
-            v-for="f in currentChatFiles"
-            :key="f.id"
-            class="filesidebar-item"
-          >
-            <n-checkbox v-model:checked="f.selected" size="small" />
-            <span class="file-name" :title="f.name">{{ f.name }}</span>
-            <span class="file-size">{{
-              f.size > 1024 * 1024
-                ? (f.size / 1024 / 1024).toFixed(1) + "MB"
-                : (f.size / 1024).toFixed(0) + "KB"
-            }}</span>
-            <n-icon
-              size="14"
-              class="file-remove"
-              @click="removeSessionFile(f.id)"
-            >
-              <X />
-            </n-icon>
-          </div>
-          <div v-if="currentChatFiles.length === 0" class="file-empty-hint">
-            暂无附件,拖拽或粘贴文件到输入框即可添加。
-          </div>
-        </n-scrollbar>
-        <div class="filesidebar-footer">
-          <span class="filesidebar-tip" v-if="currentChatFiles.length > 0">
-            勾选的文件将在下一轮发送时一并解析
-          </span>
-        </div>
-      </div>
-    </transition>
   </div>
 </template>
 
@@ -567,18 +490,9 @@ const handleAuth = async () => {
 };
 
 // --- 新增附件相关状态 ---
-const showFilePanel = ref(false);
 const pendingFiles = ref([]);
 const fileInputRef = ref(null);
 const isDragging = ref(false);
-
-// 所有会话的文件库:{ [chatId]: [{ id, name, size, file: File, selected }] }
-const sessionFilesMap = ref({});
-
-// 当前会话的文件列表
-const currentChatFiles = computed(() => {
-  return sessionFilesMap.value[currentChatId.value] || [];
-});
 
 // 1. 点击触发资源管理器
 const triggerFileInput = () => {
@@ -636,43 +550,12 @@ const addFiles = (files) => {
   const accepted = files.length > remaining ? files.slice(0, remaining) : files;
   pendingFiles.value.push(...accepted);
 
-  // 同步记录到当前会话的文件库(侧边栏附件管理)
-  if (!sessionFilesMap.value[currentChatId.value]) {
-    sessionFilesMap.value[currentChatId.value] = [];
-  }
-  const existingNames = new Set(sessionFilesMap.value[currentChatId.value].map((x) => x.name));
-  for (const f of accepted) {
-    if (!existingNames.has(f.name)) {
-      sessionFilesMap.value[currentChatId.value].push({
-        id: Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-        name: f.name,
-        size: f.size,
-        file: f,
-        selected: true,
-      });
-      existingNames.add(f.name);
-    }
-  }
-
   messageUI.success(`已添加附件 (${pendingFiles.value.length}/${MAX_FILES})`);
 };
 
 // 移除附件
 const removeFile = (index) => {
   pendingFiles.value.splice(index, 1);
-};
-
-// 从侧边栏附件管理中移除
-const removeSessionFile = (fileId) => {
-  const list = sessionFilesMap.value[currentChatId.value];
-  if (!list) return;
-  const idx = list.findIndex((f) => f.id === fileId);
-  if (idx !== -1) list.splice(idx, 1);
-};
-
-// 清空当前会话的所有附件记录
-const clearSessionFiles = () => {
-  sessionFilesMap.value[currentChatId.value] = [];
 };
 
 // ================= 侧边栏重命名逻辑 =================
@@ -771,6 +654,11 @@ const currentMessages = computed(() => {
   return chat ? chat.messages : [];
 });
 
+const currentChatTitle = computed(() => {
+  const chat = chatHistories.value.find((c) => c.id === currentChatId.value);
+  return chat ? chat.title : "文献助手";
+});
+
 const scrollToBottom = async () => {
   await nextTick();
   if (scrollbarRef.value)
@@ -839,15 +727,7 @@ const sendMessage = async () => {
   }
 
   // 4. 在清空前,先把文件对象存到局部变量
-  //    包括:本次新拖拽/粘贴的(pendingFiles)+ 侧边栏历史文件中被勾选的
   const filesToSend = [...pendingFiles.value];
-  const pendingNames = new Set(pendingFiles.value.map((f) => f.name));
-  for (const sf of currentChatFiles.value) {
-    if (sf.selected && !pendingNames.has(sf.name)) {
-      filesToSend.push(sf.file);
-      pendingNames.add(sf.name);
-    }
-  }
 
   // 5. 清空输入框和底部的附件待发送区
   inputText.value = "";
@@ -949,6 +829,17 @@ const sendMessage = async () => {
   align-items: flex-start;
 }
 
+/* ================= 消息下方的操作按钮样式 ================= */
+.header-chat-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--n-text-color);
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 消息下方的操作按钮样式 */
 .msg-actions {
   display: flex;
@@ -985,6 +876,15 @@ const sendMessage = async () => {
 }
 
 /* ================= 侧边栏操作图标动效 ================= */
+/* 选中态强化: 亮色左条 + 背景提亮 */
+.saea-feature-page .history-item.is-active {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-left: 3px solid #3b82f6;
+  box-shadow: none !important;
+}
+.saea-feature-page .history-item {
+  border-left: 3px solid transparent;
+}
 .saea-feature-page .chat-actions .action-icon {
   transition: all 0.2s ease;
 }
@@ -1003,6 +903,14 @@ const sendMessage = async () => {
 .bubble {
   user-select: text !important;
   -webkit-user-select: text !important;
+  /* 覆盖 feature-layout.css 的 Material 阴影, 改用亚克力 */
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.bubble:hover {
+  transform: none !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12) !important;
 }
 
 /* 确保内部的 span 或 v-html 渲染的子元素也允许被选中 */
@@ -1010,14 +918,21 @@ const sendMessage = async () => {
   user-select: text !important;
   -webkit-user-select: text !important;
 }
-/* 用户气泡:最宽占 900px 容器的 85% */
+/* 用户气泡:保持品牌蓝但减弱阴影 */
 .message-item.user .bubble {
   max-width: 100% !important;
+  background: rgba(37, 99, 235, 0.85) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-/* AI 气泡:包含代码和长文本,可以允许占满 900px 容器 */
+/* AI 气泡: 亚克力玻璃底 */
 .message-item.ai .bubble {
   max-width: 100% !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* ================= Markdown 元素美化 ================= */
@@ -1113,120 +1028,21 @@ const sendMessage = async () => {
 }
 
 /* ================= 右侧附件管理面板样式 ================= */
+/* 输入区强化: 明亮边框为主，背景微透 */
+.saea-feature-page .input-wrapper {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  padding: 16px !important;
+}
+.saea-feature-page .input-wrapper:focus-within {
+  border-color: rgba(59, 130, 246, 0.6) !important;
+  box-shadow:
+    0 0 20px rgba(59, 130, 246, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
 .saea-feature-page {
   display: flex;
-}
-
-.feature-filesidebar {
-  width: 350px;
-  min-width: 350px;
-  border-left: 1px solid rgba(156, 163, 175, 0.15);
-  background: var(--n-card-color);
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-.filesidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 14px 8px;
-  border-bottom: 1px solid rgba(156, 163, 175, 0.1);
-}
-
-.filesidebar-title {
-  font-size: 14px;
-  font-weight: bold;
-  color: var(--n-text-color-2);
-}
-
-.filesidebar-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.filesidebar-body {
-  flex: 1;
-  padding: 8px 10px;
-  overflow-y: auto;
-}
-
-.filesidebar-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 6px;
-  border-radius: 6px;
-  font-size: 13px;
-  transition: background 0.15s;
-  margin-bottom: 2px;
-}
-
-.filesidebar-item:hover {
-  background: rgba(156, 163, 175, 0.08);
-}
-
-.filesidebar-item .file-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--n-text-color-1);
-}
-
-.filesidebar-item .file-size {
-  font-size: 11px;
-  color: var(--n-text-color-4);
-  flex-shrink: 0;
-}
-
-.filesidebar-item .file-remove {
-  cursor: pointer;
-  opacity: 0.4;
-  transition: opacity 0.15s;
-  flex-shrink: 0;
-}
-
-.filesidebar-item .file-remove:hover {
-  opacity: 1;
-  color: #e74c3c;
-}
-
-.filesidebar-footer {
-  padding: 8px 14px 12px;
-  border-top: 1px solid rgba(156, 163, 175, 0.1);
-}
-
-.filesidebar-tip {
-  font-size: 11px;
-  color: var(--n-text-color-4);
-  display: block;
-  text-align: center;
-}
-
-.file-empty-hint {
-  font-size: 13px;
-  color: var(--n-text-color-4);
-  text-align: center;
-  padding: 24px 12px;
-  line-height: 1.6;
-}
-
-/* 右面板滑入动画 */
-.file-panel-slide-enter-active,
-.file-panel-slide-leave-active {
-  transition: all 0.25s ease;
-}
-.file-panel-slide-enter-from,
-.file-panel-slide-leave-to {
-  opacity: 0;
-  width: 0;
-  min-width: 0;
-  padding: 0;
-  border: none;
-  overflow: hidden;
 }
 </style>
