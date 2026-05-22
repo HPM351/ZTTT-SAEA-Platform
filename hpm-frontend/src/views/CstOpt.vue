@@ -371,7 +371,7 @@
                     v-if="target.mode !== 'display_only'"
                     style="
                       background: rgba(34, 168, 122, 0.05);
-                      padding: 14px;
+                      padding: 12px;
                       border-radius: 8px;
                       border: 1px dashed rgba(34, 168, 122, 0.3);
                       margin-bottom: 16px;
@@ -379,7 +379,7 @@
                   >
                     <div
                       style="
-                        font-size: 13px;
+                        font-size: 14px;
                         font-weight: bold;
                         color: #22a87a;
                         margin-bottom: 12px;
@@ -394,7 +394,7 @@
                           :step="1"
                         >
                           <template #prefix
-                            ><span class="text-sub" style="font-size: 13px"
+                            ><span class="text-sub" style="font-size: 14px"
                               >基准尺 (Scale)</span
                             ></template
                           >
@@ -406,7 +406,7 @@
                           :step="0.5"
                         >
                           <template #prefix
-                            ><span class="text-sub" style="font-size: 13px"
+                            ><span class="text-sub" style="font-size: 14px"
                               >权重 (Weight)</span
                             ></template
                           >
@@ -423,7 +423,7 @@
                       <n-gi>
                         <n-input-number v-model:value="target.target_val">
                           <template #prefix
-                            ><span class="text-sub" style="font-size: 13px"
+                            ><span class="text-sub" style="font-size: 14px"
                               >靶心值 (Target)</span
                             ></template
                           >
@@ -435,7 +435,7 @@
                           :step="0.01"
                         >
                           <template #prefix
-                            ><span class="text-sub" style="font-size: 13px"
+                            ><span class="text-sub" style="font-size: 14px"
                               >完美容差 ±</span
                             ></template
                           >
@@ -448,7 +448,7 @@
                     v-if="target.mode !== 'display_only'"
                     style="
                       background: rgba(245, 158, 11, 0.05);
-                      padding: 14px;
+                      padding: 12px;
                       border-radius: 8px;
                       border: 1px dashed rgba(245, 158, 11, 0.3);
                     "
@@ -463,7 +463,7 @@
                     >
                       <span
                         style="
-                          font-size: 13px;
+                          font-size: 14px;
                           font-weight: bold;
                           color: #f59e0b;
                         "
@@ -481,7 +481,7 @@
                               placeholder="无"
                             >
                               <template #prefix
-                                ><span class="text-sub" style="font-size: 13px"
+                                ><span class="text-sub" style="font-size: 14px"
                                   >下限 (Min)</span
                                 ></template
                               >
@@ -493,7 +493,7 @@
                               placeholder="无"
                             >
                               <template #prefix
-                                ><span class="text-sub" style="font-size: 13px"
+                                ><span class="text-sub" style="font-size: 14px"
                                   >上限 (Max)</span
                                 ></template
                               >
@@ -507,7 +507,7 @@
                               placeholder="无"
                             >
                               <template #prefix
-                                ><span class="text-sub" style="font-size: 13px"
+                                ><span class="text-sub" style="font-size: 14px"
                                   >最大偏离容差 (Max Diff ±)</span
                                 ></template
                               >
@@ -524,7 +524,7 @@
                               margin-bottom: 4px;
                             "
                           >
-                            <span class="text-sub" style="font-size: 13px"
+                            <span class="text-sub" style="font-size: 14px"
                               >波动容差模式</span
                             >
                             <n-switch
@@ -542,7 +542,7 @@
                             placeholder="无(默认不限)"
                           >
                             <template #prefix>
-                              <span class="text-sub" style="font-size: 13px">
+                              <span class="text-sub" style="font-size: 14px">
                                 {{
                                   target.constraints.fluc_type === "absolute"
                                     ? "最大波动 (绝对值)"
@@ -558,7 +558,7 @@
                             placeholder="无(默认10%)"
                           >
                             <template #prefix
-                              ><span class="text-sub" style="font-size: 13px"
+                              ><span class="text-sub" style="font-size: 14px"
                                 >最大杂模占比 (%)</span
                               ></template
                             >
@@ -726,7 +726,7 @@
                               <div
                                 v-if="config.algo.ga.useAutoMut"
                                 style="
-                                  padding: 12px 14px 10px 14px;
+                                  padding: 12px 14px 8px 14px;
                                   background: rgba(0, 0, 0, 0.15);
                                   border-radius: 8px;
                                   border: 1px dashed var(--n-border-color);
@@ -862,7 +862,7 @@
                               <div
                                 v-if="config.algo.bo.useAutoAcq"
                                 style="
-                                  padding: 10px 12px;
+                                  padding: 8px 12px;
                                   background: rgba(34, 168, 122, 0.1);
                                   border-radius: 8px;
                                   border: 1px dashed #22a87a;
@@ -935,7 +935,7 @@
                   >
                     <div
                       style="
-                        font-size: 13px;
+                        font-size: 14px;
                         color: var(--n-text-color-3);
                         margin-bottom: 12px;
                         line-height: 1.5;
@@ -959,7 +959,7 @@
                         type="textarea"
                         placeholder='例如: {"radius_a": 50.0}'
                         :autosize="{ minRows: 4, maxRows: 8 }"
-                        style="font-family: monospace"
+                        style="font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace"
                       />
                     </n-form-item>
                   </n-collapse-item>
@@ -1125,7 +1125,7 @@
                 <span class="card-title" style="white-space: nowrap"
                   >波形审查台
                   <span
-                    style="font-weight: normal; font-size: 13px"
+                    style="font-weight: normal; font-size: 14px"
                     class="text-sub"
                     >| Gen: {{ inspectGen }} - No.{{ inspectInd }}</span
                   ></span
@@ -1199,7 +1199,7 @@
               style="margin-top: 4px; align-items: center"
             >
               <span
-                style="font-size: 13px; margin-right: 12px; flex-shrink: 0"
+                style="font-size: 14px; margin-right: 12px; flex-shrink: 0"
                 class="text-sub"
                 >组合参数:</span
               >
@@ -1215,16 +1215,16 @@
                   type="info"
                   :bordered="false"
                   style="
-                    font-family: monospace;
-                    font-size: 13px;
-                    padding: 0 10px;
+                    font-family: var(--font-mono);
+                    font-size: 14px;
+                    padding: 0 8px;
                   "
                 >
                   {{ k }}:
                   {{ typeof v === "number" && v % 1 !== 0 ? v.toFixed(3) : v }}
                 </n-tag>
               </div>
-              <span v-else style="font-size: 13px" class="text-sub"
+              <span v-else style="font-size: 14px" class="text-sub"
                 >等待数据传入...</span
               >
             </div>
@@ -1262,7 +1262,7 @@
               >
                 <span
                   class="text-sub"
-                  style="font-size: 12px; font-family: monospace"
+                  style="font-size: 12px; font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace"
                   >[动态遥测]</span
                 >
                 <n-tag
@@ -1271,7 +1271,7 @@
                   type="info"
                   size="small"
                   :bordered="false"
-                  style="font-family: monospace; font-weight: bold"
+                  style="font-family: var(--font-mono); font-weight: bold"
                 >
                   {{ key }}: {{ val }}
                 </n-tag>
@@ -1378,7 +1378,7 @@
                 />
                 <span
                   style="
-                    font-size: 13px;
+                    font-size: 14px;
                     font-weight: bold;
                     width: 65px;
                     display: inline-block;
@@ -1535,16 +1535,11 @@ const stopOptimization = async () => {
 };
 const isDarkMode = inject("globalTheme", ref(true));
 const islandState = inject("islandState");
-const historyPathOptions = [
-  {
-    label: "F:\\cst files\\ACO for report\\ACO FR.cst",
-    value: "F:\\cst files\\ACO for report\\ACO FR.cst",
-  },
-];
+const historyPathOptions = [];
 const historyTaskOptions = ref([]);
 const config = reactive({
   selectedHistoryPath: null,
-  cstPath: "F:\\cst files\\ACO for report\\ACO FR.cst",
+  cstPath: "",
   selectedHistoryTask: null,
   taskName: "Run_001",
   paramsList: [
@@ -1980,7 +1975,7 @@ const initCharts = () => {
 
             let metricsHtml = "";
             for (let k in d[5]) {
-              metricsHtml += `${k}: <span style="color:#10b981; font-weight:bold">${Number(d[5][k]).toFixed(3)}</span><br/>`;
+              metricsHtml += `${k}: <span style="color:#22a87a; font-weight:bold">${Number(d[5][k]).toFixed(3)}</span><br/>`;
             }
 
             let paramHtml = "";
@@ -1997,14 +1992,14 @@ const initCharts = () => {
               }
             }
 
-            return `<div style="font-family: monospace;">
+            return `<div style="font-family: var(--font-mono);">
                     <b>Gen ${d[3]} - No.${d[4]}</b><br/>
                     Score: <span style="color:#ef4444">${Number(d[7]).toFixed(2)}</span><br/>
                     <hr style="margin:4px 0; border:0; border-top:1px dashed rgba(255,255,255,0.2)" />
                     ${metricsHtml}
                     <hr style="margin:4px 0; border:0; border-top:1px dashed rgba(255,255,255,0.2)" />
                     <span style="font-size:12px; color:var(--n-text-color-3);">[Opt Params]</span><br/>
-                    ${paramHtml || "<span style='color: gray; font-size: 11px;'>暂无参数</span>"}
+                    ${paramHtml || "<span style='color: gray; font-size: 12px;'>暂无参数</span>"}
                   </div>`;
           },
         },
@@ -2087,7 +2082,7 @@ const initCharts = () => {
     // 动态生成 Y 轴和折线 Series
     const yAxisArr = [];
     const seriesArr = [];
-    const colors = ["#10b981", "#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444"];
+    const colors = ["#22a87a", "#f59e0b", "#3b82f6", "#8b5cf6", "#ef4444"];
 
     config.targetsList.forEach((t, idx) => {
       const c = colors[idx % colors.length];
@@ -2281,7 +2276,7 @@ const updateInspectorChart = () => {
         ? "#8b5cf6"
         : isFft
           ? "#ef4444"
-          : "#10b981";
+          : "#22a87a";
 
       option.xAxis.name = isFft ? "Freq (GHz)" : "Time (ns)";
       option.yAxis.name = currentTab;
@@ -3085,7 +3080,7 @@ watch(isDarkMode, () => {
   border-top: 1px dashed var(--n-border-color);
 }
 .fix-label {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--n-text-color-2);
   white-space: nowrap;
 }
@@ -3116,7 +3111,7 @@ watch(isDarkMode, () => {
 }
 :deep(.n-form-item .n-form-item-label) {
   font-weight: 500;
-  font-size: 13px;
+  font-size: 14px;
   margin-bottom: 6px;
 }
 
@@ -3284,7 +3279,7 @@ watch(isDarkMode, () => {
   }
 }
 .placeholder-text {
-  font-family: monospace;
+  font-family: var(--font-mono);
   color: var(--n-text-color-3);
 }
 
@@ -3305,7 +3300,7 @@ watch(isDarkMode, () => {
 
 /* 终端样式 */
 .terminal-card {
-  border-color: rgba(16, 185, 129, 0.3);
+  border-color: rgba(34, 168, 122, 0.3);
 }
 .log-window {
   flex: 1;
@@ -3324,7 +3319,7 @@ watch(isDarkMode, () => {
   width: 6px;
 }
 .log-window::-webkit-scrollbar-thumb {
-  background: rgba(16, 185, 129, 0.4);
+  background: rgba(34, 168, 122, 0.4);
   border-radius: 3px;
 }
 .log-window::-webkit-scrollbar-track {

@@ -7,18 +7,21 @@
         <template #unchecked-icon>☀️</template>
       </n-switch>
     </div>
-    <n-space vertical :size="24">
+    <n-space vertical :size="32">
       <div class="welcome-header">
         <h1 class="glow-text">ZTTT SAEA Platform</h1>
         <p class="sub-title">基于代理模型辅助进化算法的微波器件智能优化平台</p>
       </div>
 <!-- ================= 模块 2: 核心功能导航卡片 (扫参/优化/神经网络/数据库) ================= -->
-      <n-grid :x-gap="24" :y-gap="24" :cols="2">
+      <div class="card-grid-wrap">
+      <n-grid :x-gap="24" :y-gap="24" :cols="2" style="position: relative; z-index: 1;">
         <n-gi>
           <n-card
             class="nav-card sweep-card"
             hoverable
             @click="goToPage('CstSweep')"
+            @mousemove="handleCardMouseMove($event, 'sweep')"
+            @mouseleave="handleCardMouseLeave('sweep')"
           >
             <div class="nav-content">
               <div class="custom-icon-box">
@@ -42,6 +45,8 @@
             class="nav-card cst-card"
             hoverable
             @click="goToPage('CstOpt')"
+            @mousemove="handleCardMouseMove($event, 'cst')"
+            @mouseleave="handleCardMouseLeave('cst')"
           >
             <div class="nav-content">
               <div class="custom-icon-box">
@@ -65,6 +70,8 @@
             class="nav-card nn-card"
             hoverable
             @click="goToPage('NeuralNet')"
+            @mousemove="handleCardMouseMove($event, 'nn')"
+            @mouseleave="handleCardMouseLeave('nn')"
           >
             <div class="nav-content">
               <div class="custom-icon-box">
@@ -88,6 +95,8 @@
             class="nav-card db-card"
             hoverable
             @click="goToPage('DataCenter')"
+            @mousemove="handleCardMouseMove($event, 'db')"
+            @mouseleave="handleCardMouseLeave('db')"
           >
             <div class="nav-content">
               <div class="custom-icon-box">
@@ -112,6 +121,8 @@
             class="nav-card lit-card"
             hoverable
             @click="goToPage('LiteratureAssistant')"
+            @mousemove="handleCardMouseMove($event, 'lit')"
+            @mouseleave="handleCardMouseLeave('lit')"
           >
             <div class="nav-content">
               <div class="custom-icon-box">
@@ -130,6 +141,7 @@
           </n-card>
         </n-gi>
       </n-grid>
+      </div>
 
       <n-grid :x-gap="24" :y-gap="24" :cols="3">
 <!-- ================= 模块 3: 系统探针面板 (API/CST/硬件负载) ================= -->
@@ -269,48 +281,35 @@
               </div>
             </template>
 
-            <n-alert type="info" show-icon style="margin-bottom: 20px">
-              提示：在开始神经网络优化前，请确保至少已通过 CST
-              传统算法积累了足量的高保真样本数据。
-            </n-alert>
+            <div class="quickstart-hint">
+              <span class="hint-icon">💡</span>
+              <span>在开始神经网络优化前，请确保至少已通过 CST 传统算法积累了足量的高保真样本数据。</span>
+            </div>
 
-            <n-steps
-              :current="currentStep"
-              status="process"
-              style="margin-bottom: 24px"
-            >
-              <n-step
-                title="定义问题"
-                description="在 CST 模式设置设计变量、约束边界与优化目标。"
-                @click="currentStep = 1"
-                style="cursor: pointer"
-              />
-              <n-step
-                title="联合仿真"
-                description="启动联合仿真模式，调用 CST 自动寻优并沉淀数据池。"
-                @click="currentStep = 2"
-                style="cursor: pointer"
-              />
-              <n-step
-                title="代理模型"
-                description="切换至神经网络模式，采用SAEA实现代理辅助进化。"
-                @click="currentStep = 3"
-                style="cursor: pointer"
-              />
-            </n-steps>
+            <div class="quickstart-steps">
+              <div
+                v-for="(step, idx) in quickstartSteps"
+                :key="idx"
+                class="qs-step"
+                :class="{ 'is-active': currentStep === idx + 1 }"
+                @click="currentStep = idx + 1"
+              >
+                <div class="qs-step-num">{{ idx + 1 }}</div>
+                <div class="qs-step-content">
+                  <div class="qs-step-title">{{ step.title }}</div>
+                  <div class="qs-step-desc">{{ step.desc }}</div>
+                </div>
+                <div v-if="idx < 2" class="qs-step-line"></div>
+              </div>
+            </div>
 
-            <div
-              style="text-align: center; margin-top: 16px; padding-bottom: 10px"
-            >
+            <div style="text-align: center; margin-top: 20px; padding-bottom: 8px">
               <n-button
-                type="primary"
-                dashed
                 size="large"
+                class="quickstart-btn"
                 @click="showDocs = true"
               >
-                <template #icon
-                  ><n-icon><BookOpen /></n-icon
-                ></template>
+                <template #icon><n-icon><BookOpen /></n-icon></template>
                 查看完整平台手册与打分机制公示
               </n-button>
             </div>
@@ -635,7 +634,20 @@
                   <n-collapse-item name="a6">
                     <template #header
                       ><span class="faq-q"
-                        >6. 在线学习监控台(Online Monitor)</span
+                        >6. 代际收敛箱线图 (Boxplot)</span
+                      ></template
+                    >
+                    <div class="faq-a-box">
+                      <div class="faq-a-text">
+                        <b>功能：</b> 统计每一代种群的指标分布健康度。<br /><b>读法：</b>
+                        箱体展示四分位范围，越窄说明该代个体越集中（收敛）；须线末端为离群点。若箱体随代数逐渐下移且变窄，说明算法正在稳定收敛。查看频率指标时会额外标注一条绿色靶心基准线，便于判断是否达标。
+                      </div>
+                    </div>
+                  </n-collapse-item>
+                  <n-collapse-item name="a7">
+                    <template #header
+                      ><span class="faq-q"
+                        >7. 在线学习监控台(Online Monitor)</span
                       ></template
                     >
                     <div class="faq-a-box">
@@ -643,8 +655,7 @@
                         <b>功能：</b> 数据反向微调代理模型过程可视化。<br /><b
                           >读法：</b
                         >
-                        记录了每一代结果返回微调代理模型后，模型的损失函数以及预测误差。通常前半部分是二者都会有很大波动，在自适应变异策略离开了均匀变异或者演化进行到后半段时，曲线会
-                        逐渐趋于稳定。数据库中保留了一次较为标准的在线学习微调的曲线图，名称为“测试V2”。
+                        记录了每一代结果返回微调代理模型后，模型的损失函数以及预测误差。通常前半部分是二者都会有很大波动，在自适应变异策略离开了均匀变异或者演化进行到后半段时，曲线会逐渐趋于稳定。数据库中保留了一次较为标准的在线学习微调的曲线图，名称为“测试V2”。
                       </div>
                     </div>
                   </n-collapse-item>
@@ -661,7 +672,7 @@
               <n-alert
                 type="info"
                 :bordered="false"
-                style="margin-bottom: 16px; font-size: 15px; line-height: 1.6;"
+                style="margin-bottom: 16px; font-size: 14px; line-height: 1.6;"
               >
                 平台已升级至
                 <b>V3.0双轨评分</b>。对GA\PSO与BO采取两种评分曲线的拟合，较好的满足了不同算法对于评分梯度的需求。
@@ -669,7 +680,7 @@
               </n-alert>
 
               <n-h3>1. 基础适应度 (Base Fitness)</n-h3>
-              <p style="font-size: 15px; color: var(--n-text-color-3)">
+              <p style="font-size: 14px; color: var(--n-text-color-3)">
                 无论个体死活，引擎首先基于基准尺 (Scale)
                 计算无视死区的基础得分，作为保证边界连续性的锚点：
               </p>
@@ -681,7 +692,7 @@
                   font-family: monospace;
                   margin-bottom: 20px;
                   line-height: 1.8;
-                  font-size: 15px;
+                  font-size: 14px;
                 "
               >
                 <span style="color: #22a87a; font-weight: bold"
@@ -707,7 +718,7 @@
               </div>
 
               <n-h3>2. 时频域软硬双重惩罚 (Soft/Hard Penalties)</n-h3>
-              <p style="font-size: 15px; color: var(--n-text-color-3)">
+              <p style="font-size: 14px; color: var(--n-text-color-3)">
                 引入物理波形质量约束。在触碰绝对死区前，引擎会施加非线性缓坡惩罚过滤劣质波形：
               </p>
               <div
@@ -718,7 +729,7 @@
                   font-family: monospace;
                   margin-bottom: 20px;
                   line-height: 1.8;
-                  font-size: 15px;
+                  font-size: 14px;
                 "
               >
                 <span style="color: #f59e0b; font-weight: bold">时域波动率 (Fluctuation)：</span><br />
@@ -731,7 +742,7 @@
               </div>
 
               <n-h3>3. 刚性拦截与惩罚融合 (Dead Zone)</n-h3>
-              <p style="font-size: 15px; color: var(--n-text-color-3)">
+              <p style="font-size: 14px; color: var(--n-text-color-3)">
                 计算最终越界深度 (Depth)，根据驱动算法分发不同的物理界限惩罚：
               </p>
               <div
@@ -742,7 +753,7 @@
                   font-family: monospace;
                   margin-bottom: 20px;
                   line-height: 1.8;
-                  font-size: 15px;
+                  font-size: 14px;
                 "
               >
                 <span style="color: #ef4444; font-weight: bold"
@@ -758,7 +769,7 @@
               </div>
 
               <n-h3>4. 综合结算与地形激活 (Terrain Activation)</n-h3>
-              <p style="font-size: 15px; color: var(--n-text-color-3)">
+              <p style="font-size: 14px; color: var(--n-text-color-3)">
                 为激发贝叶斯优化中高斯过程 (GP)
                 核函数的寻优积极性，人为拉开方差，防止微小梯度淹没于浮点噪声：
               </p>
@@ -769,7 +780,7 @@
                   border-radius: 8px;
                   font-family: monospace;
                   text-align: center;
-                  font-size: 18px;
+                  font-size: 16px;
                   font-weight: bold;
                 "
               >
@@ -824,6 +835,18 @@ const restoreTaskDisplay = () => {
 const API_BASE = "/api";
 const goToPage = (routeName) => {
   router.push({ name: routeName });
+};
+
+// 液态玻璃：鼠标追踪折射光晕
+const handleCardMouseMove = (e, cardName) => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const x = ((e.clientX - rect.left) / rect.width) * 100;
+  const y = ((e.clientY - rect.top) / rect.height) * 100;
+  e.currentTarget.style.setProperty('--mouse-x', `${x}%`);
+  e.currentTarget.style.setProperty('--mouse-y', `${y}%`);
+};
+const handleCardMouseLeave = (cardName) => {
+  // 光晕淡出由 CSS transition 处理
 };
 
 // ==========================================
@@ -947,8 +970,8 @@ const taskColumns = [
     title: "总体进度 (Progress)",
     key: "progress",
     render(row) {
-      if (row.status === "error") return h("span", { style: "color: #ef4444; font-size: 13px;" }, "异常中断");
-      if (row.status === "stopped") return h("span", { style: "color: #f59e0b; font-size: 13px;" }, "手动终止");
+      if (row.status === "error") return h("span", { style: "color: #ef4444; font-size: 14px;" }, "异常中断");
+      if (row.status === "stopped") return h("span", { style: "color: #f59e0b; font-size: 14px;" }, "手动终止");
       
       const pct = row.totalGen ? Math.round((row.currentGen / row.totalGen) * 100) : 0;
       return h(NProgress, {
@@ -1045,6 +1068,12 @@ onUnmounted(() => {
 });
 
 const currentStep = ref(1);
+
+const quickstartSteps = [
+  { title: "定义问题", desc: "在 CST 模式设置设计变量、约束边界与优化目标。" },
+  { title: "联合仿真", desc: "启动联合仿真模式，调用 CST 自动寻优并沉淀数据池。" },
+  { title: "代理模型", desc: "切换至神经网络模式，采用 SAEA 实现代理辅助进化。" },
+];
 </script>
 
 <style scoped>
@@ -1053,21 +1082,48 @@ const currentStep = ref(1);
   max-width: 1400px;
   margin: 0 auto;
   min-height: 100vh;
-  /* 极微弱的暖色偏移, 缓解长时间注视暗色界面的冷感 */
-  background-image:
-    radial-gradient(ellipse at 50% 0%, rgba(180, 140, 100, 0.04) 0%, transparent 70%),
-    radial-gradient(ellipse at 80% 100%, rgba(160, 130, 90, 0.03) 0%, transparent 50%);
+  background-color: transparent;
+  position: relative;
+}
+/* 卡片区域背景色斑 */
+.card-grid-wrap {
+  position: relative;
+  overflow: visible;
+}
+.card-grid-wrap::before {
+  content: '';
+  position: absolute;
+  top: -300px;
+  left: -400px;
+  right: -400px;
+  bottom: -300px;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 700px 500px at 15% 30%, rgba(59, 130, 246, 0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 600px 400px at 80% 25%, rgba(34, 168, 122, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 400px at 45% 75%, rgba(139, 92, 246, 0.09) 0%, transparent 70%),
+    radial-gradient(ellipse 450px 350px at 85% 80%, rgba(245, 158, 11, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 300px at 25% 85%, rgba(236, 72, 153, 0.08) 0%, transparent 70%);
+  animation: mesh-drift 16s ease-in-out infinite alternate;
+}
+@keyframes mesh-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.04); }
+  66% { transform: translate(-20px, 15px) scale(0.97); }
+  100% { transform: translate(10px, -8px) scale(1.01); }
 }
 
 /* 欢迎区样式 */
 .welcome-header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 .glow-text {
   font-size: 36px;
-  font-weight: 800;
+  font-weight: 900;
   margin: 0;
+  font-family: 'Outfit', 'MiSans', sans-serif;
   background: linear-gradient(90deg, #3b82f6, #22a87a);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1079,40 +1135,102 @@ const currentStep = ref(1);
   margin-top: 8px;
 }
 
-/* 导航大卡片 */
+/* 导航大卡片 — 液态玻璃基础 */
 .nav-card {
+  --card-color: #9ca3af;
+  --card-color-faint: rgba(156, 163, 175, 0.08);
+  position: relative;
   border-radius: 12px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  background-color: var(--n-card-color);
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  /* 静止态降低阴影，让卡片“退后半步”，减少同时抢夺注意力 */
+  border-left: 3px solid var(--card-color) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.10),
-    inset 0 1px 1px rgba(255, 255, 255, 0.04) !important;
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  overflow: hidden;
+  transition: border-left-width 0.3s, all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+/* 伪透射光晕：跟随鼠标，hover 时显著提亮 */
+.nav-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle 180px at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    color-mix(in srgb, var(--card-color) 18%, transparent) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+/* 静态时的微光漂移：即使没有鼠标悬停，卡片也有缓慢的呼吸感 */
+@keyframes card-shimmer {
+  0%   { opacity: 0.12; }
+  50%  { opacity: 0.22; }
+  100% { opacity: 0.12; }
+}
+.nav-card:not(:hover)::after {
+  animation: card-shimmer 8s ease-in-out infinite;
+  /* 静态光晕固定在卡片中心 */
+  background: radial-gradient(
+    circle 200px at 50% 50%,
+    color-mix(in srgb, var(--card-color) 10%, transparent) 0%,
+    transparent 70%
+  ) !important;
+}
+.nav-card:hover::after {
+  animation: none;
+  opacity: 1;
+}
+
+/* 顶部折射高光边缘：模拟玻璃上沿入射光 */
+.nav-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 30%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.18) 70%,
+    transparent 100%
+  );
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  z-index: 1;
+}
+.nav-card:hover::before {
+  opacity: 1;
+}
+/* 左侧折射色条 + hover 状态 */
 .nav-card:hover {
-  transform: translateY(-5px);
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-left-color: var(--card-color) !important;
+  border-left-width: 4px !important;
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
   box-shadow:
-    0 12px 28px rgba(0, 0, 0, 0.3),
-    inset 0 1px 2px rgba(255, 255, 255, 0.15) !important;
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 0 32px color-mix(in srgb, var(--card-color) 15%, transparent) !important;
+  transform: translateY(-4px) scale(1.01);
 }
 
-/* 左侧色条: 静止态即传达颜色归属，hover 后加粗 */
-.nav-card.sweep-card { border-left: 3px solid #3b82f6 !important; }
-.nav-card.sweep-card:hover { border-left-width: 5px !important; }
-
-.nav-card.cst-card { border-left: 3px solid #22a87a !important; }
-.nav-card.cst-card:hover { border-left-width: 5px !important; }
-
-.nav-card.nn-card { border-left: 3px solid #8b5cf6 !important; }
-.nav-card.nn-card:hover { border-left-width: 5px !important; }
-
-.nav-card.db-card { border-left: 3px solid #f59e0b !important; }
-.nav-card.db-card:hover { border-left-width: 5px !important; }
-
-.nav-card.lit-card { border-left: 3px solid #ec4899 !important; }
-.nav-card.lit-card:hover { border-left-width: 5px !important; }
+/* 各卡片颜色配置 */
+.nav-card.sweep-card { --card-color: #3b82f6; --card-color-faint: rgba(59, 130, 246, 0.1); }
+.nav-card.cst-card { --card-color: #22a87a; --card-color-faint: rgba(34, 168, 122, 0.1); }
+.nav-card.nn-card { --card-color: #8b5cf6; --card-color-faint: rgba(139, 92, 246, 0.1); }
+.nav-card.db-card { --card-color: #f59e0b; --card-color-faint: rgba(245, 158, 11, 0.1); }
+.nav-card.lit-card { --card-color: #ec4899; --card-color-faint: rgba(236, 72, 153, 0.1); }
 .nav-content {
   display: flex;
   align-items: center;
@@ -1126,10 +1244,36 @@ const currentStep = ref(1);
   align-items: center;
   width: 72px;
   height: 72px;
-  background: var(--n-action-color); 
+  background: var(--n-action-color);
   border-radius: 12px;
-  padding: 10px;
+  padding: 8px;
   flex-shrink: 0;
+}
+/* 液态玻璃：图标容器做第二层玻璃 */
+.nav-card .custom-icon-box {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+.nav-card:hover .custom-icon-box {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(0, 0, 0, 0.15),
+    0 0 20px color-mix(in srgb, var(--card-color) 12%, transparent);
+  transform: translateY(-1px);
 }
 .custom-logo-img {
   width: 100%;
@@ -1141,6 +1285,7 @@ const currentStep = ref(1);
 .nav-text h3 {
   margin: 0 0 8px 0;
   font-size: 20px;
+  font-weight: 700;
   color: var(--n-text-color);
 }
 .nav-text p {
@@ -1155,10 +1300,105 @@ const currentStep = ref(1);
   font-weight: bold;
   color: var(--n-text-color-3);
 }
-/* 模块卡片 */
+/* ============================
+   模块卡片 — 液态玻璃（亮暗自适应）
+   ============================ */
 .module-card {
-  border-radius: 12px;
+  border-radius: 14px;
   height: 100%;
+  position: relative;
+  overflow: hidden;
+  /* 暗色基底（默认） */
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05) !important;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+}
+.module-card:hover {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-2px);
+}
+/* 顶部折射高光 */
+.module-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 30%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.15) 70%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  z-index: 1;
+}
+.module-card:hover::before {
+  opacity: 1;
+}
+
+/* ---- 亮色模式适配 ---- */
+.light-mode .module-card {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.02) !important;
+}
+.light-mode .module-card:hover {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03) !important;
+}
+.light-mode .module-card::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.7) 30%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.7) 70%,
+    transparent 100%
+  );
+}
+
+/* ---- 分段头部 (segmented header) 玻璃化 ---- */
+.module-card :deep(.n-card-header) {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: rgba(255, 255, 255, 0.02);
+}
+.light-mode .module-card :deep(.n-card-header) {
+  border-bottom-color: rgba(0, 0, 0, 0.05) !important;
+  background: rgba(255, 255, 255, 0.3);
+}
+.module-card :deep(.n-card-header__main) {
+  font-size: 16px;
+  font-weight: 700;
+}
+/* 分段卡片的 content 区域保持透明 */
+.module-card :deep(.n-card__content) {
+  background: transparent !important;
+}
+.module-card :deep(.n-card-segmented) {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 .status-row {
   display: flex;
@@ -1183,56 +1423,19 @@ const currentStep = ref(1);
 }
 .home-container :deep(.n-descriptions td) {
   font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
-  font-size: 13px;
+  font-size: 14px;
 }
 
-.nav-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
 .nav-action {
   transition: color 0.3s ease;
 }
 
-/* hover: 色条保持 + 仅添加同色光晕, 不再覆盖边框 */
-.nav-card.sweep-card:hover {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.25) !important;
-  transform: translateY(-4px);
-}
-.nav-card.sweep-card:hover .nav-action {
-  color: #3b82f6;
-}
-
-.nav-card.cst-card:hover {
-  box-shadow: 0 0 20px rgba(34, 168, 122, 0.25) !important;
-  transform: translateY(-4px);
-}
-.nav-card.cst-card:hover .nav-action {
-  color: #22a87a;
-}
-
-.nav-card.nn-card:hover {
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.25) !important;
-  transform: translateY(-4px);
-}
-.nav-card.nn-card:hover .nav-action {
-  color: #8b5cf6;
-}
-
-.nav-card.db-card:hover {
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25) !important;
-  transform: translateY(-4px);
-}
-.nav-card.db-card:hover .nav-action {
-  color: #f59e0b;
-}
-
-.nav-card.lit-card:hover {
-  box-shadow: 0 0 20px rgba(236, 72, 153, 0.25) !important;
-  transform: translateY(-4px);
-}
-.nav-card.lit-card:hover .nav-action {
-  color: #ec4899;
-}
+/* hover: 箭头跟随卡片主色 */
+.nav-card.sweep-card:hover .nav-action { color: #3b82f6; }
+.nav-card.cst-card:hover .nav-action { color: #22a87a; }
+.nav-card.nn-card:hover .nav-action { color: #8b5cf6; }
+.nav-card.db-card:hover .nav-action { color: #f59e0b; }
+.nav-card.lit-card:hover .nav-action { color: #ec4899; }
 .result-panel.error {
   background-color: rgba(244, 63, 94, 0.1);
   border-color: #f43f5e;
@@ -1255,8 +1458,8 @@ const currentStep = ref(1);
   margin-bottom: 16px;
 }
 .faq-module-title {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1272,8 +1475,8 @@ const currentStep = ref(1);
 }
 
 .faq-group-title {
-  font-size: 15px;
-  font-weight: bold;
+  font-size: 16px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1283,58 +1486,67 @@ const currentStep = ref(1);
 
 /* 覆盖 Naive UI 默认的边框和背景 */
 .faq-collapse {
-  background: var(--n-card-color);
-  border: 1px solid var(--n-border-color);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  background: transparent;
+  border: none !important;
+  border-radius: 0;
+  overflow: visible;
+  box-shadow: none;
 }
 :deep(.faq-collapse .n-collapse-item) {
-  border-bottom: 1px solid var(--n-border-color);
+  border: none !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
 }
 :deep(.faq-collapse .n-collapse-item:last-child) {
-  border-bottom: none;
+  border-bottom: none !important;
 }
 :deep(.faq-collapse .n-collapse-item__header) {
-  padding: 14px 16px !important;
-  background: rgba(255, 255, 255, 0.02);
-  transition: all 0.3s;
+  padding: 14px 0 !important;
+  background: transparent !important;
+  border: none !important;
+  transition: all 0.2s;
 }
 :deep(.faq-collapse .n-collapse-item__header:hover) {
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent !important;
+  color: var(--n-text-color);
+}
+:deep(.faq-collapse .n-collapse-item__content-wrapper) {
+  border: none !important;
+}
+:deep(.faq-collapse .n-collapse-item__content-inner) {
+  padding: 0 0 14px 0 !important;
 }
 
 .faq-q {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
   color: var(--n-text-color);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .faq-a-box {
   display: flex;
   gap: 14px;
-  padding: 16px;
-  background: rgba(0, 0, 0, 0.1);
-  border-top: 1px dashed var(--n-border-color);
+  padding: 12px 0;
+  background: transparent;
+  border-top: none;
 }
 .faq-a-badge {
   background: #3b82f6;
   color: #fff;
   width: 26px;
   height: 26px;
-  border-radius: 6px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 900;
   font-size: 14px;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  margin-top: 1px;
 }
 .faq-a-text {
   font-size: 14px;
-  line-height: 1.75;
+  line-height: 1.8;
   color: var(--n-text-color-2);
   margin-top: 2px;
 }
@@ -1345,6 +1557,145 @@ const currentStep = ref(1);
   right: 40px;
   z-index: 100;
 }
+
+/* ===== 快速上手区域 ===== */
+.quickstart-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--n-text-color-2);
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.light-mode .quickstart-hint {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(59, 130, 246, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.hint-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* 步骤条 */
+.quickstart-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin-bottom: 8px;
+}
+.qs-step {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+}
+.qs-step:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.light-mode .qs-step:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+.qs-step.is-active {
+  background: rgba(34, 168, 122, 0.06);
+}
+.qs-step-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--n-text-color-3);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.3s ease;
+}
+.light-mode .qs-step-num {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+.qs-step.is-active .qs-step-num {
+  background: #22a87a;
+  color: #fff;
+  border-color: #22a87a;
+  box-shadow: 0 0 16px rgba(34, 168, 122, 0.4);
+}
+.qs-step-content {
+  flex: 1;
+  min-width: 0;
+}
+.qs-step-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--n-text-color-3);
+  margin-bottom: 4px;
+  transition: color 0.3s;
+}
+.qs-step.is-active .qs-step-title {
+  color: var(--n-text-color);
+}
+.qs-step-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--n-text-color-4);
+}
+.qs-step.is-active .qs-step-desc {
+  color: var(--n-text-color-2);
+}
+.qs-step-line {
+  position: absolute;
+  top: 30px;
+  right: -8px;
+  width: 16px;
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+}
+.light-mode .qs-step-line {
+  background: linear-gradient(90deg, rgba(0,0,0,0.1), rgba(0,0,0,0.03));
+}
+
+/* 底部按钮 */
+.quickstart-btn {
+  background: linear-gradient(135deg, rgba(34, 168, 122, 0.12), rgba(59, 130, 246, 0.12)) !important;
+  border: 1px solid rgba(34, 168, 122, 0.25) !important;
+  color: #22a87a !important;
+  font-weight: 600;
+  border-radius: 10px !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s ease !important;
+}
+.light-mode .quickstart-btn {
+  background: linear-gradient(135deg, rgba(34, 168, 122, 0.08), rgba(59, 130, 246, 0.08)) !important;
+  border-color: rgba(34, 168, 122, 0.2) !important;
+}
+.quickstart-btn:hover {
+  background: linear-gradient(135deg, rgba(34, 168, 122, 0.2), rgba(59, 130, 246, 0.2)) !important;
+  border-color: rgba(34, 168, 122, 0.4) !important;
+  box-shadow: 0 4px 20px rgba(34, 168, 122, 0.15) !important;
+  transform: translateY(-1px);
+}
 </style>
 
 <style>
@@ -1352,7 +1703,7 @@ const currentStep = ref(1);
   background-color: rgba(24, 24, 28, 0.6) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-right: 1px solid var(--border-default) !important;
 }
 .acrylic-drawer-light {
   background-color: rgba(255, 255, 255, 0.6) !important;

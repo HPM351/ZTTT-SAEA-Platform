@@ -94,7 +94,7 @@
               <div v-if="isDragging" class="drag-overlay">
                 <div class="drag-content">
                   <span style="font-size: 28px;">📥</span>
-                  <p style="margin: 4px 0 0 0; font-size: 13px;">松开上传图片</p>
+                  <p style="margin: 4px 0 0 0; font-size: 14px;">松开上传图片</p>
                 </div>
               </div>
             </transition>
@@ -499,9 +499,9 @@ const sendMessage = async () => {
 .chat-header { height: 44px; display: flex; align-items: center; justify-content: space-between; background: rgba(0, 0, 0, 0.3); border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: grab; user-select: none; z-index: 10; }
 .chat-header:active { cursor: grabbing; }
 .header-left { display: flex; align-items: center; padding-left: 16px; }
-.title-text { color: rgba(255,255,255,0.9); font-size: 13px; font-weight: bold; letter-spacing: 0.5px; }
+.title-text { color: rgba(255,255,255,0.9); font-size: 14px; font-weight: bold; letter-spacing: 0.5px; }
 
-.action-btn { margin-left: 10px; cursor: pointer; font-size: 15px; opacity: 0.5; transition: all 0.2s; filter: grayscale(100%); }
+.action-btn { margin-left: 8px; cursor: pointer; font-size: 15px; opacity: 0.5; transition: all 0.2s; filter: grayscale(100%); }
 .action-btn:hover, .action-btn.active-btn { opacity: 1; filter: grayscale(0%); transform: scale(1.1); }
 
 .header-model-info { flex: 1; text-align: center; font-size: 16px; color: rgba(255, 255, 255, 0.7); font-family: Consolas, monospace; pointer-events: none; }
@@ -522,7 +522,7 @@ const sendMessage = async () => {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid #18a058;
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   border-radius: 4px;
   padding: 2px 6px;
   width: 110px;
@@ -537,12 +537,12 @@ const sendMessage = async () => {
 .sidebar-header { padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
 .sidebar-title { color: rgba(255,255,255,0.6); font-size: 12px; font-weight: bold; }
 .history-list { flex: 1; padding: 8px; }
-.history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 8px; border-radius: 6px; cursor: pointer; margin-bottom: 4px; transition: background 0.2s; }
+.history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-radius: 6px; cursor: pointer; margin-bottom: 4px; transition: background 0.2s; }
 .history-item:hover { background: rgba(255, 255, 255, 0.05); }
 .history-item.is-active { background: rgba(24, 160, 88, 0.2); border-left: 3px solid #18a058; border-radius: 2px 6px 6px 2px; }
 .history-item-content { display: flex; align-items: center; overflow: hidden; flex: 1; }
 .history-icon { font-size: 14px; margin-right: 8px; opacity: 0.8; }
-.history-title { color: rgba(255,255,255,0.85); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.history-title { color: rgba(255,255,255,0.85); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
 .delete-btn { font-size: 12px; opacity: 0; transition: opacity 0.2s; }
 .history-item:hover .delete-btn { opacity: 0.6; }
 .delete-btn:hover { opacity: 1 !important; }
@@ -557,9 +557,9 @@ const sendMessage = async () => {
 .message-list { height: 100%; }
 .message-item { display: flex; margin-bottom: 16px; width: 100%; }
 .message-item.user { justify-content: flex-end; }
-.message-item.user .bubble { background: rgba(24, 160, 88, 0.8); color: #fff; border-radius: 12px 2px 12px 12px; padding: 10px 14px; white-space: pre-wrap;}
+.message-item.user .bubble { background: rgba(24, 160, 88, 0.8); color: #fff; border-radius: 12px 2px 12px 12px; padding: 8px 12px; white-space: pre-wrap;}
 .message-item.ai { justify-content: flex-start; }
-.message-item.ai .bubble { background: rgba(255, 255, 255, 0.1); color: #eee; border-radius: 2px 12px 12px 12px; padding: 10px 14px; white-space: pre-wrap; line-height: 1.6;}
+.message-item.ai .bubble { background: rgba(255, 255, 255, 0.1); color: #eee; border-radius: 2px 12px 12px 12px; padding: 8px 12px; white-space: pre-wrap; line-height: 1.6;}
 .typing-cursor { display: inline-block; width: 8px; height: 16px; background: rgba(255, 255, 255, 0.8); animation: blink 1s step-end infinite; }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 

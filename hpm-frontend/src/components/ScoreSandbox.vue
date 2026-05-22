@@ -2,7 +2,7 @@
   <n-card class="modern-card sandbox-card" size="large" hoverable>
     <template #header>
       <div class="sandbox-header">
-        <n-icon size="28" color="#10b981"><Aperture /></n-icon>
+        <n-icon size="28" color="#22a87a"><Aperture /></n-icon>
         <span class="title-text">去物理化评分引擎演示沙盒</span>
       </div>
     </template>
@@ -216,7 +216,7 @@
                     v-else
                 /></n-icon>
               </template>
-              <div style="font-size: 13px; line-height: 1.5">
+              <div style="font-size: 14px; line-height: 1.5">
                 <span v-if="selectedAlgo === 'BO' && evaluationResults.anyDead">
                   <b>BO策略：</b>已抹除断崖。得分在越界边界处绝对连续
                   ($C^0$)，平滑向负空间延伸，防止GP核函数崩溃。
@@ -370,10 +370,79 @@ watch(
 </script>
 
 <style scoped>
-/* 样式与上一版保持一致，这里保留以确保渲染正常 */
+/* ============================
+   评分沙盒 — 液态玻璃（亮暗自适应）
+   ============================ */
 .sandbox-card {
-  background-color: var(--n-color);
-  border-radius: 12px;
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  /* 暗色基底 */
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05) !important;
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+}
+.sandbox-card:hover {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-2px);
+}
+/* 顶部折射高光 */
+.sandbox-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 30%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.15) 70%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  z-index: 1;
+}
+.sandbox-card:hover::before {
+  opacity: 1;
+}
+/* ---- 亮色模式适配 ---- */
+:global(.light-mode) .sandbox-card {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.02) !important;
+}
+:global(.light-mode) .sandbox-card:hover {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03) !important;
+}
+:global(.light-mode) .sandbox-card::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.7) 30%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.7) 70%,
+    transparent 100%
+  );
 }
 .sandbox-header {
   display: flex;
@@ -381,18 +450,24 @@ watch(
   gap: 14px;
 }
 .title-text {
-  font-size: 20px;
-  font-weight: bold;
-  letter-spacing: 1px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 .panel-section {
   padding: 20px;
-  background: rgba(128, 128, 128, 0.02);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 10px;
-  border: 1px solid rgba(128, 128, 128, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   height: 100%;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+:global(.light-mode) .panel-section {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 .panel-title {
   margin-top: 0;
@@ -404,12 +479,19 @@ watch(
 }
 
 .metric-block {
-  background: var(--n-card-color);
+  background: rgba(255, 255, 255, 0.04);
   padding: 16px;
   border-radius: 8px;
   margin-bottom: 16px;
   border-left: 4px solid #3b82f6;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 4px solid #3b82f6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+:global(.light-mode) .metric-block {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 .metric-header {
   display: flex;
@@ -426,7 +508,7 @@ watch(
 }
 .control-row .label {
   width: 90px;
-  font-size: 13px;
+  font-size: 14px;
   opacity: 0.7;
 }
 .flow-center-wrapper {
@@ -459,12 +541,16 @@ watch(
   flex: 1;
   min-width: 40px;
   height: 6px;
-  background: rgba(128, 128, 128, 0.15);
+  background: rgba(255, 255, 255, 0.08);
   margin: 0 12px;
   position: relative;
   overflow: hidden;
   border-radius: 3px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+:global(.light-mode) .flow-connector {
+  background: rgba(0, 0, 0, 0.06);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 .flow-beam {
   position: absolute;
@@ -489,10 +575,10 @@ watch(
   background-image: linear-gradient(
     90deg,
     transparent 0%,
-    #10b981 50%,
+    #22a87a 50%,
     transparent 100%
   );
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 10px rgba(34, 168, 122, 0.6);
 }
 .connector-dead {
   background: rgba(239, 68, 68, 0.2);
@@ -518,32 +604,37 @@ watch(
   border-radius: 8px;
   text-align: center;
   min-width: 120px;
-  background: var(--n-card-color);
-  border: 1px solid rgba(128, 128, 128, 0.15);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+:global(.light-mode) .flow-node {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 .node-title {
-  font-size: 11px;
+  font-size: 12px;
   opacity: 0.6;
   margin-bottom: 8px;
   font-weight: bold;
 }
 .node-val {
   font-size: 20px;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
   font-weight: 900;
   -webkit-text-stroke: 0.5px var(--n-text-color); /* 增肌描边 */
 }
 .node-score {
   font-size: 18px;
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-mono);
   font-weight: 900;
   -webkit-text-stroke: 0.5px currentColor; /* 增肌描边 */
 }
 .score-value-wrapper { 
   font-size: 40px; /* 超大字号 */
   font-weight: 900; /* 最粗字重 */
-  font-family: 'JetBrains Mono', monospace; 
+  font-family: var(--font-mono); 
   -webkit-text-stroke: 2px currentColor; /* 核心：双倍物理描边，彻底消灭发虚 */
   text-shadow: 0 0 25px currentColor; /* 霓虹光晕扩散 */
   line-height: 1.1;
@@ -561,7 +652,7 @@ watch(
   color: #ef4444;
 }
 .text-green {
-  color: #10b981;
+  color: #22a87a;
 }
 .text-red {
   color: #ef4444;
@@ -577,7 +668,12 @@ watch(
   padding: 40px 0;
   border-radius: 12px;
   margin-bottom: 24px;
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+:global(.light-mode) .final-score-box {
+  border-color: rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.3);
 }
 .score-label { 
   font-size: 18px; /* 字体加大 */
@@ -589,10 +685,10 @@ watch(
 }
 
 .score-good {
-  color: #10b981;
+  color: #22a87a;
   background: radial-gradient(
     circle,
-    rgba(16, 185, 129, 0.1) 0%,
+    rgba(34, 168, 122, 0.1) 0%,
     transparent 75%
   );
 }

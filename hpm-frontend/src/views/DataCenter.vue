@@ -193,7 +193,7 @@
           <n-drawer-content closable>
             <template #header>
               <div style="display: flex; align-items: center; gap: 12px">
-                <n-icon size="24" color="#10b981"><Activity /></n-icon>
+                <n-icon size="24" color="#22a87a"><Activity /></n-icon>
                 <span
                   >个体 #{{ currentViewingInd?.ind_index }} 深度仿真档案</span
                 >
@@ -453,11 +453,11 @@ const renderSelectedWave = (type) => {
           data: valueData,
           smooth: true,
           showSymbol: false,
-          lineStyle: { width: 2, color: "#10b981" },
+          lineStyle: { width: 2, color: "#22a87a" },
           areaStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: "#10b98160" },
-              { offset: 1, color: "#10b98100" },
+              { offset: 0, color: "#22a87a60" },
+              { offset: 1, color: "#22a87a00" },
             ]),
           },
         },
@@ -713,7 +713,7 @@ onMounted(() => {
   font-weight: 800;
 }
 .text-neon-green {
-  color: #10b981;
+  color: #22a87a;
 }
 
 .json-code {
@@ -753,10 +753,10 @@ onMounted(() => {
 /* 1. 抽屉主体 */
 .cyber-drawer.n-drawer {
   background-color: rgba(10, 12, 16, 0.85) !important;
-  border-left: 1px solid rgba(16, 185, 129, 0.4) !important;
+  border-left: 1px solid rgba(34, 168, 122, 0.4) !important;
   box-shadow:
     -15px 0 40px rgba(0, 0, 0, 0.6),
-    inset 0 0 80px rgba(16, 185, 129, 0.05) !important;
+    inset 0 0 80px rgba(34, 168, 122, 0.05) !important;
 }
 
 /* 2. 抽屉内容区去色 */

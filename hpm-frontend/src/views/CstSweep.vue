@@ -352,7 +352,7 @@
                 <span class="card-title" style="white-space: nowrap"
                   >波形审查台
                   <span
-                    style="font-weight: normal; font-size: 13px"
+                    style="font-weight: normal; font-size: 14px"
                     class="text-sub"
                     >| ID: {{ inspectIdx }}</span
                   ></span
@@ -392,7 +392,7 @@
               style="margin-top: 4px; align-items: center"
             >
               <span
-                style="font-size: 13px; margin-right: 12px; flex-shrink: 0"
+                style="font-size: 14px; margin-right: 12px; flex-shrink: 0"
                 class="text-sub"
                 >组合参数:</span
               >
@@ -408,16 +408,16 @@
                   type="info"
                   :bordered="false"
                   style="
-                    font-family: monospace;
-                    font-size: 13px;
-                    padding: 0 10px;
+                    font-family: var(--font-mono);
+                    font-size: 14px;
+                    padding: 0 8px;
                   "
                 >
                   {{ k }}:
                   {{ typeof v === "number" && v % 1 !== 0 ? v.toFixed(3) : v }}
                 </n-tag>
               </div>
-              <span v-else style="font-size: 13px" class="text-sub"
+              <span v-else style="font-size: 14px" class="text-sub"
                 >等待数据传入...</span
               >
             </div>
@@ -902,7 +902,7 @@ const updateInspectorChart = async () => {
         data: scaledY,
         smooth: true,
         showSymbol: false,
-        lineStyle: { width: 2, color: "#10b981" }, // 主题绿
+        lineStyle: { width: 2, color: "#22a87a" }, // 主题绿
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: "rgba(16,185,129,0.3)" },
@@ -969,11 +969,11 @@ const refreshScatterChart = () => {
           paramHtml = "<span style='color: gray;'>等待数据传入...</span>";
 
         // 组装悬浮框
-        return `<div style="font-family: monospace;">
+        return `<div style="font-family: var(--font-mono);">
                   <b>Sweep ID: ${params.data.id}</b><br/>
                   <hr style="margin:6px 0; border:0; border-top:1px solid rgba(255,255,255,0.1)" />
                   ${getLabel(scatterConfig.xAxis)}: <span style="color:#f59e0b">${params.value[0].toFixed(3)}</span><br/>
-                  ${getLabel(scatterConfig.yAxis)}: <span style="color:#10b981">${params.value[1].toFixed(3)}</span><br/>
+                  ${getLabel(scatterConfig.yAxis)}: <span style="color:#22a87a">${params.value[1].toFixed(3)}</span><br/>
                   ${getLabel(scatterConfig.color)}: <span style="color:#ef4444">${params.value[2].toFixed(3)}</span><br/>
                   <hr style="margin:6px 0; border:0; border-top:1px dashed rgba(255,255,255,0.2)" />
                   <span style="font-size:12px; color:var(--n-text-color-3);">[当前扫描参数组合]</span><br/>
@@ -1432,7 +1432,7 @@ onUnmounted(() => {
   border-top: 1px dashed var(--n-border-color);
 }
 .step-hint {
-  font-size: 11px;
+  font-size: 12px;
   color: #3b82f6;
   text-align: right;
   margin-top: 6px;
@@ -1482,7 +1482,7 @@ onUnmounted(() => {
 .text-neon-blue {
   color: #3b82f6;
   font-weight: bold;
-  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-family: var(--font-mono);
   font-size: 20px;
   font-variant-numeric: tabular-nums;
 }
@@ -1509,8 +1509,8 @@ onUnmounted(() => {
 }
 .hologram-scanner {
   text-align: center;
-  font-family: "JetBrains Mono", Consolas, monospace;
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 14px;
   letter-spacing: 2px;
   color: rgba(34, 168, 122, 0.5);
   text-shadow: 0 0 12px rgba(34, 168, 122, 0.25);
@@ -1545,7 +1545,7 @@ onUnmounted(() => {
   background-color: var(--n-code-color);
   padding: 12px;
   overflow-y: auto;
-  font-family: "Consolas", monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--n-text-color);
   border-radius: 0 0 8px 8px;
@@ -1556,7 +1556,7 @@ onUnmounted(() => {
   width: 6px;
 }
 .log-window::-webkit-scrollbar-thumb {
-  background: rgba(16, 185, 129, 0.4);
+  background: rgba(34, 168, 122, 0.4);
   border-radius: 3px;
 }
 .log-item {
@@ -1605,7 +1605,7 @@ onUnmounted(() => {
 }
 :deep(.n-form-item .n-form-item-label) {
   font-weight: 500;
-  font-size: 13px;
+  font-size: 14px;
   margin-bottom: 6px;
 }
 .chart-card:fullscreen .card-title {

@@ -107,7 +107,7 @@
             color: var(--n-text-color-3);
             margin-bottom: 24px;
             margin-top: -12px;
-            font-size: 13px;
+            font-size: 14px;
           "
         >
           {{
@@ -182,7 +182,7 @@
         >
           <span
             style="
-              font-size: 13px;
+              font-size: 14px;
               color: var(--n-text-color-3);
               font-weight: bold;
             "
@@ -237,7 +237,7 @@
                   align-items: center;
                   gap: 6px;
                   margin-bottom: 6px;
-                  font-size: 13px;
+                  font-size: 14px;
                   color: var(--n-text-color-3);
                 "
               >
@@ -966,13 +966,13 @@ const sendMessage = async () => {
 .md-render-box :deep(h4),
 .md-render-box :deep(h5),
 .md-render-box :deep(h6) {
-  margin: 10px 0 6px 0;
+  margin: 8px 0 6px 0;
   line-height: 1.25;
 }
 
 /* 5. 收紧分割线间距 */
 .md-render-box :deep(hr) {
-  margin: 10px 0;
+  margin: 8px 0;
   border: 0;
   border-top: 1px solid rgba(156, 163, 175, 0.2);
 }
@@ -1011,7 +1011,7 @@ const sendMessage = async () => {
 .md-render-box :deep(pre.hljs) {
   padding: 12px;
   border-radius: 8px;
-  margin: 10px 0;
+  margin: 8px 0;
   overflow-x: auto;
   background-color: #1e1e20;
   border: 1px solid rgba(156, 163, 175, 0.1);

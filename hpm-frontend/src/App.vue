@@ -1,11 +1,27 @@
 <template>
+  <!-- SVG Gooey 滤镜：让胶囊边缘产生液体拉丝/融合效果 -->
+  <svg style="position: absolute; width: 0; height: 0;">
+    <defs>
+      <filter id="gooey">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+        <feColorMatrix
+          in="blur"
+          mode="matrix"
+          values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -8"
+          result="gooey"
+        />
+        <feComposite in="SourceGraphic" in2="gooey" operator="atop" />
+      </filter>
+    </defs>
+  </svg>
   <n-config-provider :theme="theme" :theme-overrides="themeOverrides">
     <n-global-style />
     <n-message-provider :container-style="{ paddingTop: isHome ? '0' : '68px' }">
       ><n-dialog-provider>
         <n-layout
           position="absolute"
-          style="background-color: var(--n-color); user-select: none"
+          class="root-layout"
+          style="user-select: none"
           @mousedown="handleMouseDown"
           @contextmenu.prevent="handleContextMenu"
         >
@@ -18,19 +34,28 @@
               :class="isDarkMode ? 'dark-header' : 'light-header'"
             >
               <div class="logo">ZTTT SAEA Platform</div>
-              <div class="nav-pills">
+              <div class="nav-underline-wrap" ref="navWrapRef">
                 <div
                   v-for="pill in navPills"
                   :key="pill.key"
-                  class="nav-pill"
+                  class="underline-tab"
                   :class="{ 'is-active': activeKey === pill.key }"
-                  :style="activeKey === pill.key ? { '--pill-glow': pill.glow } : {}"
+                  :style="activeKey === pill.key ? { '--tab-color': pill.color } : {}"
                   @click="navigateTo(pill.key)"
+                  @mousemove="handleNavMouseMove($event)"
+                  @mouseleave="handleNavMouseLeave($event)"
+                  :ref="el => { if (el) tabRefs[pill.key] = el }"
                 >
-                  <n-icon :size="16"><component :is="pill.icon" /></n-icon>
-                  <span class="pill-label">{{ pill.label }}</span>
-                  <span v-if="pill.hasPulse && islandState[pill.key]?.isRunning" class="pill-pulse-dot"></span>
+                  <n-icon :size="15"><component :is="pill.icon" /></n-icon>
+                  <span class="underline-label">{{ pill.label }}</span>
+                  <span v-if="pill.hasPulse && islandState[pill.key]?.isRunning" class="underline-pulse"></span>
                 </div>
+                <!-- 水滴滑动指示器 -->
+                <div
+                  class="droplet"
+                  :class="{ 'is-moving': isMoving }"
+                  :style="dropletStyle"
+                ></div>
               </div>
               <div class="header-island">
                 <transition name="island-fade">
@@ -210,15 +235,35 @@ watch(
   { immediate: true },
 );
 
-// 导航药丸配置: 扩展路由只需在此数组追加一项
+// 导航配置: 扩展路由只需在此数组追加一项
 const navPills = [
-  { key: "Home", label: "主页", icon: Home, glow: "rgba(156,163,175,0.4)", hasPulse: false },
-  { key: "CstSweep", label: "联合扫参", icon: Grid3X3, glow: "rgba(59,130,246,0.5)", hasPulse: true },
-  { key: "CstOpt", label: "联合优化", icon: Cpu, glow: "rgba(34,168,122,0.5)", hasPulse: true },
-  { key: "NeuralNet", label: "神经网络", icon: BrainCircuit, glow: "rgba(139,92,246,0.5)", hasPulse: true },
-  { key: "LiteratureAssistant", label: "文献助手", icon: BookOpen, glow: "rgba(236,72,153,0.5)", hasPulse: false },
-  { key: "DataCenter", label: "数据库", icon: Database, glow: "rgba(245,158,11,0.5)", hasPulse: false },
+  { key: "Home", label: "主页", icon: Home, color: "#9ca3af", hasPulse: false },
+  { key: "CstSweep", label: "联合扫参", icon: Grid3X3, color: "#3b82f6", hasPulse: true },
+  { key: "CstOpt", label: "联合优化", icon: Cpu, color: "#22a87a", hasPulse: true },
+  { key: "NeuralNet", label: "神经网络", icon: BrainCircuit, color: "#8b5cf6", hasPulse: true },
+  { key: "LiteratureAssistant", label: "文献助手", icon: BookOpen, color: "#ec4899", hasPulse: false },
+  { key: "DataCenter", label: "数据库", icon: Database, color: "#f59e0b", hasPulse: false },
 ];
+
+// 滑动胶囊位置追踪
+const navWrapRef = ref(null);
+const tabRefs = ref({});
+
+const dropletStyle = computed(() => {
+  const activePill = navPills.find(p => p.key === activeKey.value);
+  const tabEl = tabRefs.value[activeKey.value];
+  const wrapEl = navWrapRef.value;
+  if (!tabEl || !wrapEl || !activePill) return { opacity: 0, width: 0 };
+
+  const tabRect = tabEl.getBoundingClientRect();
+  const wrapRect = wrapEl.getBoundingClientRect();
+  return {
+    left: `${tabRect.left - wrapRect.left}px`,
+    width: `${tabRect.width}px`,
+    '--pill-color': activePill.color,
+    opacity: 1,
+  };
+});
 
 const themeOverrides = computed(() => {
   const acrylicBg = isDarkMode.value
@@ -230,6 +275,8 @@ const themeOverrides = computed(() => {
       primaryColor: "#22a87a",
       primaryColorHover: "#1a8a62",
       borderRadius: "12px",
+      color: isDarkMode.value ? "#0e0e12" : "#f5f5f7",
+      cardColor: isDarkMode.value ? "rgba(255, 255, 255, 0.04)" : "rgba(255, 255, 255, 0.85)",
     },
     Message: {
       color: acrylicBg,
@@ -421,10 +468,22 @@ const isHome = computed(() => {
 });
 
 const activeKey = ref("Home");
+const isMoving = ref(false);
+let moveTimer = null;
 const navigateTo = (name) => {
   activeKey.value = name;
   router.push({ name });
 };
+
+// 监听 activeKey 变化，触发动画
+watch(activeKey, () => {
+  isMoving.value = false;
+  requestAnimationFrame(() => {
+    isMoving.value = true;
+    clearTimeout(moveTimer);
+    moveTimer = setTimeout(() => { isMoving.value = false; }, 600);
+  });
+});
 
 // 路由变化时同步激活态
 watch(
@@ -434,10 +493,23 @@ watch(
   },
   { immediate: true },
 );
+
+// 液态胶囊：鼠标追踪折射光晕
+const handleNavMouseMove = (e) => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const x = ((e.clientX - rect.left) / rect.width) * 100;
+  const y = ((e.clientY - rect.top) / rect.height) * 100;
+  e.currentTarget.style.setProperty('--mouse-x', `${x}%`);
+  e.currentTarget.style.setProperty('--mouse-y', `${y}%`);
+};
+const handleNavMouseLeave = (e) => {
+  e.currentTarget.style.removeProperty('--mouse-x');
+  e.currentTarget.style.removeProperty('--mouse-y');
+};
 </script>
 
 <style scoped>
-/* ===== 导航栏框架 ===== */
+/* ===== 导航栏框架 — 液态玻璃 ===== */
 .global-header {
   display: flex;
   align-items: center;
@@ -449,10 +521,50 @@ watch(
   left: 0;
   right: 0;
   z-index: 1000;
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  /* 液态玻璃：半透明白/黑底 + 强磨砂 */
+  background: rgba(14, 14, 18, 0.55) !important;
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05) !important;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04) !important;
+  transition: background 0.4s, border-color 0.4s;
+}
+/* 顶部折射高光 */
+.global-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.12) 20%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.12) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+/* 亮色模式 */
+.light-header.global-header {
+  background: rgba(245, 245, 247, 0.65) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.03) !important;
+}
+.light-header.global-header::before {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 20%,
+    rgba(255, 255, 255, 0.8) 50%,
+    rgba(255, 255, 255, 0.6) 80%,
+    transparent 100%
+  );
 }
 
 .logo {
@@ -474,113 +586,175 @@ watch(
   -webkit-text-fill-color: transparent;
 }
 
-/* ===== 发光 Pill 导航 ===== */
-.nav-pills {
+/* ===== 液态水滴胶囊导航 ===== */
+.nav-underline-wrap {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: nowrap;
+  gap: 6px;
+  position: relative;
+  white-space: nowrap;
+  min-width: 0;
+  flex-shrink: 1;
+  /* 胶囊条的磨砂底座 */
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 9999px;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.light-header .nav-underline-wrap {
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(0, 0, 0, 0.06);
 }
 
-.nav-pill {
+/* 单个胶囊 */
+.underline-tab {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 9px 20px;
-  border-radius: 22px;
+  padding: 8px 16px;
+  border-radius: 9999px;
   cursor: pointer;
   position: relative;
+  z-index: 2;
   user-select: none;
-
-  transition:
-    background 0.25s ease,
-    border-color 0.25s ease,
-    color 0.25s ease,
-    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.35s ease;
+  color: rgba(255, 255, 255, 0.55);
+  flex: 0 0 auto;
+  transition: color 0.3s ease;
+  background: transparent;
+  border: 1px solid transparent;
+}
+/* 亮色胶囊 */
+.light-header .underline-tab {
+  color: rgba(0, 0, 0, 0.55);
 }
 
-/* ---- 暗色主题: 暗底 pill, 融入导航栏色系 ---- */
-.dark-header .nav-pill {
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.45);
+/* Hover 胶囊 */
+.underline-tab:hover {
+  color: rgba(255, 255, 255, 0.85);
 }
-.dark-header .nav-pill:hover {
-  background: rgba(0, 0, 0, 0.4);
-  border-color: rgba(255, 255, 255, 0.14);
-  color: rgba(255, 255, 255, 0.75);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-.dark-header .nav-pill.is-active {
-  background: rgba(0, 0, 0, 0.55);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-  transform: scale(1.05);
-  box-shadow:
-    0 0 22px var(--pill-glow, rgba(34, 168, 122, 0.5)),
-    0 4px 20px rgba(0, 0, 0, 0.35);
+.light-header .underline-tab:hover {
+  color: rgba(0, 0, 0, 0.75);
 }
 
-/* ---- 亮色主题: 亮底 pill, 干净 ---- */
-.light-header .nav-pill {
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  color: rgba(0, 0, 0, 0.45);
-}
-.light-header .nav-pill:hover {
-  background: rgba(255, 255, 255, 0.78);
-  border-color: rgba(0, 0, 0, 0.14);
-  color: rgba(0, 0, 0, 0.72);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-}
-.light-header .nav-pill.is-active {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(0, 0, 0, 0.15);
-  color: #111111;
-  transform: scale(1.05);
-  box-shadow:
-    0 0 22px var(--pill-glow, rgba(34, 168, 122, 0.4)),
-    0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.pill-label {
-  font-size: 14px;
+/* Active 胶囊：文字变白 */
+.underline-tab.is-active {
+  color: #fff;
   font-weight: 600;
-  letter-spacing: 1px;
+}
+.light-header .underline-tab.is-active {
+  color: #fff;
+}
+
+/* ===== 水滴滑动指示器 ===== */
+.droplet {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 9999px;
+  z-index: 1;
+  pointer-events: none;
+  /* 水滴主体：渐变 + 3D 弧面 */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--pill-color, #22a87a) 95%, white 5%) 0%,
+    var(--pill-color, #22a87a) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.15),
+    0 2px 12px color-mix(in srgb, var(--pill-color, #22a87a) 40%, transparent),
+    0 0 24px color-mix(in srgb, var(--pill-color, #22a87a) 18%, transparent);
+  /* 默认状态：正常胶囊 */
+  transform: scaleX(1) scaleY(1);
+  transition:
+    left 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+    width 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 拖尾：水滴身后拉出的液态尾巴 */
+.droplet::after {
+  content: '';
+  position: absolute;
+  top: 15%;
+  bottom: 15%;
+  width: 40px;
+  right: 100%;
+  border-radius: 9999px 0 0 9999px;
+  background: linear-gradient(
+    270deg,
+    color-mix(in srgb, var(--pill-color, #22a87a) 50%, transparent) 0%,
+    transparent 100%
+  );
+  opacity: 0;
+  filter: blur(4px);
+  transition: opacity 0.3s;
+}
+/* 亮色模式 */
+.light-header .droplet {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.08),
+    0 2px 12px color-mix(in srgb, var(--pill-color, #22a87a) 30%, transparent),
+    0 0 24px color-mix(in srgb, var(--pill-color, #22a87a) 12%, transparent);
+}
+
+/* ===== 水滴移动动画 ===== */
+/* 移动中：水平拉长 + 垂直压缩 + 尾巴出现 */
+.droplet.is-moving {
+  animation: droplet-stretch 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.droplet.is-moving::after {
+  opacity: 0.7;
+  animation: droplet-tail 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes droplet-stretch {
+  0%   { transform: scaleX(1) scaleY(1); }
+  25%  { transform: scaleX(1.25) scaleY(0.82); }
+  50%  { transform: scaleX(1.08) scaleY(0.94); }
+  75%  { transform: scaleX(0.97) scaleY(1.03); }
+  100% { transform: scaleX(1) scaleY(1); }
+}
+@keyframes droplet-tail {
+  0%   { opacity: 0.8; width: 50px; }
+  50%  { opacity: 0.5; width: 30px; }
+  100% { opacity: 0; width: 10px; }
+}
+
+/* ===== 静止水滴微呼吸 ===== */
+.droplet:not(.is-moving) {
+  animation: droplet-breathe 3.5s ease-in-out infinite;
+}
+@keyframes droplet-breathe {
+  0%, 100% { transform: scaleX(1) scaleY(1); }
+  50%      { transform: scaleX(1.012) scaleY(0.988); }
+}
+
+.underline-label {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
   white-space: nowrap;
 }
 
-/* ===== 运行态呼吸脉冲点 ===== */
-.pill-pulse-dot {
+/* 脉冲点：定位到胶囊右上角 */
+.underline-pulse {
   position: absolute;
-  top: 0;
-  right: -2px;
-  width: 8px;
-  height: 8px;
+  top: 6px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
   background: #22a87a;
   border-radius: 50%;
-  border: 1.5px solid v-bind('isDarkMode ? "#18181c" : "#fff"');
-  box-shadow: 0 0 10px #22a87a;
+  box-shadow: 0 0 8px #22a87a;
   animation: pill-pulse 1.2s infinite ease-in-out;
-  z-index: 10;
+  z-index: 2;
 }
 
 @keyframes pill-pulse {
-  0% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 1;
-    box-shadow: 0 0 14px #22a87a;
-  }
-  100% {
-    transform: scale(0.8);
-    opacity: 0.5;
-  }
+  0%, 100% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.4); opacity: 1; box-shadow: 0 0 12px #22a87a; }
 }
 
 @keyframes island-pulse {
@@ -604,11 +778,11 @@ watch(
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 10px;
+  padding-bottom: 8px;
 }
 .dynamic-task-row:not(:last-child) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 8px;
 }
 .dynamic-task-row:last-child {
   padding-bottom: 0;
@@ -617,13 +791,16 @@ watch(
 /* ===== 页面内容区域适配 ===== */
 .global-content {
   padding-top: 60px;
-  height: 100vh;
+  min-height: 100vh;
   box-sizing: border-box;
   transition: padding-top 0.4s ease;
+  background-color: var(--bg-base);
+  position: relative;
 }
 .global-content.is-home {
   padding-top: 0;
 }
+/* 动态 mesh gradient 背景 — 跟随页面滚动 */
 
 /* ===== 动画 ===== */
 .nav-fade-enter-active,
@@ -654,6 +831,84 @@ watch(
 </style>
 
 <style>
+@import url('https://cdn.jsdelivr.net/npm/misans@4.1/lib/Normal/MiSans-Regular.min.css');
+@import url('https://cdn.jsdelivr.net/npm/misans@4.1/lib/Normal/MiSans-Medium.min.css');
+@import url('https://cdn.jsdelivr.net/npm/misans@4.1/lib/Normal/MiSans-Semibold.min.css');
+@import url('https://cdn.jsdelivr.net/npm/misans@4.1/lib/Normal/MiSans-Bold.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap');
+
+/* ===== Design Tokens ===== */
+:root {
+  /* 颜色 */
+  --color-primary: #22a87a;
+  --color-blue: #3b82f6;
+  --color-purple: #8b5cf6;
+  --color-amber: #f59e0b;
+  --color-pink: #ec4899;
+  --color-gray: #9ca3af;
+  --color-danger: #ef4444;
+
+  /* 背景 */
+  --bg-base: #0e0e12;
+  --bg-surface: rgba(255, 255, 255, 0.04);
+  --bg-surface-hover: rgba(255, 255, 255, 0.06);
+
+  /* 边框 */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+
+  /* 文字 */
+  --text-primary: rgba(255, 255, 255, 0.9);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-tertiary: rgba(255, 255, 255, 0.4);
+
+  /* 字号 */
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-base: 16px;
+  --fs-lg: 20px;
+  --fs-xl: 28px;
+
+  /* 间距 */
+  --sp-xs: 4px;
+  --sp-sm: 8px;
+  --sp-md: 12px;
+  --sp-lg: 16px;
+  --sp-xl: 24px;
+
+  /* 等宽字体 */
+  --font-mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+.light-mode {
+  --bg-base: #f5f5f7;
+  --bg-surface: rgba(0, 0, 0, 0.02);
+  --bg-surface-hover: rgba(0, 0, 0, 0.04);
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.1);
+  --text-primary: rgba(0, 0, 0, 0.9);
+  --text-secondary: rgba(0, 0, 0, 0.6);
+  --text-tertiary: rgba(0, 0, 0, 0.4);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'MiSans', 'Outfit', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-base);
+}
+.dark-mode, .dark-mode html, .dark-mode body {
+  background-color: var(--bg-base) !important;
+}
+.light-mode, .light-mode html, .light-mode body {
+  background-color: var(--bg-base) !important;
+}
+.dark-mode .root-layout, .dark-mode .root-layout .n-layout-content {
+  background-color: var(--bg-base) !important;
+}
+.light-mode .root-layout, .light-mode .root-layout .n-layout-content {
+  background-color: var(--bg-base) !important;
+}
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -662,17 +917,17 @@ watch(
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--border-subtle);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--border-default);
 }
 
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: var(--border-subtle) transparent;
 }
 
 .n-message-container {
@@ -683,7 +938,7 @@ watch(
   pointer-events: auto !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid var(--border-default) !important;
 }
 
 /* 提升大弹窗的阴影层级，增加悬浮感 */
@@ -697,6 +952,13 @@ watch(
   z-index: 100;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
 .dynamic-island {
   cursor: pointer;
   background: v-bind(
@@ -704,7 +966,7 @@ watch(
   );
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border-default);
   border-radius: 22px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 
@@ -772,7 +1034,7 @@ watch(
   );
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border-default);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 
   display: flex;
@@ -781,7 +1043,7 @@ watch(
 }
 
 .detail-header {
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
   opacity: 0.5;
@@ -800,7 +1062,7 @@ watch(
   gap: 4px;
 }
 .task-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -816,7 +1078,7 @@ watch(
 }
 
 .task-subtext {
-  font-size: 10px;
+  font-size: 12px;
   opacity: 0.6;
   white-space: nowrap;
   overflow: hidden;
@@ -851,7 +1113,7 @@ watch(
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--border-default);
 }
 
 /* 4 个扇形区块 */
@@ -869,29 +1131,29 @@ watch(
 .slice-top {
   top: 0;
   left: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 .slice-right {
   top: 0;
   right: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border-subtle);
 }
 .slice-bottom {
   bottom: 0;
   right: 0;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid var(--border-subtle);
 }
 .slice-left {
   bottom: 0;
   left: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
 }
 
 /* 悬停高亮为主题色 */
 .radial-slice.is-active {
-  background: rgba(16, 185, 129, 0.75);
+  background: rgba(34, 168, 122, 0.75);
 }
 
 /* 扇形内部内容：必须反向旋转 -45 度，否则字是歪的 */

@@ -100,7 +100,7 @@
                 padding: 12px;
                 text-align: center;
                 color: var(--n-text-color-3);
-                font-size: 13px;
+                font-size: 14px;
               "
             >
               纯离线预测模式 (高速探索)
@@ -152,7 +152,7 @@
                 <div style="color: #3b82f6; font-weight: bold">
                   探索 ({{ Math.round(config.algo.mutPhases[0] * 100) }}%)
                 </div>
-                <div style="color: #10b981; font-weight: bold">收敛</div>
+                <div style="color: #22a87a; font-weight: bold">收敛</div>
                 <div style="color: #f59e0b; font-weight: bold">
                   微调 ({{ Math.round(100 - config.algo.mutPhases[1] * 100) }}%)
                 </div>
@@ -329,7 +329,7 @@
             </n-descriptions-item>
 
             <n-descriptions-item label="训练损失 (Loss)" :span="1">
-              <span style="font-family: monospace; font-size: 14px">
+              <span style="font-family: var(--font-mono); font-size: 14px">
                 {{ currentModelConfig?.meta?.train_loss ?? "--" }}
               </span>
             </n-descriptions-item>
@@ -345,7 +345,7 @@
                 style="
                   font-weight: bold;
                   font-size: 18px;
-                  font-family: monospace;
+                  font-family: var(--font-mono);
                 "
               >
                 {{
@@ -420,16 +420,16 @@
             style="
               margin-bottom: 16px;
               padding: 12px;
-              background: rgba(16, 185, 129, 0.1);
+              background: rgba(34, 168, 122, 0.1);
               border-radius: 8px;
-              border: 1px solid rgba(16, 185, 129, 0.3);
+              border: 1px solid rgba(34, 168, 122, 0.3);
             "
           >
             <div
               style="
-                font-size: 13px;
+                font-size: 14px;
                 font-weight: bold;
-                color: #10b981;
+                color: #22a87a;
                 margin-bottom: 8px;
                 display: flex;
                 justify-content: space-between;
@@ -474,7 +474,7 @@
                 :style="{
                   color:
                     index === 0
-                      ? '#10b981'
+                      ? '#22a87a'
                       : index === 1
                         ? '#3b82f6'
                         : '#f59e0b',
@@ -687,7 +687,7 @@
                       >
                         <span
                           style="
-                            font-size: 13px;
+                            font-size: 14px;
                             color: var(--n-text-color-3);
                             width: 36px;
                           "
@@ -704,7 +704,7 @@
                       >
                         <span
                           style="
-                            font-size: 13px;
+                            font-size: 14px;
                             color: var(--n-text-color-3);
                             width: 36px;
                           "
@@ -723,7 +723,7 @@
                       >
                         <span
                           style="
-                            font-size: 13px;
+                            font-size: 14px;
                             color: var(--n-text-color-3);
                             width: 36px;
                           "
@@ -749,7 +749,7 @@
                       <div
                         v-if="bestGlobalMetrics.params"
                         style="
-                          margin-top: 14px;
+                          margin-top: 12px;
                           padding-top: 12px;
                           border-top: 1px dashed var(--n-border-color);
                         "
@@ -771,7 +771,7 @@
                             size="small"
                             type="primary"
                             :bordered="false"
-                            style="font-family: monospace"
+                            style="font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace"
                           >
                             {{
                               currentParams.find((p) => p.cstName === key)
@@ -820,9 +820,9 @@
                         v-for="(log, idx) in onlineLogs"
                         :key="idx"
                         style="
-                          font-size: 11px;
-                          font-family: monospace;
-                          color: #10b981;
+                          font-size: 12px;
+                          font-family: var(--font-mono);
+                          color: #22a87a;
                           line-height: 1.5;
                           white-space: nowrap;
                           overflow: hidden;
@@ -834,9 +834,9 @@
                       <div
                         v-if="onlineLogs.length === 0"
                         style="
-                          font-size: 11px;
+                          font-size: 12px;
                           color: var(--n-text-color-3);
-                          font-family: monospace;
+                          font-family: var(--font-mono);
                         "
                       >
                         Awaiting Engine Instructions...
@@ -1152,7 +1152,7 @@
                     font-weight: bold;
                   "
                 >
-                  <n-icon size="18" color="#10b981"><Activity /></n-icon>
+                  <n-icon size="18" color="#22a87a"><Activity /></n-icon>
                   实时推演结果
                 </div>
 
@@ -1179,7 +1179,7 @@
                     >
                       <div
                         style="
-                          font-size: 13px;
+                          font-size: 14px;
                           color: var(--n-text-color-3);
                           margin-bottom: 8px;
                         "
@@ -1195,7 +1195,7 @@
                         :style="{
                           color:
                             index === 0
-                              ? '#10b981'
+                              ? '#22a87a'
                               : index === 1
                                 ? '#f59e0b'
                                 : '#3b82f6',
@@ -1203,7 +1203,7 @@
                         style="
                           font-size: 32px;
                           font-weight: 900;
-                          font-family: monospace;
+                          font-family: var(--font-mono);
                           line-height: 1;
                         "
                       >
@@ -1352,9 +1352,9 @@
       :bordered="false"
       size="huge"
     >
-      <div style="margin-bottom: 16px; padding: 14px 16px; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2);">
-        <span style="font-size: 13px; color: var(--n-text-color); line-height: 1.6;">
-          <n-icon color="#10b981" style="transform: translateY(2px); margin-right: 4px;"><Info /></n-icon>
+      <div style="margin-bottom: 16px; padding: 12px 16px; background: rgba(34, 168, 122, 0.08); border-radius: 8px; border: 1px solid rgba(34, 168, 122, 0.2);">
+        <span style="font-size: 14px; color: var(--n-text-color); line-height: 1.6;">
+          <n-icon color="#22a87a" style="transform: translateY(2px); margin-right: 4px;"><Info /></n-icon>
           <b>双轨验证机制</b>：在此配置 CST 真机校验时的提取路径与容忍底线。当代理模型的高分个体送入CST后，若触发以下红线（如时域起伏过大、频域模式不纯），将被视为无效解并执行强力惩罚，随后进入网络微调。
         </span>
       </div>
@@ -1398,13 +1398,13 @@
             }"
           >
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <div style="font-size: 14px; font-weight: bold; color: #10b981; display: flex; align-items: center; gap: 6px;">
+            <div style="font-size: 14px; font-weight: bold; color: #22a87a; display: flex; align-items: center; gap: 6px;">
               <n-icon><Target /></n-icon> 提取目标: {{ target.display }}
             </div>
             <div style="display: flex; align-items: center; gap: 12px; width: 260px;">
                <span style="font-size: 12px; color: var(--n-text-color-3); white-space: nowrap; flex-shrink: 0;">独立验证权重:</span>
                <n-slider v-model:value="target.weight" :step="5" :min="0" :max="100" style="flex: 1;" />
-               <span style="color: #10b981; font-weight: bold; font-size: 13px; width: 45px; text-align: right; white-space: nowrap; flex-shrink: 0;">{{ target.weight }}%</span>
+               <span style="color: #22a87a; font-weight: bold; font-size: 14px; width: 45px; text-align: right; white-space: nowrap; flex-shrink: 0;">{{ target.weight }}%</span>
             </div>
           </div>
 
@@ -1446,20 +1446,20 @@
 
             <div
               style="
-                background: rgba(16, 185, 129, 0.05);
-                padding: 14px;
+                background: rgba(34, 168, 122, 0.05);
+                padding: 12px;
                 border-radius: 8px;
-                border: 1px dashed rgba(16, 185, 129, 0.3);
+                border: 1px dashed rgba(34, 168, 122, 0.3);
                 margin-bottom: 16px;
               "
             >
-              <div style="font-size: 13px; font-weight: bold; color: #10b981; margin-bottom: 12px;">
+              <div style="font-size: 14px; font-weight: bold; color: #22a87a; margin-bottom: 12px;">
                 柔性归一化与基准设定
               </div>
               <n-grid :x-gap="20" :cols="2">
                 <n-gi>
                   <n-input-number v-model:value="target.reference_scale" :step="1">
-                    <template #prefix><span class="text-sub" style="font-size: 13px">基准尺 (Scale)</span></template>
+                    <template #prefix><span class="text-sub" style="font-size: 14px">基准尺 (Scale)</span></template>
                   </n-input-number>
                 </n-gi>
                 <n-gi>
@@ -1485,12 +1485,12 @@
               >
                 <n-gi>
                   <n-input-number v-model:value="target.target_val">
-                    <template #prefix><span class="text-sub" style="font-size: 13px">靶心值 (Target)</span></template>
+                    <template #prefix><span class="text-sub" style="font-size: 14px">靶心值 (Target)</span></template>
                   </n-input-number>
                 </n-gi>
                 <n-gi>
                   <n-input-number v-model:value="target.tolerance" :step="0.01">
-                    <template #prefix><span class="text-sub" style="font-size: 13px">完美容差 ±</span></template>
+                    <template #prefix><span class="text-sub" style="font-size: 14px">完美容差 ±</span></template>
                   </n-input-number>
                 </n-gi>
               </n-grid>
@@ -1499,13 +1499,13 @@
             <div
               style="
                 background: rgba(245, 158, 11, 0.05);
-                padding: 14px;
+                padding: 12px;
                 border-radius: 8px;
                 border: 1px dashed rgba(245, 158, 11, 0.3);
               "
             >
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <span style="font-size: 13px; font-weight: bold; color: #f59e0b;">刚性拦截 (触发即判为死区解)</span>
+                <span style="font-size: 14px; font-weight: bold; color: #f59e0b;">刚性拦截 (触发即判为死区解)</span>
                 <n-switch v-model:value="target.constraints.enable" />
               </div>
 
@@ -1514,26 +1514,26 @@
                   <template v-if="target.mode !== 'target'">
                     <n-gi>
                       <n-input-number v-model:value="target.constraints.min" placeholder="无">
-                        <template #prefix><span class="text-sub" style="font-size: 13px">下限 (Min)</span></template>
+                        <template #prefix><span class="text-sub" style="font-size: 14px">下限 (Min)</span></template>
                       </n-input-number>
                     </n-gi>
                     <n-gi>
                       <n-input-number v-model:value="target.constraints.max" placeholder="无">
-                        <template #prefix><span class="text-sub" style="font-size: 13px">上限 (Max)</span></template>
+                        <template #prefix><span class="text-sub" style="font-size: 14px">上限 (Max)</span></template>
                       </n-input-number>
                     </n-gi>
                   </template>
                   <template v-else>
                     <n-gi>
                       <n-input-number v-model:value="target.constraints.max_diff" placeholder="无">
-                        <template #prefix><span class="text-sub" style="font-size: 13px">最大偏离容差 (Max Diff ±)</span></template>
+                        <template #prefix><span class="text-sub" style="font-size: 14px">最大偏离容差 (Max Diff ±)</span></template>
                       </n-input-number>
                     </n-gi>
                   </template>
 
                   <n-gi v-if="target.extractMethod === 'time_mean'">
                           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                             <span class="text-sub" style="font-size: 13px">波动容差模式</span>
+                             <span class="text-sub" style="font-size: 14px">波动容差模式</span>
                              <n-switch v-model:value="target.constraints.fluc_type" checked-value="relative" unchecked-value="absolute" size="small">
                                <template #checked>百分比(相对)</template>
                                <template #unchecked>物理量(绝对)</template>
@@ -1541,7 +1541,7 @@
                           </div>
                           <n-input-number v-model:value="target.constraints.max_fluc" placeholder="无(默认不限)">
                             <template #prefix>
-                              <span class="text-sub" style="font-size: 13px">
+                              <span class="text-sub" style="font-size: 14px">
                                 {{ target.constraints.fluc_type === 'relative' ? '最大波动 (±%)' : '最大波动 (绝对值)' }}
                               </span>
                             </template>
@@ -1549,7 +1549,7 @@
                         </n-gi>
                   <n-gi v-if="target.extractMethod === 'freq_peak'">
                     <n-input-number v-model:value="target.constraints.max_side_ratio" placeholder="无(默认10%)">
-                      <template #prefix><span class="text-sub" style="font-size: 13px">最大杂模占比 (%)</span></template>
+                      <template #prefix><span class="text-sub" style="font-size: 14px">最大杂模占比 (%)</span></template>
                     </n-input-number>
                   </n-gi>
                 </n-grid>
@@ -1669,7 +1669,7 @@ const config = reactive({
   online: {
     enable: false,
     kSamples: 5,
-    cstPath: "F:\\cst files\\ACO for report\\ACO FR.cst",
+    cstPath: "",
     targetsList: [],
     taskName: "",
     stableTime: 20.0,
@@ -1777,12 +1777,12 @@ const updateBoxplotChart = () => {
         {
           yAxis: targetVal,
           name: "Target",
-          lineStyle: { color: "#10b981", type: "dashed", width: 2 },
+          lineStyle: { color: "#22a87a", type: "dashed", width: 2 },
           label: {
             show: true,
             position: "end",
             formatter: `靶心: ${targetVal} GHz`,
-            color: "#10b981",
+            color: "#22a87a",
           },
         },
       ],
@@ -1942,7 +1942,7 @@ const updateParallelChartAxes = () => {
           lineStyle: { width: 1.5, opacity: 0.15 },
           data: currentData,
           emphasis: {
-            lineStyle: { width: 3, opacity: 1, color: "#10b981" },
+            lineStyle: { width: 3, opacity: 1, color: "#22a87a" },
           },
         },
       ],
@@ -2139,7 +2139,7 @@ const renderLocalShap = (realShap) => {
         type: "bar",
         data: data.map((v) => ({
           value: v,
-          itemStyle: { color: v > 0 ? "#ef4444" : "#10b981", borderRadius: 2 },
+          itemStyle: { color: v > 0 ? "#ef4444" : "#22a87a", borderRadius: 2 },
         })),
         label: {
           show: true,
@@ -2692,7 +2692,7 @@ const initAllCharts = () => {
           trigger: "item",
           ...getTooltipStyle(),
           formatter: (p) =>
-            `<div style="font-family: monospace;">Gen: ${Math.round(p.data[2])}<br/>X: ${p.data[0].toFixed(3)}<br/>Y: ${p.data[1].toFixed(3)}</div>`,
+            `<div style="font-family: var(--font-mono);">Gen: ${Math.round(p.data[2])}<br/>X: ${p.data[0].toFixed(3)}<br/>Y: ${p.data[1].toFixed(3)}</div>`,
         },
         series: [
           {
@@ -2720,12 +2720,12 @@ const initAllCharts = () => {
             if (param.componentSubType === "boxplot") {
               const v = param.data; // v 结构为 [index, min, Q1, median, Q3, max]
               return `
-              <div style="font-family: monospace;">
-                <b style="color: #10b981; font-size: 14px;">${param.name} 统计分布</b><hr style="opacity: 0.1; margin: 8px 0;"/>
+              <div style="font-family: var(--font-mono);">
+                <b style="color: #22a87a; font-size: 14px;">${param.name} 统计分布</b><hr style="opacity: 0.1; margin: 8px 0;"/>
                 <div style="display: grid; grid-template-columns: 60px 1fr; gap: 4px;">
                   <span>最大值:</span> <b>${v[5].toFixed(3)}</b>
                   <span>Q3:</span> <b>${v[4].toFixed(3)}</b>
-                  <span style="color: #10b981">中位数:</span> <b style="color: #10b981">${v[3].toFixed(3)}</b>
+                  <span style="color: #22a87a">中位数:</span> <b style="color: #22a87a">${v[3].toFixed(3)}</b>
                   <span>Q1:</span> <b>${v[2].toFixed(3)}</b>
                   <span>最小值:</span> <b>${v[1].toFixed(3)}</b>
                 </div>
@@ -2754,7 +2754,7 @@ const initAllCharts = () => {
             type: "boxplot",
             itemStyle: {
               color: isDarkMode.value ? "#3b82f6" : "#2563eb",
-              borderColor: "#10b981",
+              borderColor: "#22a87a",
               borderWidth: 1.5,
             },
             data: [],
@@ -2775,7 +2775,7 @@ const initAllCharts = () => {
         total === 1 ? "50%" : `${((index + 1) * 100) / (total + 1)}%`;
       const radius = total >= 3 ? "55%" : "70%";
       const colorTheme =
-        index === 0 ? "#10b981" : index === 1 ? "#f59e0b" : "#3b82f6";
+        index === 0 ? "#22a87a" : index === 1 ? "#f59e0b" : "#3b82f6";
 
       // 读取配置的最大值，如果没有则给一个默认值
       let gaugeMax = 100;
@@ -3430,12 +3430,8 @@ watch(isDarkMode, () => {
 }
 .sidebar {
   position: sticky;
-  /* 如果你的顶部导航栏是 fixed 固定悬浮的，这里需要写上顶栏的高度，比如 top: 64px;
-     如果顶栏是随页面滚动的，保持 top: 0; 即可 */
-  top: 64;
-
-  /* 减去顶部导航栏的高度（请根据你的实际情况微调 64px 这个数值）*/
-  height: calc(100vh - 64px);
+  top: 0;
+  height: 100vh;
 
   box-sizing: border-box;
   flex: 0 0 500px;
@@ -3494,7 +3490,7 @@ watch(isDarkMode, () => {
 }
 :deep(.n-form-item .n-form-item-label) {
   font-weight: 500;
-  font-size: 13px;
+  font-size: 14px;
   margin-bottom: 6px;
 }
 
@@ -3516,7 +3512,7 @@ watch(isDarkMode, () => {
   border-radius: 12px;
   color: var(--n-text-color-3);
   font-size: 16px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .param-bound-box {
@@ -3533,7 +3529,7 @@ watch(isDarkMode, () => {
 }
 
 .card-header {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: space-between;
