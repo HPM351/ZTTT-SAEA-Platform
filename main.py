@@ -123,6 +123,9 @@ if IS_PRODUCTION_MODE:
         async def serve_vue_app(catchall: str):
             # 如果请求的是物理存在的文件，则直接返回
             full_path = os.path.join(dist_path, catchall)
+            # 防止路径遍历：确保最终路径仍在 dist_path 内
+            if not os.path.realpath(full_path).startswith(os.path.realpath(dist_path)):
+                return FileResponse(os.path.join(dist_path, "index.html"))
             if os.path.exists(full_path) and os.path.isfile(full_path):
                 return FileResponse(full_path)
             # 否则返回入口文件

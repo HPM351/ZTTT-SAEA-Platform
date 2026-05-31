@@ -337,7 +337,11 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
             if actual_fluc > fluc_A:
                 if actual_fluc <= fluc_B:
                     # 加重惩罚梯度！最高削减 95% 基础分，让震荡波形彻底失去竞争力
-                    penalty_ratio = 0.95 * ((actual_fluc - fluc_A) / (fluc_B - fluc_A))
+                    denom = fluc_B - fluc_A
+                    if denom < 1e-9:
+                        penalty_ratio = 0.95  # max_fluc=0 时直接给最大惩罚
+                    else:
+                        penalty_ratio = 0.95 * ((actual_fluc - fluc_A) / denom)
                     base_score *= (1.0 - penalty_ratio)
                 else:
                     is_dead = True
@@ -356,7 +360,11 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
             if actual_ratio > ratio_A:
                 if actual_ratio <= ratio_B:
                     # 缓坡惩罚
-                    p_ratio = 0.5 * ((actual_ratio - ratio_A) / (ratio_B - ratio_A))
+                    denom = ratio_B - ratio_A
+                    if denom < 1e-9:
+                        p_ratio = 0.5  # max_side_ratio=0 时直接给最大惩罚
+                    else:
+                        p_ratio = 0.5 * ((actual_ratio - ratio_A) / denom)
                     base_score *= (1.0 - p_ratio)
                 else:
                     # 杂模超过 B：频域崩溃，触发死区

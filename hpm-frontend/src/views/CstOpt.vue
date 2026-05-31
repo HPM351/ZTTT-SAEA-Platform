@@ -3020,10 +3020,11 @@ const connectWebSocket = (taskId) => {
         });
       }
 
-      //4. 补全详尽参数的散点
-      scatterDataArrayRaw = scatterDataArrayRaw.filter(
+      //4. 补全详尽参数的散点（用 splice 保留响应式代理）
+      const filtered = scatterDataArrayRaw.filter(
         (item) => item.gen !== data.gen,
       );
+      scatterDataArrayRaw.splice(0, scatterDataArrayRaw.length, ...filtered);
       data.batch_logs.forEach((ind) => {
         scatterDataArrayRaw.push({
           gen: data.gen,
