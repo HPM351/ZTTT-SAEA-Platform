@@ -344,6 +344,8 @@
                             { label: '稳态后求均值', value: 'time_mean' },
                             { label: '寻找最大主峰', value: 'freq_peak' },
                             { label: '读取单值标量', value: '0d_scalar' },
+                            { label: '带宽计算', value: 'bandwidth' },
+                            { label: '指定频率读取', value: 'freq_point' },
                           ]"
                         />
                       </n-input-group>
@@ -440,6 +442,114 @@
                             ></template
                           >
                         </n-input-number>
+                      </n-gi>
+                    </n-grid>
+                  </div>
+
+                  <!-- 带宽计算参数面板 -->
+                  <div
+                    v-if="target.extractMethod === 'bandwidth'"
+                    style="
+                      background: rgba(59, 130, 246, 0.05);
+                      padding: 12px;
+                      border-radius: 8px;
+                      border: 1px dashed rgba(59, 130, 246, 0.3);
+                      margin-bottom: 16px;
+                    "
+                  >
+                    <div
+                      style="
+                        font-size: 14px;
+                        font-weight: bold;
+                        color: #3b82f6;
+                        margin-bottom: 12px;
+                      "
+                    >
+                      带宽计算参数
+                    </div>
+                    <n-grid :x-gap="20" :cols="2">
+                      <n-gi>
+                        <n-input-number v-model:value="target.bw_threshold" :step="1">
+                          <template #prefix
+                            ><span class="text-sub" style="font-size: 14px"
+                              >阈值 (dB)</span
+                            ></template
+                          >
+                        </n-input-number>
+                      </n-gi>
+                      <n-gi>
+                        <n-input-group>
+                          <n-input-group-label>比较方向</n-input-group-label>
+                          <n-select
+                            v-model:value="target.bw_compare"
+                            :options="[
+                              { label: '小于阈值 (如S11 < -10dB)', value: 'less' },
+                              { label: '大于阈值 (如S21 > -3dB)', value: 'greater' },
+                            ]"
+                          />
+                        </n-input-group>
+                      </n-gi>
+                    </n-grid>
+                  </div>
+
+                  <!-- 指定频率读取参数面板 -->
+                  <div
+                    v-if="target.extractMethod === 'freq_point'"
+                    style="
+                      background: rgba(245, 158, 11, 0.05);
+                      padding: 12px;
+                      border-radius: 8px;
+                      border: 1px dashed rgba(245, 158, 11, 0.3);
+                      margin-bottom: 16px;
+                    "
+                  >
+                    <div
+                      style="
+                        font-size: 14px;
+                        font-weight: bold;
+                        color: #f59e0b;
+                        margin-bottom: 12px;
+                      "
+                    >
+                      指定频率读取参数
+                    </div>
+                    <n-grid :x-gap="20" :cols="2">
+                      <n-gi>
+                        <n-input-number v-model:value="target.target_freq" :step="0.01">
+                          <template #prefix
+                            ><span class="text-sub" style="font-size: 14px"
+                              >目标频率 (GHz)</span
+                            ></template
+                          >
+                        </n-input-number>
+                      </n-gi>
+                      <n-gi>
+                        <div style="display: flex; align-items: center; gap: 8px">
+                          <n-switch v-model:value="target.freq_interp" size="small" />
+                          <span class="text-sub" style="font-size: 14px">启用插值</span>
+                        </div>
+                      </n-gi>
+                    </n-grid>
+
+                    <!-- 极值约束选项 -->
+                    <n-grid :x-gap="20" :cols="2" style="margin-top: 12px">
+                      <n-gi>
+                        <div style="display: flex; align-items: center; gap: 8px">
+                          <n-switch v-model:value="target.require_extremum" size="small" />
+                          <span class="text-sub" style="font-size: 14px">要求该点为极值点</span>
+                        </div>
+                      </n-gi>
+                      <n-gi v-if="target.require_extremum">
+                        <n-input-group>
+                          <n-input-group-label>极值类型</n-input-group-label>
+                          <n-select
+                            v-model:value="target.extremum_type"
+                            :options="[
+                              { label: '最小值 (如S11谐振点)', value: 'min' },
+                              { label: '最大值', value: 'max' },
+                            ]"
+                          />
+                        </n-input-group>
                       </n-gi>
                     </n-grid>
                   </div>
@@ -1582,12 +1692,21 @@ const config = reactive({
       name: "效率",
       path: "Tables\\1D Results\\EFF",
       mode: "maximize",
-      extractMethod: "time_mean", 
-      multiplier: 100.0, 
+      extractMethod: "time_mean",
+      multiplier: 100.0,
       reference_scale: 100.0,
       weight: 5.0,
       target_val: 0.0,
       tolerance: 0.0,
+      // 带宽计算参数
+      bw_threshold: -10.0,
+      bw_compare: "less",
+      bw_freq_range: null,
+      // 指定频率读取参数
+      target_freq: 2.45,
+      freq_interp: true,
+      require_extremum: false,
+      extremum_type: "min",
       constraints: {
         enable: true,
         min: 15.0,
@@ -1608,6 +1727,15 @@ const config = reactive({
       weight: 10.0,
       target_val: 2.45,
       tolerance: 0.02,
+      // 带宽计算参数
+      bw_threshold: -10.0,
+      bw_compare: "less",
+      bw_freq_range: null,
+      // 指定频率读取参数
+      target_freq: 2.45,
+      freq_interp: true,
+      require_extremum: false,
+      extremum_type: "min",
       constraints: {
         enable: true,
         min: null,
@@ -1668,6 +1796,15 @@ const addTarget = () => {
     weight: 1.0,
     target_val: 0.0,
     tolerance: 0.0,
+    // 带宽计算参数
+    bw_threshold: -10.0,
+    bw_compare: "less",
+    bw_freq_range: null,
+    // 指定频率读取参数
+    target_freq: 2.45,
+    freq_interp: true,
+    require_extremum: false,
+    extremum_type: "min",
     constraints: {
       enable: false,
       fluc_type: "relative",
@@ -1717,6 +1854,14 @@ const tryLoadConfig = async (path) => {
       if (saved.targetsList && Array.isArray(saved.targetsList)) {
         config.targetsList = saved.targetsList.map((t) => ({
           ...t,
+          // 确保新参数有默认值
+          bw_threshold: t.bw_threshold ?? -10.0,
+          bw_compare: t.bw_compare || "less",
+          bw_freq_range: t.bw_freq_range || null,
+          target_freq: t.target_freq ?? 2.45,
+          freq_interp: t.freq_interp !== undefined ? t.freq_interp : true,
+          require_extremum: t.require_extremum !== undefined ? t.require_extremum : false,
+          extremum_type: t.extremum_type || "min",
           constraints: t.constraints || {
             enable: false,
             min: null,
@@ -2264,6 +2409,7 @@ const updateInspectorChart = () => {
 
     if (curveData && curveData.x && curveData.y) {
       const isFft = targetCfg && targetCfg.extractMethod === "freq_peak";
+      const isFreqDomain = targetCfg && ["freq_peak", "bandwidth", "freq_point"].includes(targetCfg.extractMethod);
       const multiplier = targetCfg ? Number(targetCfg.multiplier) : 1.0;
 
       let plotData = curveData.x.map((xVal, idx) => [
@@ -2278,7 +2424,7 @@ const updateInspectorChart = () => {
           ? "#ef4444"
           : "#22a87a";
 
-      option.xAxis.name = isFft ? "Freq (GHz)" : "Time (ns)";
+      option.xAxis.name = isFreqDomain ? "Freq (GHz)" : "Time (ns)";
       option.yAxis.name = currentTab;
       option.yAxis.nameTextStyle = { color: themeColor };
 
@@ -2286,7 +2432,7 @@ const updateInspectorChart = () => {
         {
           name: currentTab,
           type: "line",
-          smooth: !isFft,
+          smooth: !isFreqDomain,
           showSymbol: false,
           itemStyle: { color: themeColor },
           ...(isFft
@@ -2418,6 +2564,14 @@ onMounted(async () => {
                 if (saved.targetsList && Array.isArray(saved.targetsList)) {
                   config.targetsList = saved.targetsList.map((t) => ({
                     ...t,
+                    // 确保新参数有默认值
+                    bw_threshold: t.bw_threshold ?? -10.0,
+                    bw_compare: t.bw_compare || "less",
+                    bw_freq_range: t.bw_freq_range || null,
+                    target_freq: t.target_freq ?? 2.45,
+                    freq_interp: t.freq_interp !== undefined ? t.freq_interp : true,
+                    require_extremum: t.require_extremum !== undefined ? t.require_extremum : false,
+                    extremum_type: t.extremum_type || "min",
                     constraints: t.constraints || {
                       enable: false,
                       min: null,
@@ -2619,6 +2773,14 @@ const loadHistoricalTask = async (taskId) => {
         if (saved.targetsList && Array.isArray(saved.targetsList)) {
           config.targetsList = saved.targetsList.map((t) => ({
             ...t,
+            // 确保新参数有默认值
+            bw_threshold: t.bw_threshold ?? -10.0,
+            bw_compare: t.bw_compare || "less",
+            bw_freq_range: t.bw_freq_range || null,
+            target_freq: t.target_freq ?? 2.45,
+            freq_interp: t.freq_interp !== undefined ? t.freq_interp : true,
+            require_extremum: t.require_extremum !== undefined ? t.require_extremum : false,
+            extremum_type: t.extremum_type || "min",
             constraints: t.constraints || {
               enable: false,
               min: null,

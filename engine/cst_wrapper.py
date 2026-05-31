@@ -12,7 +12,7 @@ if cst_lib_path not in sys.path:
     sys.path.append(cst_lib_path)
 
 # 从同级目录导入 evaluator
-from .evaluator import get_time_domain_metric, analyze_spectrum
+from .evaluator import get_time_domain_metric, analyze_spectrum, extract_freq_extremum, extract_bandwidth, extract_freq_point
 
 def parse_cst_parameters(cst_path):
     """
@@ -130,7 +130,44 @@ def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path):
                     val = float(item.get_ydata()[0])
                     metrics[t_name] = val * multiplier
 
-                # 规则 C：时域稳态求平均 (默认兜底)
+                # 规则 C：带宽提取
+                elif extract_method == 'bandwidth':
+                    threshold = t_cfg.get('bw_threshold', -10.0)
+                    compare = t_cfg.get('bw_compare', 'less')
+                    freq_range = t_cfg.get('bw_freq_range', None)
+                    data = extract_bandwidth(res, t_path, threshold, compare, freq_range)
+                    val = data.get('value', 0.0)
+                    metrics[t_name] = val * multiplier
+                    metrics[f'{t_name}_start_freq'] = data.get('start_freq', 0.0)
+                    metrics[f'{t_name}_end_freq'] = data.get('end_freq', 0.0)
+                    metrics[f'{t_name}_center_freq'] = data.get('center_freq', 0.0)
+                    metrics[f'{t_name}_curve'] = data.get('curve')
+
+                # 规则 D：指定频率点读取
+                elif extract_method == 'freq_point':
+                    target_freq = t_cfg.get('target_freq', 0.0)
+                    use_interp = t_cfg.get('freq_interp', True)
+                    require_extremum = t_cfg.get('require_extremum', False)
+                    extremum_type = t_cfg.get('extremum_type', 'min')
+
+                    data = extract_freq_point(res, t_path, target_freq, use_interp)
+                    val = data.get('value', 0.0)
+                    metrics[t_name] = val * multiplier
+                    metrics[f'{t_name}_actual_freq'] = data.get('actual_freq', 0.0)
+                    metrics[f'{t_name}_curve'] = data.get('curve')
+
+                    # 如果要求该点为极值点，额外提取极值信息用于约束检查
+                    if require_extremum:
+                        extremum_data = extract_freq_extremum(res, t_path, extremum_type)
+                        extremum_val = extremum_data.get('value', 0.0)
+                        extremum_freq = extremum_data.get('freq', 0.0)
+                        metrics[f'{t_name}_extremum_val'] = extremum_val * multiplier
+                        metrics[f'{t_name}_extremum_freq'] = extremum_freq
+                        # 检查指定频率点是否是极值点（允许0.1GHz的容差）
+                        is_extremum = abs(target_freq - extremum_freq) < 0.1
+                        metrics[f'{t_name}_is_extremum'] = 1.0 if is_extremum else 0.0
+
+                # 规则 E：时域稳态求平均 (默认兜底)
                 else:
                     data = get_time_domain_metric(res, t_path, stable_time)
                     val = data.get('mean', 0.0)
@@ -149,7 +186,7 @@ def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path):
                 metrics[t_name] = 0.0
 
                 # 如果这个指标前端需要画曲线，塞一个空的曲线数据进去，防止前端 ECharts 渲染崩溃
-                if extract_method in ['freq_peak', 'time_mean']:
+                if extract_method in ['freq_peak', 'time_mean', 'bandwidth', 'freq_point', '0d_scalar']:
                     metrics[f'{t_name}_curve'] = {'x': [], 'y': []}
 
     except Exception as e:

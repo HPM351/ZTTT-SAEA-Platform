@@ -83,6 +83,171 @@ def analyze_spectrum(results_obj, fft_path, target_freq=None, gap_blind=None):
         return -1, None, None
 
 
+def extract_freq_extremum(results_obj, result_path, extremum_type='min'):
+    """
+    全频带极值提取：找曲线的最大值或最小值点
+    适用于：S11谐振点（最小值）、S21最大传输点等
+    返回: dict with 'value', 'freq', 'curve'
+    """
+    res = {'value': 0.0, 'freq': 0.0, 'valid': False, 'curve': None}
+    try:
+        item = results_obj.get_3d().get_result_item(result_path)
+        if item is None:
+            return res
+        y, x = np.array(item.get_ydata()), np.array(item.get_xdata())
+
+        # 曲线降采样用于前端展示
+        target_pts = 4000
+        if len(x) > target_pts:
+            indices = np.linspace(0, len(x) - 1, target_pts).astype(int)
+            res['curve'] = {'x': x[indices].tolist(), 'y': y[indices].tolist()}
+        else:
+            res['curve'] = {'x': x.tolist(), 'y': y.tolist()}
+
+        if len(y) == 0:
+            return res
+
+        # 根据类型找极值
+        if extremum_type == 'min':
+            idx = np.argmin(y)
+        else:  # 'max'
+            idx = np.argmax(y)
+
+        res['value'] = float(y[idx])
+        res['freq'] = float(x[idx])
+        res['valid'] = True
+    except:
+        pass
+    return res
+
+
+def extract_bandwidth(results_obj, result_path, threshold, compare='less', freq_range=None):
+    """
+    带宽提取：计算曲线在阈值以上/以下的频率范围宽度
+    适用于：S11 < -10dB 带宽、S21 > -3dB 带宽等
+    参数:
+        threshold: 阈值 (dB)
+        compare: 'less' (小于阈值) 或 'greater' (大于阈值)
+        freq_range: [min_freq, max_freq] 可选，限制计算范围
+    返回: dict with 'value', 'start_freq', 'end_freq', 'center_freq', 'curve'
+    """
+    res = {'value': 0.0, 'start_freq': 0.0, 'end_freq': 0.0, 'center_freq': 0.0, 'valid': False, 'curve': None}
+    try:
+        item = results_obj.get_3d().get_result_item(result_path)
+        if item is None:
+            return res
+        y, x = np.array(item.get_ydata()), np.array(item.get_xdata())
+
+        # 曲线降采样用于前端展示
+        target_pts = 4000
+        if len(x) > target_pts:
+            indices = np.linspace(0, len(x) - 1, target_pts).astype(int)
+            res['curve'] = {'x': x[indices].tolist(), 'y': y[indices].tolist()}
+        else:
+            res['curve'] = {'x': x.tolist(), 'y': y.tolist()}
+
+        if len(y) == 0:
+            return res
+
+        # 可选：限制频率范围
+        if freq_range is not None:
+            mask = (x >= freq_range[0]) & (x <= freq_range[1])
+            x = x[mask]
+            y = y[mask]
+            if len(y) == 0:
+                return res
+
+        # 找满足条件的频段
+        if compare == 'less':
+            mask = y < threshold
+        else:  # 'greater'
+            mask = y > threshold
+
+        # 找最长连续频段
+        bandwidths = []
+        in_band = False
+        start_idx = 0
+
+        for i in range(len(mask)):
+            if mask[i] and not in_band:
+                start_idx = i
+                in_band = True
+            elif not mask[i] and in_band:
+                bw = x[i - 1] - x[start_idx]
+                bandwidths.append({
+                    'start': float(x[start_idx]),
+                    'end': float(x[i - 1]),
+                    'bw': float(bw),
+                    'center': float((x[start_idx] + x[i - 1]) / 2)
+                })
+                in_band = False
+
+        # 处理末尾
+        if in_band:
+            bw = x[-1] - x[start_idx]
+            bandwidths.append({
+                'start': float(x[start_idx]),
+                'end': float(x[-1]),
+                'bw': float(bw),
+                'center': float((x[start_idx] + x[-1]) / 2)
+            })
+
+        # 返回最大带宽
+        if bandwidths:
+            best = max(bandwidths, key=lambda b: b['bw'])
+            res['value'] = best['bw']
+            res['start_freq'] = best['start']
+            res['end_freq'] = best['end']
+            res['center_freq'] = best['center']
+            res['valid'] = True
+    except:
+        pass
+    return res
+
+
+def extract_freq_point(results_obj, result_path, target_freq, interp=True):
+    """
+    指定频率点读取：提取特定频率点的值
+    适用于：读取 2.45GHz 处的 S11 值等
+    参数:
+        target_freq: 目标频率
+        interp: 是否插值
+    返回: dict with 'value', 'actual_freq', 'curve'
+    """
+    res = {'value': 0.0, 'actual_freq': 0.0, 'valid': False, 'curve': None}
+    try:
+        item = results_obj.get_3d().get_result_item(result_path)
+        if item is None:
+            return res
+        y, x = np.array(item.get_ydata()), np.array(item.get_xdata())
+
+        # 曲线降采样用于前端展示
+        target_pts = 4000
+        if len(x) > target_pts:
+            indices = np.linspace(0, len(x) - 1, target_pts).astype(int)
+            res['curve'] = {'x': x[indices].tolist(), 'y': y[indices].tolist()}
+        else:
+            res['curve'] = {'x': x.tolist(), 'y': y.tolist()}
+
+        if len(y) == 0:
+            return res
+
+        if interp:
+            # 线性插值获取精确值
+            res['value'] = float(np.interp(target_freq, x, y))
+            res['actual_freq'] = float(target_freq)
+        else:
+            # 找最近的点
+            idx = np.argmin(np.abs(x - target_freq))
+            res['value'] = float(y[idx])
+            res['actual_freq'] = float(x[idx])
+
+        res['valid'] = True
+    except:
+        pass
+    return res
+
+
 # ==========================================
 # Level 4：算法流派策略模式 (Gateway)
 # 也是对外暴露的唯一接口
@@ -112,6 +277,19 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
 
         weight = float(t_cfg.get('weight', 1.0))
         scale = float(t_cfg.get('reference_scale', 1.0))
+
+        # [Level 0.5] 检测提取失败的哨兵值 (-1)
+        # freq_peak 找不到峰值时返回 -1，这种情况应该直接判为死区
+        extract_method = t_cfg.get('extractMethod', 'time_mean')
+        if extract_method == 'freq_peak' and val == -1:
+            is_dead = True
+            depth = 1.0  # 直接判为深度死区
+            if algo_type == "BO":
+                smooth_penalty = 500.0 * depth
+                total_score += (0.0 - smooth_penalty)
+            else:
+                any_dead = True
+            continue
         constraints = t_cfg.get('constraints', {})
 
         is_dead = False
@@ -124,7 +302,12 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
         if mode == 'maximize':
             base_score = (val / (scale + 1e-9)) * weight
         elif mode == 'minimize':
-            base_score = (1.0 - (val / (scale + 1e-9))) * weight
+            # 对于bandwidth，零值意味着没有找到满足条件的频段，应判为死区
+            if extract_method == 'bandwidth' and val == 0:
+                is_dead = True
+                depth = 1.0
+            else:
+                base_score = (1.0 - (val / (scale + 1e-9))) * weight
         elif mode == 'target':
             target_val = float(t_cfg.get('target_val', 0.0))
             tol = float(t_cfg.get('tolerance', 0.0))
@@ -179,6 +362,19 @@ def calc_score(metrics, targets_list, algo_type="SAEA-GA"):
                     # 杂模超过 B：频域崩溃，触发死区
                     is_dead = True
                     depth += (actual_ratio - ratio_B) / (ratio_B + 1e-6)
+
+        # ==========================================
+        # Level 1.7: 指定频率点极值约束
+        # ==========================================
+        is_extremum_key = f"{t_name}_is_extremum"
+        if is_extremum_key in metrics and constraints.get('enable', False):
+            require_extremum = t_cfg.get('require_extremum', False)
+            if require_extremum:
+                is_extremum = metrics.get(is_extremum_key, 0.0)
+                if is_extremum < 0.5:  # 该点不是极值点
+                    # 软惩罚：根据偏离程度递减分数
+                    penalty_ratio = 0.8  # 固定惩罚80%
+                    base_score *= (1.0 - penalty_ratio)
 
         # ==========================================
         # Level 2: 刚性约束拦截网校验 (原始 min/max)
