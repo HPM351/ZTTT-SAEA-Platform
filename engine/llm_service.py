@@ -213,6 +213,7 @@ async def chat_with_text_model(
                         return
                     async for chunk in response.aiter_bytes():
                         yield chunk
+            yield b"data: [DONE]\n\n"
         except Exception as e:
             yield f"data: {{\"error\": \"后端文本路由异常: {str(e)}\"}}\n\n".encode("utf-8")
 
@@ -264,6 +265,7 @@ async def chat_with_vision_model(req: VisionChatRequest):
                         return
                     async for chunk in response.aiter_bytes():
                         yield chunk
+            yield b"data: [DONE]\n\n"
         except Exception as e:
             yield f"data: {{\"error\": \"后端视觉路由异常: {str(e)}\"}}\n\n".encode("utf-8")
 

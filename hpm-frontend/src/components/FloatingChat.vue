@@ -403,7 +403,10 @@ const sendMessage = async () => {
   const targetMsg = activeSessions.value[activeAgent][activeSessions.value[activeAgent].length - 1]
 
   try {
-    const history = activeSessions.value[activeAgent].slice(1, -2).map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content || '[图片已发送]' }))
+    const msgs = activeSessions.value[activeAgent]
+    const history = msgs.length > 3
+      ? msgs.slice(1, -2).map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content || '[图片已发送]' }))
+      : []  // 消息不足时不发 history，避免上下文丢失或重复
     const payload = { message: userText || "请分析", history: history, agent_id: activeAgent }
     if (imagesToSend.length > 0) payload.images_base64_list = imagesToSend
 
@@ -416,13 +419,16 @@ const sendMessage = async () => {
 
     const reader = response.body.getReader()
     const decoder = new TextDecoder('utf-8')
+    let lineBuffer = ''  // 行缓冲区，处理跨 chunk 的 SSE 数据
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
 
       const chunk = decoder.decode(value, { stream: true })
-      const lines = chunk.split('\n')
+      lineBuffer += chunk
+      const lines = lineBuffer.split('\n')
+      lineBuffer = lines.pop()  // 最后一个可能不完整，留到下次
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
