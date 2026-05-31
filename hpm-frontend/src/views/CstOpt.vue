@@ -63,7 +63,7 @@
             <n-form-item label="当前优化任务名称" style="margin-top: 16px">
               <div class="vertical-group">
                 <n-select
-                  v-model:value="config.selectedHistoryTask"
+                  v-model:value="config.selectedSyncTask"
                   :options="historyTaskOptions"
                   placeholder="覆盖历史任务"
                   @update:value="syncTask"
@@ -1651,6 +1651,7 @@ const config = reactive({
   selectedHistoryPath: null,
   cstPath: "",
   selectedHistoryTask: null,
+  selectedSyncTask: null,
   taskName: "Run_001",
   paramsList: [
     {
@@ -2672,6 +2673,12 @@ onMounted(async () => {
   }
 });
 onUnmounted(() => {
+  // 关闭 WebSocket 连接，防止组件销毁后 onmessage 继续执行
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+
   window.removeEventListener("resize", handleResize);
   document.removeEventListener("fullscreenchange", handleFullscreenChange);
 
@@ -3020,10 +3027,11 @@ const connectWebSocket = (taskId) => {
         });
       }
 
-      //4. 补全详尽参数的散点
-      scatterDataArrayRaw = scatterDataArrayRaw.filter(
+      //4. 补全详尽参数的散点（用 splice 保留响应式代理）
+      const filtered = scatterDataArrayRaw.filter(
         (item) => item.gen !== data.gen,
       );
+      scatterDataArrayRaw.splice(0, scatterDataArrayRaw.length, ...filtered);
       data.batch_logs.forEach((ind) => {
         scatterDataArrayRaw.push({
           gen: data.gen,
@@ -3061,6 +3069,12 @@ const connectWebSocket = (taskId) => {
 
   ws.onclose = () => {
     console.log(`通道 ${taskId} 已关闭`);
+    // 网络断开/服务端重启时重置状态，防止 UI 卡死在"运行中"
+    if (isRunning.value) {
+      isRunning.value = false;
+      if (islandState) islandState.CstOpt.isRunning = false;
+      message.warning("WebSocket 连接已断开，任务状态已重置");
+    }
   };
 };
 

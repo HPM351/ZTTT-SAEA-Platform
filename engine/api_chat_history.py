@@ -1,3 +1,4 @@
+import os
 import jwt
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -10,7 +11,7 @@ history_router = APIRouter(prefix="/api/chat", tags=["Chat History"])
 security = HTTPBearer()
 
 # 这里的密钥必须和 api_auth.py 里签发 Token 时用的一模一样
-SECRET_KEY = "ZTTT_SAEA_SUPER_SECRET_KEY_FOR_MICROWAVE_LAB"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "ZTTT_SAEA_SUPER_SECRET_KEY_FOR_MICROWAVE_LAB")
 ALGORITHM = "HS256"
 
 

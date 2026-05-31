@@ -164,6 +164,8 @@ async def load_model(req: LoadModelRequest):
             model_config = json.load(f)
 
         # 1. 加载“环境工具箱”（仅用于读取安全的 scikit-learn Scaler 对象）
+        # 注意: weights_only=False 是必须的，因为 meta.pth 包含 sklearn StandardScaler 对象
+        # 若改为 True 会拒绝加载。安全风险可控（仅加载自托管模型文件）。
         meta_data = torch.load(meta_path, map_location='cpu', weights_only=False)
 
         # 2. 加载“黑盒模型”（彻底摆脱 class 类依赖）

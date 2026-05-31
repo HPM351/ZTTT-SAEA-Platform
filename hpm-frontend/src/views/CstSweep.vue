@@ -1066,8 +1066,11 @@ const fetchModelPreview = async () => {
   }
 };
 
+let ws = null; // 全局保存 WebSocket 实例
+
 const connectWebSocket = (taskId) => {
-  const ws = new WebSocket(`${WS_BASE}/progress/${taskId}`);
+  if (ws) ws.close();
+  ws = new WebSocket(`${WS_BASE}/progress/${taskId}`);
   ws.onmessage = async (event) => {
     const data = JSON.parse(event.data);
     if (data.type === "sweep_progress") {
@@ -1317,6 +1320,12 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  // 关闭 WebSocket 连接
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+
   window.removeEventListener("resize", handleResize);
   document.removeEventListener("fullscreenchange", handleFullscreenChange);
   

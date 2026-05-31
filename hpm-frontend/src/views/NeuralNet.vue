@@ -1581,7 +1581,7 @@ import {
   watch,
   inject,
 } from "vue";
-import { useMessage } from "naive-ui";
+import { useMessage, useDialog } from "naive-ui";
 import {
   BrainCircuit,
   Activity,
@@ -1604,6 +1604,7 @@ import * as echarts from "echarts";
 import "echarts-gl";
 const predictionResults = ref({});
 const message = useMessage();
+const dialog = useDialog();
 const isDarkMode = inject("globalTheme", ref(true));
 const islandState = inject("islandState");
 const currentModelMeta = ref({

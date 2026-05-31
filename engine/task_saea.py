@@ -282,9 +282,7 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
                         Sel = Chrom[ea.selecting('rws', FitnV, n_pop - 1), :]
                         Sel = ea.mutate(mut_code, 'RI', ea.recombin(rec_code, Sel, pc), FieldD, pm)
                         best_idx = np.argmax(FitnV)
-                        Chrom = np.vstack([Chrom[best_idx, :], Sel])
-                        if Chrom.shape[0] > n_pop:
-                            Chrom = Chrom[np.random.choice(Chrom.shape[0], n_pop, replace=False), :]
+                        Chrom = np.vstack([Chrom[best_idx, :], Sel])  # 精英 + n_pop-1 个后代 = n_pop，无需裁剪
 
                 Fit, batch_logs, waves_dict = eval_pop(Chrom, gen, opt_names, fixed_dict, project, targets_cfg, env_cfg,
                                                        cst_path, ws_manager, task_id, loop, task_status_flags,
@@ -311,7 +309,7 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
                     bo_Y_history.extend((-Fit).flatten().tolist())
 
                 else:  # SAEA-GA
-                    FitnV = ea.ranking(Fit * -1)
+                    FitnV = ea.ranking(Fit)  # 最大化排名，-1e7 惩罚值天然排最后
 
                 best_idx = np.argmax(Fit)
                 best_ind = batch_logs[best_idx]
