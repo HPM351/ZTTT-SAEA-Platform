@@ -57,7 +57,7 @@ async def chat_with_text_model(
     print(f"🚀 收到来自研究员 [{current_user.username}] 的文献对话请求 (Session: {session_id})")
 
     OPENCLAW_URL = "http://127.0.0.1:18789/v1/chat/completions"
-    OPENCLAW_TOKEN = "123456"
+    OPENCLAW_TOKEN = os.getenv("OPENCLAW_TOKEN", "123456")
     target_model = "openclaw:main"
 
     # ----------------------------------------------------------------
@@ -226,7 +226,10 @@ async def chat_with_text_model(
 @llm_router.post("/chat/vision")
 async def chat_with_vision_model(req: VisionChatRequest):
     SILICONFLOW_URL = "https://api.siliconflow.cn/v1/chat/completions"
-    SILICONFLOW_KEY = "sk-ypnnksenlishqzdhkrcoiqrgmrjsjqibkawsbpxcnkywxbhp"
+    SILICONFLOW_KEY = os.getenv("SILICONFLOW_API_KEY", "")
+    if not SILICONFLOW_KEY:
+        yield f"data: {{\"error\": \"未配置 SILICONFLOW_API_KEY 环境变量\"}}\n\n".encode("utf-8")
+        return
     VISION_MODEL = "Qwen/Qwen3.5-397B-A17B"
 
     saea_soul = "你是一个 SAEA 平台视觉助手，专门用于分析图表和物理曲线。"

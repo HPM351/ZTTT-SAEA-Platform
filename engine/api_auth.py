@@ -1,3 +1,4 @@
+import os
 import jwt
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends
@@ -9,7 +10,7 @@ from database import SessionLocal, User
 auth_router = APIRouter(prefix="/api", tags=["Authentication"])
 
 # JWT 配置
-SECRET_KEY = "ZTTT_SAEA_SUPER_SECRET_KEY_FOR_MICROWAVE_LAB"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "ZTTT_SAEA_SUPER_SECRET_KEY_FOR_MICROWAVE_LAB")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30  # 颁发 30 天超长有效期的 Token
 

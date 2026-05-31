@@ -63,7 +63,7 @@
             <n-form-item label="当前优化任务名称" style="margin-top: 16px">
               <div class="vertical-group">
                 <n-select
-                  v-model:value="config.selectedHistoryTask"
+                  v-model:value="config.selectedSyncTask"
                   :options="historyTaskOptions"
                   placeholder="覆盖历史任务"
                   @update:value="syncTask"
@@ -1651,6 +1651,7 @@ const config = reactive({
   selectedHistoryPath: null,
   cstPath: "",
   selectedHistoryTask: null,
+  selectedSyncTask: null,
   taskName: "Run_001",
   paramsList: [
     {
