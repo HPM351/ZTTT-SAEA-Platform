@@ -2672,6 +2672,12 @@ onMounted(async () => {
   }
 });
 onUnmounted(() => {
+  // 关闭 WebSocket 连接，防止组件销毁后 onmessage 继续执行
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+
   window.removeEventListener("resize", handleResize);
   document.removeEventListener("fullscreenchange", handleFullscreenChange);
 
@@ -3062,6 +3068,12 @@ const connectWebSocket = (taskId) => {
 
   ws.onclose = () => {
     console.log(`通道 ${taskId} 已关闭`);
+    // 网络断开/服务端重启时重置状态，防止 UI 卡死在"运行中"
+    if (isRunning.value) {
+      isRunning.value = false;
+      if (islandState) islandState.CstOpt.isRunning = false;
+      message.warning("WebSocket 连接已断开，任务状态已重置");
+    }
   };
 };
 

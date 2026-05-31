@@ -65,7 +65,11 @@ def run_sweep_task(task_id: str, config_dict: dict, ws_manager, loop: asyncio.Ab
                 current_params.update(dict(zip(var_names, combo)))
 
                 # 2. 扔给动态 CST Wrapper 提取数据
-                m = run_single_simulation(project, current_params, targets_list, env_cfg, cst_path)
+                try:
+                    m = run_single_simulation(project, current_params, targets_list, env_cfg, cst_path)
+                except Exception as e:
+                    print(f"⚠️ 组合 {current_step} 仿真失败: {e}，跳过该组合")
+                    m = {"error": str(e)}
 
                 # 3. 全自动数据分流：标量入 metrics，波形入 waves
                 metrics_json = {}

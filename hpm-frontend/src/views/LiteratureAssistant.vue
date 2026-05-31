@@ -755,6 +755,7 @@ const sendMessage = async () => {
     for (const file of filesToSend) {
       if (file.size > 20 * 1024 * 1024) {
         targetMsg.content += `\n\n⚠️ 文件 "${file.name}" 超过 20MB 限制,已跳过。`;
+        continue;  // 跳过超大文件，不 append
       }
       formData.append("files", file);
     }
