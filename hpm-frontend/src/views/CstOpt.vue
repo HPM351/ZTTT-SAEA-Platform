@@ -2335,9 +2335,17 @@ const refreshScatterFilter = () => {
   if (isNaN(colorMin) || !isFinite(colorMin)) colorMin = 0;
   if (isNaN(colorMax) || !isFinite(colorMax)) colorMax = 200;
 
+  // 5. 坐标轴极值自适应：从全量数据计算，确保极端值点不被裁切
+  const xVals = scatterDataArrayRaw.map(d => Number(getVal(d, scatterConfig.xAxis))).filter(v => !isNaN(v));
+  const yVals = scatterDataArrayRaw.map(d => Number(getVal(d, scatterConfig.yAxis))).filter(v => !isNaN(v));
+  let xMin = Math.min(...xVals), xMax = Math.max(...xVals);
+  let yMin = Math.min(...yVals), yMax = Math.max(...yVals);
+  const xPad = (xMax - xMin) * 0.05 || 1;
+  const yPad = (yMax - yMin) * 0.05 || 1;
+
   scatterChart.setOption({
-    xAxis: { name: getLabel(scatterConfig.xAxis) },
-    yAxis: { name: getLabel(scatterConfig.yAxis) },
+    xAxis: { name: getLabel(scatterConfig.xAxis), min: xMin - xPad, max: xMax + xPad },
+    yAxis: { name: getLabel(scatterConfig.yAxis), min: yMin - yPad, max: yMax + yPad },
     visualMap: { min: colorMin, max: colorMax },
     series: [{ data: plotData }],
   });
@@ -2583,6 +2591,7 @@ onMounted(async () => {
                     },
                   }));
                 }
+                if (saved.cstPath) config.cstPath = saved.cstPath;
               } else {
                 config.algo.nGen = d.total_gen || 50;
               }
@@ -2648,6 +2657,7 @@ onMounted(async () => {
                 }
               }
               message.success("✅ 历史数据已从数据库无损恢复！");
+              fetchModelPreview();
               updateInspectorChart();
             } else {
               message.error(`数据恢复失败: ${resData.data.message}`);

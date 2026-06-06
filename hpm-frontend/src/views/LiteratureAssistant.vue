@@ -592,7 +592,17 @@ const fetchCloudHistories = async () => {
       }
     }
   } catch (e) {
-    messageUI.error("无法拉取云端历史记录,请检查网络");
+    if (e.response && e.response.status === 401) {
+      // Token 过期或无效，清除本地凭据并弹出登录框
+      localStorage.removeItem("saea_token");
+      localStorage.removeItem("saea_user");
+      delete axios.defaults.headers.common["Authorization"];
+      currentUser.value = "";
+      showLoginModal.value = true;
+      messageUI.warning("登录已过期，请重新登录");
+    } else {
+      messageUI.error("无法拉取云端历史记录,请检查网络");
+    }
   }
 };
 

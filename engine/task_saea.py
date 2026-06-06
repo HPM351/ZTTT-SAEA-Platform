@@ -309,7 +309,7 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
                     bo_Y_history.extend((-Fit).flatten().tolist())
 
                 else:  # SAEA-GA
-                    FitnV = ea.ranking(Fit)  # 最大化排名，-1e7 惩罚值天然排最后
+                    FitnV = ea.ranking(Fit * -1.0)  # 最大化排名：取反后按最小化排序，-1e7 惩罚值天然排最后
 
                 best_idx = np.argmax(Fit)
                 best_ind = batch_logs[best_idx]
