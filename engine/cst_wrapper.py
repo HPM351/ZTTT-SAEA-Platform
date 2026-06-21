@@ -103,8 +103,7 @@ def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path, 
             elapsed += poll_interval
             # 刷新结果树，强制 CST 将当前仿真数据写入磁盘
             modeler.add_to_history('ResultTree', 'ResultTree.UpdateTree()')
-            # TODO: 预留中间态数据提取接口（轮询时读 S 参数/功率曲线用于前端实时渲染）
-            print(f"  [CST] 仿真进行中... {elapsed:.0f}s (结果已刷新)", flush=True)
+            # 预留中间态数据提取接口（轮询时读 S 参数/功率曲线用于前端实时渲染）
 
         print(f"  [CST] 求解器完成 (耗时 {elapsed:.0f}s)，保存项目...", flush=True)
         project.save()
@@ -133,18 +132,8 @@ def run_single_simulation(project, param_dict, targets_list, env_cfg, cst_path, 
         res = None
         for attempt in range(3):
             try:
-                print(f"  [CST] 打开结果文件 (尝试 {attempt+1}/3): {cst_path}", flush=True)
                 res = cst.results.ProjectFile(cst_path, allow_interactive=True)
-                # 尝试读取一个结果项来验证文件可用
-                test_item = res.get_3d().get_result_item('S-Parameters/S-Parameters [1,1]')
-                if test_item is not None:
-                    test_y = test_item.get_ydata()
-                    print(f"  [CST] 结果文件验证通过, S11 数据点数: {len(test_y)}", flush=True)
-                    break
-                else:
-                    print(f"  [CST] ⚠️ 结果文件打开但 S11 为空, 重试...", flush=True)
-                    del res
-                    time.sleep(2.0)
+                break
             except Exception as open_e:
                 print(f"  [CST] ⚠️ 打开结果文件失败 (尝试 {attempt+1}/3): {open_e}", flush=True)
                 if attempt < 2:

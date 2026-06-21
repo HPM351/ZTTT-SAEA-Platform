@@ -43,6 +43,9 @@ def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg
                 m = run_single_simulation(project, p, targets_cfg, env_cfg, cst_path)
                 if 'error' not in m:
                     global_cache[param_key] = m
+                else:
+                    print(f"  -> Gen {gen_idx} | 个体 {i + 1}/{n} ❌ CST 返回错误: {m.get('error', '未知')}", flush=True)
+                    print(f"     metrics keys: {list(m.keys())}", flush=True)
 
             # 核心联动：将前端传来的算法类型，喂给底层打分网关
             scr = calc_score(m, targets_cfg, algo_type)
@@ -108,7 +111,9 @@ def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg
             asyncio.run_coroutine_threadsafe(ws_manager.send_to_task(json.dumps(ind_msg), task_id), loop)
 
         except Exception as e:
-            print(f"❌ 个体 {i + 1} 评估崩溃: {e}")
+            import traceback
+            print(f"❌ 个体 {i + 1} 评估崩溃: {e}", flush=True)
+            print(f"   完整堆栈:\n{traceback.format_exc()}", flush=True)
             Fit[i, 0] = -50000.0 if algo_type == "BO" else -1e7
             fallback_params = {**dict(zip(opt_names, Phen[i, :])), **fixed_dict}
             current_batch_logs.append({
