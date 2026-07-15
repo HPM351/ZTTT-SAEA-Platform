@@ -26,6 +26,7 @@ from tkinter import filedialog
 from database import SessionLocal, Task, Generation, Individual, Waveform
 from schemas import OptimizationConfig
 from engine.task_saea import run_optimization_task
+from engine.checkpoint_manager import load_checkpoint, delete_checkpoint
 from typing import Dict, Any
 from engine.task_sweep import run_sweep_task
 from fastapi import Query
@@ -595,6 +596,55 @@ async def start_optimization(config: OptimizationConfig, background_tasks: Backg
     except Exception as e:
         return Response(status_code=500, content=f"Failed to start task: {str(e)}")
 
+
+@app.post("/api/resume_optimization/{task_id}")
+async def resume_optimization(task_id: str, background_tasks: BackgroundTasks):
+    """
+    断点续跑入口：用原始 task_id 重新拉起优化，自动从 checkpoint 恢复
+    """
+    try:
+        loop = asyncio.get_running_loop()
+
+        # 1. 校验 checkpoint 是否存在
+        ckpt = load_checkpoint(task_id)
+        if not ckpt:
+            return Response(status_code=404, content="无可恢复的断点")
+
+        # 2. 从 DB 读回原始任务
+        db = SessionLocal()
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            db.close()
+            return Response(status_code=404, content="任务不存在")
+
+        # 3. 重置状态
+        if task.status == "running":
+            db.close()
+            return Response(status_code=409, content="该任务正在运行中，无需恢复")
+
+        config_dict = task.config_json
+        task_name = task.name
+        db.query(Task).filter(Task.id == task_id).update({"status": "running"})
+        db.commit()
+        db.close()
+
+        # 4. 用同一个 task_id 重新拉起（load_checkpoint 会匹配）
+        task_status_flags[task_id] = "running"
+        print(f"恢复优化任务: {task_name} | ID: {task_id} | 从 gen={ckpt['gen']+1} 继续")
+
+        background_tasks.add_task(
+            run_optimization_task, task_id, config_dict, manager, loop, task_status_flags
+        )
+
+        return {
+            "status": "success",
+            "task_id": task_id,
+            "task_name": task_name,
+            "resume_gen": ckpt["gen"] + 1,
+            "message": f"任务 [{task_name}] 已从第 {ckpt['gen']+1} 代恢复运行"
+        }
+    except Exception as e:
+        return Response(status_code=500, content=f"恢复失败: {str(e)}")
 
 @app.get("/api/get_model_image")
 async def get_model_image(cst_path: str):

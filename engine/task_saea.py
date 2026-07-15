@@ -7,6 +7,7 @@ from datetime import datetime
 # 导入底层驱动和打分系统
 from .cst_wrapper import run_single_simulation
 from .evaluator import calc_score
+from .checkpoint_manager import save_checkpoint, load_checkpoint, delete_checkpoint
 
 
 def eval_pop(Phen, gen_idx, opt_names, fixed_dict, project, targets_cfg, env_cfg, cst_path, ws_manager, task_id, loop,
@@ -182,6 +183,30 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
         global_simulation_cache = {}
         print(f"[{task_id}] 全局仿真记忆字典已挂载")
 
+        # === 2.5. Checkpoint 断点恢复 (仅 SAEA-GA) ===
+        start_gen = 1
+        if algo_type == 'SAEA-GA':
+            ckpt_state = load_checkpoint(task_id)
+            if ckpt_state and ckpt_state.get("algo_type") == "SAEA-GA":
+                ckpt_gen = ckpt_state["gen"]
+                if ckpt_gen < n_gen:
+                    start_gen = ckpt_gen + 1
+                    ckpt_chrom = ckpt_state["Chrom"]
+                    ckpt_fitnv = ckpt_state["FitnV"]
+                    if ckpt_chrom is not None and ckpt_chrom.shape[0] > 0:
+                        Chrom = ckpt_chrom
+                    if ckpt_fitnv is not None and ckpt_fitnv.shape[0] > 0:
+                        FitnV = ckpt_fitnv
+                    if ckpt_state.get("cache"):
+                        global_simulation_cache = ckpt_state["cache"]
+                    print(
+                        f"[{task_id}] 🔄 断点恢复: 从第 {start_gen} 代继续, "
+                        f"种群={Chrom.shape[0]}×{Chrom.shape[1]}, 缓存命中 {len(global_simulation_cache)} 组")
+                    asyncio.run_coroutine_threadsafe(
+                        ws_manager.send_to_task(
+                            json.dumps({"type": "info", "message": f"🔄 检测到断点，从第 {start_gen} 代恢复运行"}), task_id),
+                        loop)
+
         # === 3. 初始化各算法的独立大脑 ===
         FieldD = ea.crtfld('RI', np.zeros(len(opt_names)), ranges, np.ones((2, len(opt_names))))
         Chrom, FitnV = None, None
@@ -221,7 +246,7 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
         # ========================================================
         # 4. 进化/迭代 主循环 (策略模式)
         # ========================================================
-        for gen in range(1, n_gen + 1):
+        for gen in range(start_gen, n_gen + 1):
             if task_status_flags.get(task_id) == "stopped":
                 asyncio.run_coroutine_threadsafe(
                     ws_manager.send_to_task(json.dumps({"type": "error", "message": "🛑 任务已被强制终止！"}), task_id),
@@ -391,6 +416,18 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
                 }
                 asyncio.run_coroutine_threadsafe(ws_manager.send_to_task(json.dumps(progress_data), task_id), loop)
 
+                # === Checkpoint 快照: 每代结束后保存运行时状态 (SAEA-GA) ===
+                if algo_type == 'SAEA-GA' and FitnV is not None:
+                    save_checkpoint(
+                        task_id=task_id,
+                        algo_type='SAEA-GA',
+                        gen=gen,
+                        chrom=Chrom,
+                        fitnv=FitnV,
+                        opt_names=opt_names,
+                        cache=global_simulation_cache,
+                    )
+
             finally:
                 project.close()
 
@@ -398,6 +435,7 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
         db.query(Task).filter(Task.id == task_id).update({"status": "completed"})
         db.commit()
         db.close()
+        delete_checkpoint(task_id)
         if task_id in task_status_flags: task_status_flags[task_id] = "completed"
         asyncio.run_coroutine_threadsafe(
             ws_manager.send_to_task(json.dumps({"type": "finish", "message": "✅ CST 联合优化全部完成！"}), task_id),
@@ -409,6 +447,7 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
         db.query(Task).filter(Task.id == task_id).update({"status": "stopped"})
         db.commit()
         db.close()
+        delete_checkpoint(task_id)
         if task_id in task_status_flags: task_status_flags[task_id] = "stopped"
         asyncio.run_coroutine_threadsafe(
             ws_manager.send_to_task(json.dumps({"type": "error", "message": "🛑 任务已被手动终止"}), task_id),
@@ -419,6 +458,7 @@ def run_optimization_task(task_id: str, config_dict: dict, ws_manager, loop: asy
         db.query(Task).filter(Task.id == task_id).update({"status": "error"})
         db.commit()
         db.close()
+        # error 状态保留 checkpoint，方便用户手动恢复
         if task_id in task_status_flags: task_status_flags[task_id] = "error"
         asyncio.run_coroutine_threadsafe(
             ws_manager.send_to_task(json.dumps({"type": "error", "message": f"引擎异常中断: {str(e)}"}), task_id), loop)

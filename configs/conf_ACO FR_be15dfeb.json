@@ -1,8 +1,8 @@
 {
-    "selectedHistoryPath": "F:\\cst files\\ACO for report\\ACO FR.cst",
+    "selectedHistoryPath": null,
     "cstPath": "F:\\cst files\\ACO for report\\ACO FR.cst",
     "selectedHistoryTask": null,
-    "taskName": "PSO功能测试v1",
+    "taskName": "v5.0 beta ranking测试2",
     "env": {
         "stableTime": 25.0
     },
@@ -10,25 +10,17 @@
         {
             "id": "8l3ojl8ep",
             "name": "Va",
-            "min": 160000.0,
-            "max": 250000.0,
+            "min": 140000.0,
+            "max": 300000.0,
             "val": 189315.7958984375,
             "opt": true
         },
         {
             "id": "g8pa8ayvk",
             "name": "cathode_r",
-            "min": 6.0,
+            "min": 4.0,
             "max": 10.0,
             "val": 7.9869384765625,
-            "opt": true
-        },
-        {
-            "id": "d68c5uegv",
-            "name": "anode_out_r",
-            "min": 30.0,
-            "max": 40.0,
-            "val": 34.0,
             "opt": true
         },
         {
@@ -37,7 +29,15 @@
             "min": 12.0,
             "max": 20.0,
             "val": 16.9,
-            "opt": true
+            "opt": false
+        },
+        {
+            "id": "d68c5uegv",
+            "name": "anode_out_r",
+            "min": 30.0,
+            "max": 40.0,
+            "val": 34.0,
+            "opt": false
         },
         {
             "id": "uycddvqb5",
@@ -149,7 +149,7 @@
             "id": "b83jukvzv",
             "name": "效率",
             "path": "Tables\\1D Results\\EFF",
-            "mode": "maximize",
+            "mode": "display_only",
             "extractMethod": "time_mean",
             "multiplier": 100,
             "reference_scale": 100,
@@ -163,79 +163,81 @@
                 "max_diff": null,
                 "max_fluc": 10,
                 "max_side_ratio": null
-            }
+            },
+            "bw_threshold": -10,
+            "bw_compare": "less",
+            "bw_freq_range": null,
+            "target_freq": 2.45,
+            "freq_interp": true,
+            "require_extremum": false,
+            "extremum_type": "min"
         },
         {
             "id": "826rpot03",
             "name": "功率",
             "path": "Tables\\1D Results\\AVGpower",
-            "mode": "display_only",
+            "mode": "maximize",
             "extractMethod": "time_mean",
             "multiplier": 1e-06,
-            "reference_scale": 1,
+            "reference_scale": 100,
             "weight": 1,
             "target_val": 0,
             "tolerance": 0,
             "constraints": {
-                "enable": false,
+                "enable": true,
                 "min": null,
                 "max": null,
                 "max_diff": null,
-                "max_fluc": null,
-                "max_side_ratio": null
-            }
+                "max_fluc": 15,
+                "max_side_ratio": null,
+                "fluc_type": "relative"
+            },
+            "bw_threshold": -10,
+            "bw_compare": "less",
+            "bw_freq_range": null,
+            "target_freq": 2.45,
+            "freq_interp": true,
+            "require_extremum": false,
+            "extremum_type": "min"
         },
         {
             "id": "fle3obzj3",
             "name": "频率",
             "path": "Tables\\1D Results\\FFT",
-            "mode": "display_only",
-            "extractMethod": "time_mean",
+            "mode": "target",
+            "extractMethod": "freq_peak",
             "multiplier": 1,
-            "reference_scale": 1,
+            "reference_scale": 0.5,
             "weight": 1,
-            "target_val": 0,
-            "tolerance": 0,
+            "target_val": 2.4,
+            "tolerance": 0.1,
             "constraints": {
-                "enable": false,
+                "enable": true,
                 "min": null,
                 "max": null,
-                "max_diff": null,
+                "max_diff": 1,
                 "max_fluc": null,
-                "max_side_ratio": null
-            }
-        },
-        {
-            "id": "jfxa2q15y",
-            "name": "主模波形",
-            "path": "1D Results\\Port signals\\o2(1),pic",
-            "mode": "display_only",
-            "extractMethod": "time_mean",
-            "multiplier": 1,
-            "reference_scale": 1,
-            "weight": 1,
-            "target_val": 0,
-            "tolerance": 0,
-            "constraints": {
-                "enable": false,
-                "min": null,
-                "max": null,
-                "max_diff": null,
-                "max_fluc": null,
-                "max_side_ratio": null
-            }
+                "max_side_ratio": 10
+            },
+            "bw_threshold": -10,
+            "bw_compare": "less",
+            "bw_freq_range": null,
+            "target_freq": 2.45,
+            "freq_interp": true,
+            "require_extremum": false,
+            "extremum_type": "min"
         }
     ],
     "algo": {
-        "type": "PSO",
-        "nPop": 15,
-        "nGen": 15,
+        "type": "SAEA-GA",
+        "nPop": 2,
+        "nGen": 2,
         "injectJson": null,
         "ga": {
             "recCode": "xovdp",
             "pc": 0.7,
             "mutCode": "mutuni",
-            "pm": 0.25,
+            "pm": 0.1,
             "useAutoMut": false,
             "autoMutRange": [
                 30,

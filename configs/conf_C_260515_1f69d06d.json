@@ -1,0 +1,475 @@
+{
+    "selectedHistoryPath": null,
+    "cstPath": "F:\\cst files\\20260518\\C_260515.cst",
+    "selectedHistoryTask": null,
+    "taskName": "C_Band GA优化V3",
+    "env": {
+        "stableTime": 20.0
+    },
+    "paramsList": [
+        {
+            "id": "xf5piwa16",
+            "name": "anode_out_r",
+            "min": 27.0,
+            "max": 33.0,
+            "val": 30.0,
+            "opt": true
+        },
+        {
+            "id": "a5r9nnccf",
+            "name": "anode_in_r",
+            "min": 20.0,
+            "max": 25.0,
+            "val": 22.5,
+            "opt": true
+        },
+        {
+            "id": "qsl33fsji",
+            "name": "anode_cavity_angle",
+            "min": 17.0,
+            "max": 23.0,
+            "val": 20.0,
+            "opt": true
+        },
+        {
+            "id": "0dzn3w65s",
+            "name": "plug_angle",
+            "min": 13.0,
+            "max": 19.0,
+            "val": 16.0,
+            "opt": true
+        },
+        {
+            "id": "m9lckktak",
+            "name": "plug_in_r",
+            "min": 17.0,
+            "max": 23.0,
+            "val": 20.0,
+            "opt": true
+        },
+        {
+            "id": "fya12nojv",
+            "name": "Bz",
+            "min": 0.28,
+            "max": 0.38,
+            "val": 0.32,
+            "opt": true
+        },
+        {
+            "id": "pckp3uhag",
+            "name": "anode_h",
+            "min": 35.0,
+            "max": 47.0,
+            "val": 41.0,
+            "opt": true
+        },
+        {
+            "id": "lffwndp4p",
+            "name": "endcap_r",
+            "min": 16.0,
+            "max": 24.0,
+            "val": 20.0,
+            "opt": true
+        },
+        {
+            "id": "31rm6es59",
+            "name": "Va",
+            "min": 350000.0,
+            "max": 500000.0,
+            "val": 450000.0,
+            "opt": true
+        },
+        {
+            "id": "azbtwrian",
+            "name": "shell1_begin",
+            "min": -135.0,
+            "max": -45.0,
+            "val": -90.0,
+            "opt": false
+        },
+        {
+            "id": "ycfeizgeq",
+            "name": "shell1_end",
+            "min": 20.5,
+            "max": 61.5,
+            "val": 41.0,
+            "opt": false
+        },
+        {
+            "id": "ty3ic50gv",
+            "name": "plug_end",
+            "min": 28.5,
+            "max": 85.5,
+            "val": 57.0,
+            "opt": false
+        },
+        {
+            "id": "pzboherl3",
+            "name": "plug_r",
+            "min": 21.0,
+            "max": 63.0,
+            "val": 42.0,
+            "opt": false
+        },
+        {
+            "id": "j0v1ush0u",
+            "name": "coaxial_h",
+            "min": 12.5,
+            "max": 37.5,
+            "val": 25.0,
+            "opt": false
+        },
+        {
+            "id": "ijzqnocyk",
+            "name": "cathode_hold_r",
+            "min": 5.0,
+            "max": 15.0,
+            "val": 10.0,
+            "opt": false
+        },
+        {
+            "id": "xhll9qteo",
+            "name": "cathode_r",
+            "min": 4.75,
+            "max": 14.25,
+            "val": 9.5,
+            "opt": false
+        },
+        {
+            "id": "dyxfc6dtb",
+            "name": "l1",
+            "min": 66.0,
+            "max": 198.0,
+            "val": 132.0,
+            "opt": false
+        },
+        {
+            "id": "uor00hfjf",
+            "name": "Out_h",
+            "min": 100.0,
+            "max": 300.0,
+            "val": 200.0,
+            "opt": false
+        },
+        {
+            "id": "tzfl40il2",
+            "name": "converter_in_r1",
+            "min": 6.0,
+            "max": 18.0,
+            "val": 12.0,
+            "opt": false
+        },
+        {
+            "id": "ftiecxgh4",
+            "name": "conveter_h",
+            "min": 28.85,
+            "max": 86.55,
+            "val": 57.7,
+            "opt": false
+        },
+        {
+            "id": "9t99mtoag",
+            "name": "converter_in_r2",
+            "min": 2.5,
+            "max": 7.5,
+            "val": 5.0,
+            "opt": false
+        },
+        {
+            "id": "xan8vik4j",
+            "name": "endcap_length",
+            "min": -60.0,
+            "max": -20.0,
+            "val": -40.0,
+            "opt": false
+        },
+        {
+            "id": "82s96nlt0",
+            "name": "plug_out_r",
+            "min": 15.0,
+            "max": 45.0,
+            "val": 30.0,
+            "opt": false
+        },
+        {
+            "id": "c04v9z5am",
+            "name": "R",
+            "min": 10.0,
+            "max": 30.0,
+            "val": 20.0,
+            "opt": false
+        },
+        {
+            "id": "8rw698it6",
+            "name": "endcap_l",
+            "min": 5.0,
+            "max": 15.0,
+            "val": 10.0,
+            "opt": false
+        },
+        {
+            "id": "hcum1u2vd",
+            "name": "endcap_hold",
+            "min": 10.0,
+            "max": 30.0,
+            "val": 20.0,
+            "opt": false
+        },
+        {
+            "id": "yr8vj1237",
+            "name": "h_s",
+            "min": 30.5,
+            "max": 91.5,
+            "val": 61.0,
+            "opt": false
+        },
+        {
+            "id": "huwoyjp5n",
+            "name": "cap_r",
+            "min": 10.0,
+            "max": 30.0,
+            "val": 20.0,
+            "opt": false
+        },
+        {
+            "id": "6t0d7dtbo",
+            "name": "r_h",
+            "min": 6.25,
+            "max": 18.75,
+            "val": 12.5,
+            "opt": false
+        },
+        {
+            "id": "78krdkldp",
+            "name": "anode_start",
+            "min": 3.0,
+            "max": 9.0,
+            "val": 6.0,
+            "opt": false
+        },
+        {
+            "id": "u77cc5r5x",
+            "name": "a",
+            "min": 3.0,
+            "max": 9.0,
+            "val": 6.0,
+            "opt": false
+        },
+        {
+            "id": "8t75scadc",
+            "name": "b",
+            "min": -10.0,
+            "max": 10.0,
+            "val": 0.0,
+            "opt": false
+        },
+        {
+            "id": "rswh9uq3v",
+            "name": "h2",
+            "min": 19.0,
+            "max": 57.0,
+            "val": 38.0,
+            "opt": false
+        },
+        {
+            "id": "evznln5od",
+            "name": "r1",
+            "min": 13.0,
+            "max": 39.0,
+            "val": 26.0,
+            "opt": false
+        },
+        {
+            "id": "gwxin2whk",
+            "name": "h3",
+            "min": -10.0,
+            "max": 10.0,
+            "val": 0.0,
+            "opt": false
+        },
+        {
+            "id": "o7mit50mn",
+            "name": "h4",
+            "min": -10.0,
+            "max": 10.0,
+            "val": 0.0,
+            "opt": false
+        },
+        {
+            "id": "fdr4o41sv",
+            "name": "hf",
+            "min": 15.0,
+            "max": 45.0,
+            "val": 0.0,
+            "opt": false
+        }
+    ],
+    "targetsList": [
+        {
+            "id": "qegaqax1u",
+            "name": "效率",
+            "path": "Tables\\1D Results\\EFF",
+            "mode": "maximize",
+            "extractMethod": "time_mean",
+            "multiplier": 100,
+            "reference_scale": 10,
+            "weight": 1,
+            "target_val": 0,
+            "tolerance": 0,
+            "bw_threshold": -10,
+            "bw_compare": "less",
+            "bw_freq_range": null,
+            "target_freq": 2.45,
+            "freq_interp": true,
+            "require_extremum": false,
+            "extremum_type": "min",
+            "constraints": {
+                "enable": true,
+                "min": 1,
+                "max": 100,
+                "max_diff": null,
+                "max_fluc": 15,
+                "max_side_ratio": null,
+                "fluc_type": "relative"
+            }
+        },
+        {
+            "id": "kp6jvbisn",
+            "name": "频率",
+            "path": "Tables\\1D Results\\FFT",
+            "mode": "target",
+            "extractMethod": "freq_peak",
+            "multiplier": 1,
+            "reference_scale": 0.5,
+            "weight": 5,
+            "target_val": 5.9,
+            "tolerance": 0.2,
+            "bw_threshold": -10,
+            "bw_compare": "less",
+            "bw_freq_range": null,
+            "target_freq": 2.45,
+            "freq_interp": true,
+            "require_extremum": false,
+            "extremum_type": "min",
+            "constraints": {
+                "enable": false,
+                "min": null,
+                "max": null,
+                "max_diff": 0.5,
+                "max_side_ratio": 10
+            }
+        },
+        {
+            "id": "pexnixjeh",
+            "name": "功率",
+            "path": "Tables\\1D Results\\AVGpower",
+            "mode": "maximize",
+            "extractMethod": "time_mean",
+            "multiplier": 1e-06,
+            "reference_scale": 100,
+            "weight": 1,
+            "target_val": 0,
+            "tolerance": 0,
+            "bw_threshold": -10,
+            "bw_compare": "less",
+            "bw_freq_range": null,
+            "target_freq": 2.45,
+            "freq_interp": true,
+            "require_extremum": false,
+            "extremum_type": "min",
+            "constraints": {
+                "enable": true,
+                "fluc_type": "relative",
+                "min": 10,
+                "max": null,
+                "max_diff": null,
+                "max_fluc": 15,
+                "max_side_ratio": null
+            }
+        },
+        {
+            "id": "xl1jyb177",
+            "name": "电流",
+            "path": "Tables\\1D Results\\current",
+            "mode": "display_only",
+            "extractMethod": "time_mean",
+            "multiplier": 1,
+            "reference_scale": 1,
+            "weight": 1,
+            "target_val": 0,
+            "tolerance": 0,
+            "bw_threshold": -10,
+            "bw_compare": "less",
+            "bw_freq_range": null,
+            "target_freq": 2.45,
+            "freq_interp": true,
+            "require_extremum": false,
+            "extremum_type": "min",
+            "constraints": {
+                "enable": false,
+                "fluc_type": "relative",
+                "min": null,
+                "max": null,
+                "max_diff": null,
+                "max_fluc": null,
+                "max_side_ratio": null
+            }
+        },
+        {
+            "id": "ux1y1fvly",
+            "name": "主模波形",
+            "path": "1D Results\\Port signals\\o2(3),pic",
+            "mode": "display_only",
+            "extractMethod": "time_mean",
+            "multiplier": 1,
+            "reference_scale": 1,
+            "weight": 1,
+            "target_val": 0,
+            "tolerance": 0,
+            "bw_threshold": -10,
+            "bw_compare": "less",
+            "bw_freq_range": null,
+            "target_freq": 2.45,
+            "freq_interp": true,
+            "require_extremum": false,
+            "extremum_type": "min",
+            "constraints": {
+                "enable": false,
+                "fluc_type": "relative",
+                "min": null,
+                "max": null,
+                "max_diff": null,
+                "max_fluc": null,
+                "max_side_ratio": null
+            }
+        }
+    ],
+    "algo": {
+        "type": "SAEA-GA",
+        "nPop": 50,
+        "nGen": 20,
+        "injectJson": "",
+        "ga": {
+            "recCode": "xovdp",
+            "pc": 0.7,
+            "mutCode": "mutuni",
+            "pm": 0.2,
+            "useAutoMut": true,
+            "autoMutRange": [
+                30,
+                70
+            ]
+        },
+        "pso": {
+            "w": 0.8,
+            "c1": 1.5,
+            "c2": 1.5
+        },
+        "bo": {
+            "acqFunc": "EI",
+            "useAutoAcq": true,
+            "kappa": 2.5,
+            "xi": 0.01
+        }
+    }
+}

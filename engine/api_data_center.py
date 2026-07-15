@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from sqlalchemy import text
 
-from database import SessionLocal, Task, Individual, Generation, Waveform, NnOnlineLog, DB_PATH
+from database import SessionLocal, Task, Individual, Generation, Waveform, NnOnlineLog, Checkpoint, DB_PATH
 
 router = APIRouter(prefix="/api", tags=["DataCenter"])
 
@@ -22,7 +22,22 @@ def get_db():
 
 @router.get("/tasks")
 def get_tasks(db: Session = Depends(get_db)):
-    return db.query(Task).order_by(Task.created_at.desc()).all()
+    tasks = db.query(Task).order_by(Task.created_at.desc()).all()
+    # 查询哪些任务有 checkpoint（可恢复）
+    ckpt_ids = {row[0] for row in db.query(Checkpoint.task_id).all()}
+    result = []
+    for t in tasks:
+        d = {
+            "id": t.id,
+            "name": t.name,
+            "cst_path": t.cst_path,
+            "status": t.status,
+            "created_at": str(t.created_at) if t.created_at else None,
+            "config_json": t.config_json,
+            "has_checkpoint": t.id in ckpt_ids,
+        }
+        result.append(d)
+    return result
 
 
 @router.get("/tasks/{task_id}/individuals")

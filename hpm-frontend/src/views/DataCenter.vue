@@ -29,13 +29,26 @@
           >
             <n-thing :title="task.name" :description="task.id">
               <template #suffix>
-                <n-tag
-                  :type="getStatusType(task.status)"
-                  size="tiny"
-                  bordered="false"
-                >
-                  {{ task.status }}
-                </n-tag>
+                <n-space :size="6">
+                  <n-tag
+                    :type="getStatusType(task.status)"
+                    size="tiny"
+                    bordered="false"
+                  >
+                    {{ task.status }}
+                  </n-tag>
+                  <n-button
+                    v-if="task.has_checkpoint && task.status !== 'running'"
+                    size="tiny"
+                    type="warning"
+                    secondary
+                    :bordered="false"
+                    @click.stop="resumeTask(task)"
+                    title="从断点恢复运行"
+                  >
+                    <template #icon><n-icon :size="14"><RotateCcw /></n-icon></template>
+                  </n-button>
+                </n-space>
               </template>
               <div class="task-meta">
                 <n-text depth="3" style="font-size: 12px">{{
@@ -280,6 +293,7 @@ import {
   Download,
   Trash2,
   Activity,
+  RotateCcw,
 } from "lucide-vue-next";
 import axios from "axios";
 import * as echarts from "echarts";
@@ -467,6 +481,21 @@ const renderSelectedWave = (type) => {
   );
 };
 
+const resumeTask = async (task) => {
+  try {
+    message.loading(`正在恢复 [${task.name}]...`);
+    const res = await axios.post(`${API_BASE}/resume_optimization/${task.id}`);
+    if (res.data.status === "success") {
+      message.success(res.data.message || `[${task.name}] 已恢复运行`);
+      fetchTasks(); // 刷新列表，状态会变成 running
+    }
+  } catch (e) {
+    const detail = e.response?.data || "未知错误";
+    const msg = typeof detail === "string" ? detail : JSON.stringify(detail);
+    message.error(`恢复失败: ${msg}`);
+  }
+};
+
 const fetchTasks = async () => {
   try {
     const res = await axios.get(`${API_BASE}/tasks`);
@@ -512,16 +541,25 @@ const selectTask = async (task) => {
         }
       },
       {
-        title: "物理参数 (Params)",
+        title: "优化参数 (Params)",
         key: "params_json",
         width: 220,
         render(row) {
           if (!row.params_json)
             return h("span", { style: "color: gray" }, "--");
+          const cfgParams = selectedTask.value?.config_json?.paramsList;
+          const optNames = cfgParams
+            ? new Set(cfgParams.filter(p => p.opt).map(p => p.name))
+            : null;
+          const entries = optNames
+            ? Object.entries(row.params_json).filter(([k]) => optNames.has(k))
+            : Object.entries(row.params_json);
+          if (entries.length === 0)
+            return h("span", { style: "color: gray" }, "--");
           return h(
             "div",
             { style: "display: flex; gap: 4px; flex-wrap: wrap;" },
-            Object.entries(row.params_json).map(([k, v]) =>
+            entries.map(([k, v]) =>
               h(
                 NTag,
                 { size: "small", type: "info", bordered: false },
@@ -549,7 +587,11 @@ const selectTask = async (task) => {
         ) || inds[0];
       const metrics = sampleInd.metrics_json || {};
 
-      dynamicCols = Object.keys(metrics).map((k) => ({
+      // 默认隐藏波动率指标（含_fluc）和频域副指标（_side_ratio），仅展示均值/主频点
+      const displayKeys = Object.keys(metrics).filter(
+        (k) => !k.includes('_fluc') && !k.includes('_side_ratio')
+      );
+      dynamicCols = displayKeys.map((k) => ({
         title: k,
         key: `metrics_json.${k}`,
         width: 100,

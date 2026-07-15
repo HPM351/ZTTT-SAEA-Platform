@@ -65,7 +65,19 @@ class NnOnlineLog(Base):
 
 
 # ==========================================
-# 4. 身份认证与文献助手相关数据表
+# 4. 优化断点续跑 — Checkpoint 表
+# ==========================================
+class Checkpoint(Base):
+    __tablename__ = "checkpoints"
+    task_id = Column(String, primary_key=True, index=True)
+    algo_type = Column(String, nullable=False)
+    gen = Column(Integer, nullable=False)
+    state_json = Column(JSON, nullable=False)  # Chrom, FitnV, cache 等运行时状态
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+# ==========================================
+# 5. 身份认证与文献助手相关数据表
 # ==========================================
 class User(Base):
     __tablename__ = "users"
